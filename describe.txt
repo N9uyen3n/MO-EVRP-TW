@@ -1,0 +1,44 @@
+Dự án này là một chương trình C++ được thiết kế để giải quyết Bài toán Định tuyến Xe điện Đa mục tiêu có Cửa sổ Thời gian (Multi-Objective Electric Vehicle Routing Problem with Time Windows - MO-EVRP-TW).
+
+Giải pháp chính được xây dựng dựa trên một metaheuristic phổ biến là Tìm kiếm Lân cận Lớn Thích ứng (Adaptive Large Neighborhood Search - ALNS).
+
+**Khung thuật toán ALNS (Adaptive Large Neighborhood Search):**
+
+ALNS là một thuật toán tìm kiếm cục bộ mạnh mẽ, hoạt động dựa trên ý tưởng liên tục phá hủy một phần giải pháp hiện tại và sau đó sửa chữa nó để tạo ra một giải pháp mới. Quá trình này được lặp lại nhiều lần, và khả năng "thích ứng" của ALNS nằm ở việc nó điều chỉnh xác suất lựa chọn các toán tử phá hủy và sửa chữa dựa trên hiệu suất của chúng trong quá trình tìm kiếm.
+
+Các thành phần chính của khung ALNS trong dự án này (được triển khai chủ yếu trong `ALNS.cpp`) bao gồm:
+
+1.  **Khởi tạo giải pháp:** Bắt đầu với một giải pháp ban đầu (có thể được tạo ngẫu nhiên hoặc bằng một heuristic xây dựng).
+2.  **Vòng lặp tìm kiếm:** Lặp lại các bước sau cho đến khi đạt được tiêu chí dừng (ví dụ: số lần lặp tối đa, thời gian chạy):
+    *   **Lựa chọn toán tử:** Chọn một toán tử phá hủy và một toán tử sửa chữa từ một tập hợp các toán tử có sẵn. Việc lựa chọn này là "thích ứng", nghĩa là các toán tử đã hoạt động tốt trong quá khứ sẽ có xác suất được chọn cao hơn.
+    *   **Phá hủy:** Áp dụng toán tử phá hủy đã chọn để loại bỏ một phần các khách hàng hoặc các đoạn lộ trình khỏi giải pháp hiện tại, tạo ra một giải pháp không hoàn chỉnh.
+    *   **Sửa chữa:** Áp dụng toán tử sửa chữa đã chọn để chèn lại các phần đã bị loại bỏ vào giải pháp không hoàn chỉnh, tạo ra một giải pháp ứng viên mới.
+    *   **Chấp nhận giải pháp:** Quyết định có chấp nhận giải pháp ứng viên mới hay không. Quyết định này thường dựa trên một tiêu chí chấp nhận (ví dụ: thuật toán Simulated Annealing, cho phép chấp nhận các giải pháp tệ hơn với một xác suất nhất định để thoát khỏi tối ưu cục bộ).
+    *   **Cập nhật trọng số:** Điều chỉnh trọng số của các toán tử phá hủy và sửa chữa dựa trên chất lượng của giải pháp mới được tạo ra. Các toán tử dẫn đến cải thiện giải pháp sẽ có trọng số tăng lên.
+
+**Vai trò chi tiết của các tệp khác:**
+
+-   `main.cpp`: Là bộ điều phối chính. Nó đọc các tham số đầu vào (ví dụ: tên tệp instance, các tham số ALNS), khởi tạo đối tượng `Instance` bằng cách gọi `Parser`, tạo một giải pháp ban đầu, sau đó gọi phương thức `solve()` của đối tượng `ALNS` để bắt đầu quá trình tìm kiếm. Cuối cùng, nó sẽ xử lý và hiển thị các giải pháp tối ưu tìm được.
+
+-   `Parser.cpp`: Đảm bảo rằng dữ liệu từ các tệp instance (ví dụ: tọa độ, nhu cầu, cửa sổ thời gian của khách hàng; vị trí, dung lượng của trạm sạc; thông tin về depot và xe) được đọc chính xác và chuyển đổi thành cấu trúc dữ liệu mà `Instance` có thể sử dụng.
+
+-   `Instance.cpp`: Đây là trái tim của dữ liệu bài toán. Nó không chỉ lưu trữ các đối tượng `Customer`, `Depot`, `Station`, `Vehicle` mà còn có thể chứa ma trận khoảng cách giữa tất cả các điểm, giúp các toán tử ALNS và các hàm đánh giá hiệu quả hơn. Các ràng buộc của bài toán (ví dụ: tổng dung lượng xe, thời gian phục vụ, thời gian sạc) cũng được định nghĩa hoặc tham chiếu tại đây.
+
+-   `Node.cpp`, `Customer.cpp`, `Depot.cpp`, `Station.cpp`: Các lớp này định nghĩa các thuộc tính cụ thể cho từng loại điểm. Ví dụ, `Customer` có `demand` (nhu cầu) và `timeWindow` (cửa sổ thời gian), `Station` có `chargingRate` (tốc độ sạc) và `chargingTime` (thời gian sạc cần thiết), `Depot` có `startTime` và `endTime` cho các xe. Các toán tử ALNS sẽ thao tác với các đối tượng này khi xây dựng hoặc sửa đổi lộ trình.
+
+-   `Vehicle.cpp`: Định nghĩa các giới hạn của xe như `capacity` (sức chứa), `batteryCapacity` (dung lượng pin), `consumptionRate` (tốc độ tiêu thụ pin), và `maxTravelTime` (thời gian di chuyển tối đa). Các ràng buộc này là cực kỳ quan trọng để kiểm tra tính khả thi của các lộ trình được tạo ra bởi ALNS.
+
+-   `Route.cpp`: Đây là nơi các lộ trình được xây dựng và đánh giá. Một đối tượng `Route` sẽ chứa một danh sách các `Node` mà một `Vehicle` cụ thể sẽ ghé thăm. Các phương thức trong `Route.cpp` sẽ tính toán tổng khoảng cách, tổng thời gian, tổng nhu cầu, và mức tiêu thụ pin của lộ trình, đồng thời kiểm tra xem lộ trình có vi phạm bất kỳ ràng buộc nào (cửa sổ thời gian, dung lượng xe, pin) hay không. Các toán tử ALNS sẽ gọi các phương thức này để đánh giá các giải pháp ứng viên.
+
+-   `operators/DestroyOperators.cpp`: Chứa các hàm thực hiện các chiến lược phá hủy khác nhau. Ví dụ:
+    *   **Random Removal:** Loại bỏ ngẫu nhiên một số lượng khách hàng nhất định.
+    *   **Worst Removal:** Loại bỏ các khách hàng gây tốn kém nhất (ví dụ: khách hàng có chi phí cao nhất khi phục vụ).
+    *   **Shaw Removal:** Loại bỏ các khách hàng tương tự nhau (gần nhau về mặt không gian hoặc thời gian).
+
+-   `operators/RepairOperators.cpp`: Chứa các hàm thực hiện các chiến lược sửa chữa khác nhau. Ví dụ:
+    *   **Greedy Insertion:** Chèn các khách hàng đã bị loại bỏ vào vị trí tốt nhất có thể (vị trí làm tăng chi phí ít nhất).
+    *   **Regret-k Insertion:** Chèn khách hàng dựa trên mức độ "hối tiếc" nếu không chèn vào một vị trí cụ thể (xem xét k vị trí tốt nhất).
+
+-   `Utils.cpp`: Cung cấp các hàm hỗ trợ chung như tính toán khoảng cách giữa hai `Node`, các hàm tạo số ngẫu nhiên cần thiết cho việc lựa chọn toán tử và các chiến lược phá hủy/sửa chữa ngẫu nhiên, và các hàm toán học khác.
+
+Sự phối hợp giữa các tệp này tạo nên một hệ thống hoàn chỉnh để giải quyết bài toán MO-EVRP-TW bằng thuật toán ALNS.

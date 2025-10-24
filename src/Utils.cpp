@@ -1,7 +1,8 @@
-#include "Utils.h"
-#include "Customer.h"
-#include "Station.h"
-#include "Depot.h"
+#include "../include/Instance.h"
+#include "../include/Utils.h"
+#include "../include/Customer.h"
+#include "../include/Station.h"
+#include "../include/Depot.h"
 
 void Utils::printInstance(const Instance& instance) {
     int customer_count = 0;

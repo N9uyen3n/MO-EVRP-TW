@@ -53,4 +53,6 @@ private:
 
     // Private helper to recalculate all states from a given position
     void recalculateFrom(size_t position);
+
+    bool checkAndUpdateInfos(std::vector<RouteInfo>& temp_infos) const;
 };

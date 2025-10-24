@@ -14,6 +14,17 @@
 class ALNS : public Solver {
 public:
     explicit ALNS(ObjectiveManager manager, std::shared_ptr<Instance> instance);
+    explicit ALNS(ObjectiveManager manager, 
+                  std::shared_ptr<Instance> instance,
+                    double sigma1, 
+                    double sigma2, 
+                    double sigma3,
+                  int maxIterations,
+                  int segmentSize,
+                  double destructionRate,
+                  double initialTemperature,
+                  double coolingRate,
+                  double reactionFactor);
     std::vector<Solution> solve() override;
 
 private:
@@ -61,6 +72,7 @@ private:
     std::pair<IDestroyOperator*, size_t> selectOperator(const std::vector<std::unique_ptr<IDestroyOperator>>& operators, const std::vector<double>& weights);
     std::pair<IRepairOperator*, size_t> selectOperator(const std::vector<std::unique_ptr<IRepairOperator>>& operators, const std::vector<double>& weights);
     void updateWeights();
+    void applyLocalSearch(Solution& solution); // <--- THÊM DÒNG NÀY
 
     // Dominance check
     enum Dominance { DOMINATES, DOMINATED, NON_DOMINATED };

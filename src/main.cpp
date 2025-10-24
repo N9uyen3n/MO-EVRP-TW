@@ -5,11 +5,11 @@
 #include <filesystem> // For path manipulation and directory creation
 #include <fstream>   // For file output
 
-#include "Parser.h"
-#include "Instance.h"
-#include "Utils.h"
-#include "ALNS.h"
-#include "objectives/ObjectiveFunction.h"
+#include "../include/Parser.h"
+#include "../include/Instance.h"
+#include "../include/Utils.h"
+#include "../include/ALNS.h"
+#include "../include/objectives/ObjectiveFunction.h"
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -41,8 +41,8 @@ int main(int argc, char* argv[]) {
         ObjectiveManager objManager;
         objManager.addObjective(std::make_shared<NumberOfVehiclesObjective>());
         objManager.addObjective(std::make_shared<TotalDistanceObjective>());
-        objManager.addObjective(std::make_shared<TotalEnergyObjective>());
-        objManager.addObjective(std::make_shared<MakespanObjective>());
+        // objManager.addObjective(std::make_shared<TotalEnergyObjective>());
+        // objManager.addObjective(std::make_shared<MakespanObjective>());
 
         ALNS alns_solver(objManager, instance);
 

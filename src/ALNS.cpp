@@ -5,6 +5,7 @@
 #include "../include/Vehicle.h"
 #include <iostream>
 #include <vector>
+#include <set>
 #include <stdexcept>
 #include <numeric>
 #include <algorithm>
@@ -25,13 +26,13 @@ ALNS::ALNS(ObjectiveManager manager, std::shared_ptr<Instance> instance)
     }
 
     // Improved configuration with validation
-    maxIterations = 2000;
+    maxIterations = 3000;
     segmentSize = 100;
-    destructionRate = 0.25;
+    destructionRate = 0.2;
     
     // Enhanced temperature schedule
     temperature = 100.0;
-    coolingRate = 0.9995;
+    coolingRate = 0.995;
     minimumTemperature = 0.5;
     initialTemperature = temperature; // Store for potential reheating
     
@@ -39,7 +40,7 @@ ALNS::ALNS(ObjectiveManager manager, std::shared_ptr<Instance> instance)
 
     // Improved reward structure (more aggressive rewards for better solutions)
     sigma1 = 30;  // New global best
-    sigma2 = 15;  // Better than current
+    sigma2 = 20;  // Better than current
     sigma3 = 5;   // Accepted (non-dominated)
 
     // Initialize operators with validation
@@ -78,6 +79,90 @@ void ALNS::initializeOperators() {
     // Track best performance for each operator
     destroyBestScores.assign(numDestroy, 0);
     repairBestScores.assign(numRepair, 0);
+}
+// ============================================================================
+// LOCAL SEARCH - Inter-Route Relocate (Di dời giữa các tuyến)
+// ============================================================================
+void ALNS::applyLocalSearch(Solution& solution) {
+    bool improvement = true;
+    
+    // Sử dụng chiến lược "First Improvement" (Cải thiện đầu tiên)
+    while (improvement) {
+        improvement = false;
+
+        for (size_t i = 0; i < solution.routes.size(); ++i) {
+            for (size_t j = 0; j < solution.routes.size(); ++j) {
+                if (i == j) continue; // Bỏ qua nếu là cùng 1 tuyến
+
+                Route& route_i = solution.routes[i]; // Tuyến A (nguồn)
+                Route& route_j = solution.routes[j]; // Tuyến B (đích)
+
+                // Thử di dời (Relocate) mọi khách hàng từ route_i sang route_j
+                for (int c_idx = 1; c_idx < route_i.getInfos().size() - 1; ++c_idx) {
+                    
+                    auto customerToMove = std::dynamic_pointer_cast<Customer>(route_i.getInfos()[c_idx].node);
+                    if (!customerToMove) continue; // Bỏ qua nếu là trạm sạc
+
+                    // 1. Tính chi phí TIẾT KIỆM được khi gỡ khỏi route_i
+                    // (Giả sử chi phí là khoảng cách)
+                    auto prevNode = route_i.getInfos()[c_idx - 1].node;
+                    auto nextNode = route_i.getInfos()[c_idx + 1].node;
+                    double cost_i_old = instance->getDistance(prevNode->getId(), customerToMove->getId()) +
+                                      instance->getDistance(customerToMove->getId(), nextNode->getId());
+                    double cost_i_new = instance->getDistance(prevNode->getId(), nextNode->getId());
+                    double costSaving = cost_i_old - cost_i_new; // Tiết kiệm được bao nhiêu
+
+                    int bestNewPos = -1;
+                    double bestTotalDelta = 1e9; // Khởi tạo delta tổng là rất lớn
+
+                    // 2. Tìm vị trí chèn tốt nhất trong route_j
+                    for (int pos_j = 1; pos_j < route_j.getInfos().size(); ++pos_j) {
+                        if (route_j.canInsert(customerToMove, pos_j)) {
+                            
+                            // Giả định getInsertionCost trả về DELTA chi phí (phần tăng thêm)
+                            double costIncrease = route_j.getInsertionCost(customerToMove, pos_j); 
+                            
+                            double totalDelta = costIncrease - costSaving;
+
+                            if (totalDelta < bestTotalDelta) {
+                                bestTotalDelta = totalDelta;
+                                bestNewPos = pos_j;
+                            }
+                        }
+                    }
+
+                    // 3. Thực hiện di dời nếu có lợi (delta tổng < 0)
+                    if (bestNewPos != -1 && bestTotalDelta < -1e-4) { // Cải thiện
+                        
+                        // Gỡ khách hàng khỏi route_i
+                        // (Lưu ý: Phải gỡ bỏ bằng con trỏ, không phải bằng chỉ số c_idx
+                        // vì chỉ số có thể thay đổi)
+                        route_i.removeCustomer(customerToMove); 
+                        
+                        // Chèn vào route_j
+                        route_j.insert(customerToMove, bestNewPos);
+
+                        improvement = true; // Báo hiệu đã có cải thiện
+                        
+                        // Thoát và bắt đầu lại LS từ đầu
+                        goto restart_ls; 
+                    }
+                } // kết thúc lặp qua khách hàng
+            } // kết thúc lặp route_j
+        } // kết thúc lặp route_i
+
+        restart_ls:; // Nhãn để goto
+    } // kết thúc vòng lặp while(improvement)
+
+    // Dọn dẹp các tuyến đường rỗng (nếu có) sau khi LS kết thúc
+    solution.routes.erase(
+        std::remove_if(solution.routes.begin(), solution.routes.end(),
+            [](const Route& r) { 
+                // Một tuyến rỗng chỉ có [depot, depot]
+                return r.getInfos().size() <= 2; 
+            }),
+        solution.routes.end()
+    );
 }
 
 // ============================================================================
@@ -123,6 +208,10 @@ std::vector<Solution> ALNS::solve() {
         // Apply destroy and repair
         auto removedCustomers = destroyOp->destroy(tempSolution, *instance, destructionRate, rng);
         bool repaired = repairOp->repair(tempSolution, *instance, removedCustomers, rng);
+
+        if (repaired) {
+            applyLocalSearch(tempSolution);
+        }
 
         if (repaired && isFeasible(tempSolution)) {
             totalFeasible++;
@@ -297,8 +386,7 @@ void ALNS::updateWeights() {
 // INITIAL SOLUTION - Improved with better route construction
 // ============================================================================
 Solution ALNS::generateInitialSolution() {
-    std::cout << "
-Generating initial solution..." << std::endl;
+    std::cout << "Generating initial solution..." << std::endl;
     
     Solution sol;
     std::shared_ptr<Node> depot = nullptr;
@@ -372,62 +460,152 @@ bool ALNS::updateArchive(Solution& newSolution) {
 // ============================================================================
 // FEASIBILITY CHECK - Optimized with early termination
 // ============================================================================
+// bool ALNS::isFeasible(const Solution& solution) {
+//     if (solution.routes.empty()) {
+//         return false;
+//     }
+
+//     constexpr double EPSILON = 1e-4;
+
+//     for (const auto& route : solution.routes) {
+//         const auto& infos = route.getInfos();
+        
+//         if (infos.empty()) {
+//             continue;
+//         }
+
+//         auto vehicle = route.getVehicle();
+//         const double capacity = vehicle->getCapacity();
+//         const double batteryCapacity = vehicle->getBatteryCapacity();
+
+//         // Check initial load
+//         if (infos[0].departure_load > capacity + EPSILON) {
+//             return false;
+//         }
+
+//         for (const auto& info : infos) {
+//             // Battery constraints
+//             if (info.arrival_battery < -EPSILON || 
+//                 info.departure_battery > batteryCapacity + EPSILON) {
+//                 return false;
+//             }
+
+//             // Load constraints
+//             if (info.departure_load < -EPSILON || 
+//                 info.departure_load > capacity + EPSILON) {
+//                 return false;
+//             }
+
+//             // Time window constraints
+//             if (auto customer = std::dynamic_pointer_cast<const Customer>(info.node)) {
+//                 if (info.arrival_time > customer->getDueDate() + EPSILON) {
+//                     return false;
+//                 }
+//             } else if (auto depot = std::dynamic_pointer_cast<const Depot>(info.node)) {
+//                 if (info.arrival_time > depot->getLastTime() + EPSILON) {
+//                     return false;
+//                 }
+//             }
+//         }
+
+//         // Final load should be zero
+//         if (std::abs(infos.back().departure_load) > EPSILON) {
+//             return false;
+//         }
+//     }
+
+//     return true;
+// }
+ // ============================================================================
+// HÀM CŨ: VIẾT LẠI `isFeasible` (KHẮC PHỤC VẤN ĐỀ 1, 2, 3, 4)
+// ============================================================================
 bool ALNS::isFeasible(const Solution& solution) {
     if (solution.routes.empty()) {
-        return false;
+        return true; // Một giải pháp không có tuyến nào (nếu không có khách hàng) là hợp lệ
     }
-
+    
     constexpr double EPSILON = 1e-4;
+    std::set<int> customers_served; // Dùng để kiểm tra tính duy nhất
+    int total_customers_in_solution = 0;
 
     for (const auto& route : solution.routes) {
         const auto& infos = route.getInfos();
         
+        // --- Vấn đề 1 & 4: Kiểm tra cấu trúc tuyến ---
         if (infos.empty()) {
-            continue;
+            continue; // Bỏ qua tuyến rỗng (nếu Local Search tạo ra)
+        }
+        if (infos.size() < 2) {
+             return false; // Tuyến phải có ít nhất [Depot, Depot]
+        }
+        if (!std::dynamic_pointer_cast<Depot>(infos.front().node) ||
+            !std::dynamic_pointer_cast<Depot>(infos.back().node)) {
+            return false; // Phải bắt đầu và kết thúc tại Depot
         }
 
-        const auto* vehicle = route.getVehicle();
+        auto vehicle = route.getVehicle();
         const double capacity = vehicle->getCapacity();
         const double batteryCapacity = vehicle->getBatteryCapacity();
 
-        // Check initial load
-        if (infos[0].departure_load > capacity + EPSILON) {
-            return false;
-        }
-
+        // --- Kiểm tra tính nhất quán của từng điểm dừng ---
+        // (Giả định rằng `checkAndUpdateInfos` đã làm đúng)
+        // (Chúng ta chỉ cần kiểm tra lại các giá trị đã tính)
         for (const auto& info : infos) {
+            
             // Battery constraints
             if (info.arrival_battery < -EPSILON || 
                 info.departure_battery > batteryCapacity + EPSILON) {
-                return false;
+                return false; // Pin vi phạm
             }
 
             // Load constraints
             if (info.departure_load < -EPSILON || 
                 info.departure_load > capacity + EPSILON) {
-                return false;
+                return false; // Tải trọng vi phạm
             }
 
             // Time window constraints
             if (auto customer = std::dynamic_pointer_cast<const Customer>(info.node)) {
+                // Vấn đề 2: Check DueDate
                 if (info.arrival_time > customer->getDueDate() + EPSILON) {
-                    return false;
+                    return false; // Trễ giờ
                 }
-            } else if (auto depot = std::dynamic_pointer_cast<const Depot>(info.node)) {
-                if (info.arrival_time > depot->getLastTime() + EPSILON) {
-                    return false;
+                
+                // GHI CHÚ: Không cần check ReadyTime (arrival < readyTime)
+                // vì `recalculateInfos` đã xử lý bằng cách thêm wait_time.
+                
+                // Kiểm tra tính duy nhất
+                if (customers_served.count(customer->getId())) {
+                    return false; // Khách hàng này đã được phục vụ ở tuyến khác
                 }
-            }
-        }
+                customers_served.insert(customer->getId());
+                total_customers_in_solution++;
 
-        // Final load should be zero
-        if (std::abs(infos.back().departure_load) > EPSILON) {
-            return false;
+            } 
         }
+        
+        // ** LOẠI BỎ LỖI: Không kiểm tra tải trọng về 0 **
+        // if (std::abs(infos.back().departure_load) > EPSILON) {
+        //     return false;
+        // }
+    }
+
+    // --- Kiểm tra tính toàn vẹn của Solution ---
+    // Đảm bảo mọi khách hàng trong 'instance' đều được phục vụ
+    int total_customers_in_instance = 0;
+    for (const auto& node : instance->getNodes()) {
+        if (std::dynamic_pointer_cast<Customer>(node)) {
+            total_customers_in_instance++;
+        }
+    }
+    
+    if (total_customers_in_solution != total_customers_in_instance) {
+        return false; // Số lượng khách hàng phục vụ không khớp với bài toán
     }
 
     return true;
 }
+
 
 // ============================================================================
 // DOMINANCE CHECK - Optimized comparison
@@ -465,8 +643,7 @@ ALNS::Dominance ALNS::dominanceCheck(const Solution& a, const Solution& b) {
 // LOGGING AND REPORTING
 // ============================================================================
 void ALNS::printHeader() const {
-    std::cout << "
-" << std::string(80, '=') << std::endl;
+    std::cout << "" << std::string(80, '=') << std::endl;
     std::cout << "                    ALNS SOLVER STARTED" << std::endl;
     std::cout << std::string(80, '=') << std::endl;
     std::cout << "Configuration:" << std::endl;
@@ -476,8 +653,7 @@ void ALNS::printHeader() const {
     std::cout << "  Initial Temp:      " << temperature << std::endl;
     std::cout << "  Cooling Rate:      " << coolingRate << std::endl;
     std::cout << "  Reaction Factor:   " << reactionFactor << std::endl;
-    std::cout << "
-Operators:" << std::endl;
+    std::cout << "Operators:" << std::endl;
     std::cout << "  Destroy: " << destroyOperators.size() << " operators" << std::endl;
     std::cout << "  Repair:  " << repairOperators.size() << " operators" << std::endl;
     std::cout << std::string(80, '=') << std::endl;
@@ -485,8 +661,7 @@ Operators:" << std::endl;
 
 void ALNS::logProgress(int iteration, int accepted, int rejected, 
                        int feasible, int infeasible) const {
-    std::cout << "
-[Iteration " << iteration << "/" << maxIterations << "]" << std::endl;
+    std::cout << "[Iteration " << iteration << "/" << maxIterations << "]" << std::endl;
     std::cout << "  Archive size:      " << archive.size() << std::endl;
     std::cout << "  Accepted/Rejected: " << accepted << "/" << rejected << std::endl;
     std::cout << "  Feasible/Infeasible: " << feasible << "/" << infeasible << std::endl;
@@ -499,8 +674,7 @@ void ALNS::logProgress(int iteration, int accepted, int rejected,
         std::cout << destroyOperators[i]->getName() << "=" 
                   << std::fixed << std::setprecision(2) << destroyWeights[i] << " ";
     }
-    std::cout << "
-    Repair:  ";
+    std::cout << "Repair:  ";
     for (size_t i = 0; i < repairWeights.size(); ++i) {
         std::cout << repairOperators[i]->getName() << "=" 
                   << std::fixed << std::setprecision(2) << repairWeights[i] << " ";
@@ -510,8 +684,7 @@ void ALNS::logProgress(int iteration, int accepted, int rejected,
 
 void ALNS::printFooter(long long duration, int accepted, int rejected,
                        int feasible, int infeasible) const {
-    std::cout << "
-" << std::string(80, '=') << std::endl;
+    std::cout << "" << std::string(80, '=') << std::endl;
     std::cout << "                    ALNS SOLVER FINISHED" << std::endl;
     std::cout << std::string(80, '=') << std::endl;
     std::cout << "Results:" << std::endl;

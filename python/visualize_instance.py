@@ -89,7 +89,7 @@ if __name__ == "__main__":
         # As an example, using a default file if no argument is provided.
         # You should replace this with a proper file path.
         print("Running with a default example path...")
-        instance_file = '..\data\solomon\c101_21.txt'
+        instance_file = r'D:\Work\SLSCM-LaB\24092025\test3\MO-EVRP-TW\data\solomon\c101C5.txt'
     else:
         instance_file = sys.argv[1]
 

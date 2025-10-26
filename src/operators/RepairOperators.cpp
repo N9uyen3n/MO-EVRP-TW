@@ -1,5 +1,7 @@
-#include "operators/RepairOperators.h"
-#include "Route.h"
+#include "../include/operators/RepairOperators.h"
+#include "../include/Instance.h"
+#include "../include/Customer.h"
+#include "../include/Route.h"
 #include <iostream>
 #include <limits>
 #include <algorithm>

@@ -1,7 +1,10 @@
 #pragma once
 #include <vector>
 #include <memory>
+#include <set>
+#include <tuple>
 #include "Node.h"
+#include "Station.h"
 
 // Forward declaration
 class DistanceMatrix;
@@ -15,11 +18,13 @@ public:
              double vehicleVelocity);
     ~Instance(); // Must be defined in .cpp to handle unique_ptr to incomplete type
 
+
     const std::vector<std::shared_ptr<Node>>& getNodes() const;
     double getVehicleCapacity() const;
     double getVehicleBattery() const;
     double getVehicleEnergyRate() const;
     double getVehicleVelocity() const;
+    std::set<std::tuple<int>> getStationIds() const;
 
     const std::shared_ptr<Node>& getNodeById(int id) const;
 
@@ -35,6 +40,7 @@ private:
     double vehicleEnergyRate; // r
     double vehicleVelocity;   // v
 
+    std::set<std::tuple<int>> stationIds;
     // Distance cache
     std::unique_ptr<DistanceMatrix> distanceMatrix;
 };

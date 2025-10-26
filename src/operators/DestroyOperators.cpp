@@ -1,6 +1,7 @@
-#include "operators/DestroyOperators.h"
-#include "Route.h"
-#include "Customer.h"
+#include "../include/operators/DestroyOperators.h"
+#include "../include/Route.h"
+#include "../include/Instance.h"
+#include "../include/Customer.h"
 #include <iostream>
 #include <algorithm> // For std::shuffle, std::sort
 

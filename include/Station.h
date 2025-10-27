@@ -9,6 +9,6 @@ public:
     double getChargingRate() const;
 
 private:
-    // The 'g' parameter from the file (inverse refueling rate)
+    // Tốc đọ nạp nược (phút / năng lượng)
     double chargingRate;
 };

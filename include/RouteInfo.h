@@ -10,6 +10,8 @@ struct RouteInfo {
     double arrival_load;
     double arrival_battery;
 
+    double wait_time; // Thời gian chờ tại điểm dừng
+
     // Trạng thái của xe khi rời điểm dừng này (sau khi phục vụ/sạc)
     double departure_time;
     double departure_load;

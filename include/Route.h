@@ -4,7 +4,13 @@
 #include "Vehicle.h"
 #include "RouteInfo.h"
 #include "Instance.h"
-#include "Customer.h" // Added for removeCustomer
+#include "Customer.h"
+
+// Struct to hold the result of an insertion evaluation
+struct EvaluationResult {
+    bool isFeasible = false;
+    double costDelta = std::numeric_limits<double>::max();
+};
 
 class Route {
 public:
@@ -15,32 +21,29 @@ public:
     std::shared_ptr<Vehicle> getVehicle() const;
     const std::vector<RouteInfo>& getInfos() const;
 
-    // Methods to modify the route
-    bool canInsert(std::shared_ptr<Node> node, size_t position);
+    // --- New evaluation method for ALNS ---
+    EvaluationResult evaluateInsertion(std::shared_ptr<Node> node, size_t position);
+
+    // --- Modified methods for route modification ---
     void insert(std::shared_ptr<Node> node, size_t position);
     void remove(size_t position);
+    bool removeCustomer(std::shared_ptr<Customer> customer);
 
-    // --- New getters for objectives ---
+    // --- Getters for objectives ---
     double getTotalDistance() const;
     double getTotalTime() const;
     double getTotalEnergyCharged() const;
     int getCustomerCount() const;
 
-    // --- Methods for validation ---
+    // --- Utility Getters ---
     double getCurrentLoad() const;
     double getCurrentBattery() const;
-    double calculateArrivalTime(std::shared_ptr<Node> node, int position) const;
-    double calculateEnergyToNode(std::shared_ptr<Node> node, int position) const;
-
-    // --- Methods for ALNS operators ---
-    double getInsertionCost(std::shared_ptr<Node> node, int position) const;
-    bool removeCustomer(std::shared_ptr<Customer> customer);
 
 private:
     int id;
     std::shared_ptr<Vehicle> vehicle;
     std::vector<RouteInfo> infos;
-    std::shared_ptr<const Instance> instance; // Added
+    std::shared_ptr<const Instance> instance;
 
     // Cache results
     mutable double cachedTotalDistance;
@@ -51,8 +54,7 @@ private:
     void invalidateCache();
     void rebuildCache() const;
 
-    // Private helper to recalculate all states from a given position
-    void recalculateFrom(size_t position);
-
-    bool checkAndUpdateInfos(std::vector<RouteInfo>& temp_infos) const;
+    // --- Core logic for updating route state ---
+    bool propogateAndUpdate(std::vector<RouteInfo>& route_infos, size_t start_index);
+    void recalculateFrom(size_t start_index);
 };

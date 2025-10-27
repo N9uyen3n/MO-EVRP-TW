@@ -2,14 +2,22 @@
 
 class Node {
     public:
-        Node(int id, double x, double y);
+        Node(int id, double x, double y); // Constructor cho Node cơ bản
+        Node(int id, double x, double y, double readyTime, double dueDate, double serviceTime); // Constructor cho Node với thông tin chi tiết
         virtual ~Node() = default;
         int getId() const;
         double getX() const;
         double getY() const;
-        
+        double getDemand() const;
+        double getReadyTime() const;
+        double getDueDate() const;
+        double getServiceTime() const;
+
     private:
-        int id;
-        double x;
-        double y;
+        int id; // ID của Node
+        double x; // Tọa độ X
+        double y; // Tọa độ Y
+        double readyTime; // Thời gian sẵn sàng
+        double dueDate; // Thời gian kết thúc
+        double serviceTime; // Thời gian phục vụ
 };

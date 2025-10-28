@@ -81,7 +81,7 @@ void ALNS::initializeOperators() {
     repairBestScores.assign(numRepair, 0);
 }
 // ============================================================================
-// LOCAL SEARCH - Inter-Route Relocate (Di dời giữa các tuyến)
+// LOCAL SEARCH - Inter-Route Relocate (Di dời giữa các tuyến) - PHIÊN BẢN MỚI
 // ============================================================================
 void ALNS::applyLocalSearch(Solution& solution) {
     bool improvement = true;
@@ -98,30 +98,34 @@ void ALNS::applyLocalSearch(Solution& solution) {
                 Route& route_j = solution.routes[j]; // Tuyến B (đích)
 
                 // Thử di dời (Relocate) mọi khách hàng từ route_i sang route_j
-                for (int c_idx = 1; c_idx < route_i.getInfos().size() - 1; ++c_idx) {
+                // Lưu ý: lặp ngược để việc xóa theo chỉ số không ảnh hưởng đến các phần tử chưa xét
+                for (int c_idx = route_i.getInfos().size() - 2; c_idx >= 1; --c_idx) {
                     
                     auto customerToMove = std::dynamic_pointer_cast<Customer>(route_i.getInfos()[c_idx].node);
-                    if (!customerToMove) continue; // Bỏ qua nếu là trạm sạc
+                    if (!customerToMove) continue; // Bỏ qua nếu không phải là khách hàng (ví dụ: trạm sạc)
 
-                    // 1. Tính chi phí TIẾT KIỆM được khi gỡ khỏi route_i
-                    // (Giả sử chi phí là khoảng cách)
-                    auto prevNode = route_i.getInfos()[c_idx - 1].node;
-                    auto nextNode = route_i.getInfos()[c_idx + 1].node;
-                    double cost_i_old = instance->getDistance(prevNode->getId(), customerToMove->getId()) +
-                                      instance->getDistance(customerToMove->getId(), nextNode->getId());
-                    double cost_i_new = instance->getDistance(prevNode->getId(), nextNode->getId());
-                    double costSaving = cost_i_old - cost_i_new; // Tiết kiệm được bao nhiêu
+                    // --- Bước 1: Tính chi phí TIẾT KIỆM được khi gỡ khách hàng khỏi route_i ---
+                    // Cách làm an toàn và chính xác nhất là mô phỏng việc xóa trên một bản sao
+                    // và tính lại chi phí (tổng thời gian).
+                    double cost_i_before = route_i.getTotalTime();
+                    Route temp_route_i = route_i; // Tạo bản sao tạm thời
+                    
+                    // Xóa khách hàng khỏi bản sao. `remove` theo chỉ số là đủ vì đây là bản sao.
+                    temp_route_i.remove(c_idx);
+                    
+                    double cost_i_after = temp_route_i.getTotalTime();
+                    double costSaving = cost_i_before - cost_i_after;
 
                     int bestNewPos = -1;
-                    double bestTotalDelta = 1e9; // Khởi tạo delta tổng là rất lớn
+                    double bestTotalDelta = std::numeric_limits<double>::max();
 
-                    // 2. Tìm vị trí chèn tốt nhất trong route_j
+                    // --- Bước 2: Tìm vị trí chèn tốt nhất trong route_j ---
                     for (int pos_j = 1; pos_j < route_j.getInfos().size(); ++pos_j) {
-                        if (route_j.canInsert(customerToMove, pos_j)) {
-                            
-                            // Giả định getInsertionCost trả về DELTA chi phí (phần tăng thêm)
-                            double costIncrease = route_j.getInsertionCost(customerToMove, pos_j); 
-                            
+                        // Sử dụng hàm evaluateInsertion mạnh mẽ đã được tái cấu trúc
+                        EvaluationResult result = route_j.evaluateInsertion(customerToMove, pos_j);
+                        
+                        if (result.isFeasible) {
+                            double costIncrease = result.costDelta;
                             double totalDelta = costIncrease - costSaving;
 
                             if (totalDelta < bestTotalDelta) {
@@ -131,20 +135,16 @@ void ALNS::applyLocalSearch(Solution& solution) {
                         }
                     }
 
-                    // 3. Thực hiện di dời nếu có lợi (delta tổng < 0)
-                    if (bestNewPos != -1 && bestTotalDelta < -1e-4) { // Cải thiện
+                    // --- Bước 3: Thực hiện di dời nếu có lợi (delta tổng < 0) ---
+                    if (bestNewPos != -1 && bestTotalDelta < -1e-4) { // Sử dụng sai số nhỏ
                         
-                        // Gỡ khách hàng khỏi route_i
-                        // (Lưu ý: Phải gỡ bỏ bằng con trỏ, không phải bằng chỉ số c_idx
-                        // vì chỉ số có thể thay đổi)
-                        route_i.removeCustomer(customerToMove); 
-                        
-                        // Chèn vào route_j
+                        // Thực hiện thay đổi trên các tuyến đường thực tế
+                        route_i.remove(c_idx);
                         route_j.insert(customerToMove, bestNewPos);
 
                         improvement = true; // Báo hiệu đã có cải thiện
                         
-                        // Thoát và bắt đầu lại LS từ đầu
+                        // Thoát và bắt đầu lại Local Search từ đầu
                         goto restart_ls; 
                     }
                 } // kết thúc lặp qua khách hàng
@@ -159,7 +159,7 @@ void ALNS::applyLocalSearch(Solution& solution) {
         std::remove_if(solution.routes.begin(), solution.routes.end(),
             [](const Route& r) { 
                 // Một tuyến rỗng chỉ có [depot, depot]
-                return r.getInfos().size() <= 2; 
+                return r.getInfos().size() <= 2 && r.getCustomerCount() == 0;
             }),
         solution.routes.end()
     );

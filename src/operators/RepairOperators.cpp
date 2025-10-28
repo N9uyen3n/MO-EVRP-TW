@@ -5,122 +5,116 @@
 #include <iostream>
 #include <limits>
 #include <algorithm>
+#include <vector>
 
 // --- GreedyInsertion ---
 bool GreedyInsertion::repair(Solution& solution, const Instance& instance, std::vector<std::shared_ptr<Customer>>& unassigned, std::mt19937& rng) {
-    while (!unassigned.empty()) {
-        double best_cost = std::numeric_limits<double>::max();
-        std::shared_ptr<Customer> best_customer = nullptr;
+    std::vector<std::shared_ptr<Customer>> customers_to_insert = unassigned;
+    unassigned.clear();
+
+    // Randomize the order of customers to be inserted
+    std::shuffle(customers_to_insert.begin(), customers_to_insert.end(), rng);
+
+    for (const auto& customer : customers_to_insert) {
+        double best_cost_delta = std::numeric_limits<double>::max();
         Route* best_route = nullptr;
         int best_position = -1;
-        int unassigned_idx_to_remove = -1;
 
-        for (int i = 0; i < unassigned.size(); ++i) {
-            auto customer = unassigned[i];
-            for (auto& route : solution.routes) {
-                // A route is at least [depot, depot]. We can insert in between.
-                for (int pos = 1; pos < route.getInfos().size(); ++pos) {
-                    if (route.canInsert(customer, pos)) {
-                        double cost = route.getInsertionCost(customer, pos);
-                        if (cost < best_cost) {
-                            best_cost = cost;
-                            best_customer = customer;
-                            best_route = &route;
-                            best_position = pos;
-                            unassigned_idx_to_remove = i;
-                        }
+        for (auto& route : solution.routes) {
+            // A route is at least [depot, depot]. We can insert in between.
+            for (int pos = 1; pos < route.getInfos().size(); ++pos) {
+                EvaluationResult result = route.evaluateInsertion(customer, pos);
+                if (result.isFeasible) {
+                    if (result.costDelta < best_cost_delta) {
+                        best_cost_delta = result.costDelta;
+                        best_route = &route;
+                        best_position = pos;
                     }
                 }
             }
         }
 
-        if (best_customer) {
-            best_route->insert(best_customer, best_position);
-            unassigned.erase(unassigned.begin() + unassigned_idx_to_remove);
+        if (best_route) {
+            best_route->insert(customer, best_position);
         } else {
-            // No feasible insertion found for any remaining customer
-            return false; 
+            // If no feasible insertion is found, add customer back to unassigned
+            unassigned.push_back(customer);
         }
     }
 
-    return true;
+    // Return true if all customers were inserted, false otherwise
+    return unassigned.empty();
 }
+
 
 // --- RegretInsertion ---
 bool RegretInsertion::repair(Solution& solution, const Instance& instance, std::vector<std::shared_ptr<Customer>>& unassigned, std::mt19937& rng) {
     while (!unassigned.empty()) {
-        // For each customer, find k-best insertion positions
-        struct CustomerRegret {
-            std::shared_ptr<Customer> customer;
-            double regret;
-            double best_cost;
-            Route* best_route;
-            int best_position;
-        };
+        std::shared_ptr<Customer> best_customer_to_insert = nullptr;
+        double max_regret = -1.0;
+        Route* best_route_for_best_customer = nullptr;
+        int best_pos_for_best_customer = -1;
 
-        std::vector<CustomerRegret> regrets;
+        auto it = unassigned.begin();
+        while (it != unassigned.end()) {
+            const auto& customer = *it;
+            struct InsertionInfo {
+                double costDelta;
+                Route* route;
+                int position;
+            };
+            std::vector<InsertionInfo> insertions;
 
-        for (const auto& cust : unassigned) {
-            std::vector<double> costs;
-            // Try all positions in all routes
             for (auto& route : solution.routes) {
                 for (int pos = 1; pos < route.getInfos().size(); ++pos) {
-                    if (route.canInsert(cust, pos)) {
-                        costs.push_back(route.getInsertionCost(cust, pos));
+                    EvaluationResult result = route.evaluateInsertion(customer, pos);
+                    if (result.isFeasible) {
+                        insertions.push_back({result.costDelta, &route, pos});
                     }
                 }
             }
 
-            if (costs.empty()) continue;
+            if (insertions.empty()) {
+                ++it;
+                continue; // This customer cannot be inserted anywhere, check next
+            }
 
-            std::sort(costs.begin(), costs.end());
-            
-            double regret_value = 0.0;
-            if (costs.size() > 1) {
-                // Calculate regret between best and k-th best (or last if fewer than k)
-                int limit = std::min((int)costs.size(), k);
+            // Sort insertions by costDelta
+            std::sort(insertions.begin(), insertions.end(), [](const auto& a, const auto& b) {
+                return a.costDelta < b.costDelta;
+            });
+
+            double regret = 0.0;
+            if (insertions.size() > 1) {
+                int limit = std::min((int)insertions.size(), k);
                 for (int i = 1; i < limit; ++i) {
-                    regret_value += (costs[i] - costs[0]);
+                    regret += (insertions[i].costDelta - insertions[0].costDelta);
                 }
             } else {
-                regret_value = costs[0]; // High regret if only one option
+                // If only one insertion is possible, it's very important.
+                // We can assign a high regret. A simple approach is to use a large value 
+                // or a value related to its own cost, to prioritize it.
+                regret = std::numeric_limits<double>::max() / 2; // A large value to prioritize
             }
 
-            regrets.push_back({cust, regret_value, costs[0], nullptr, -1});
-        }
 
-        if (regrets.empty()) return false; // No feasible insertion for any customer
-
-        // Sort by regret (highest first = most constrained)
-        std::sort(regrets.begin(), regrets.end(),
-            [](const auto& a, const auto& b) { return a.regret > b.regret; });
-
-        // Insert customer with highest regret at its best position
-        auto& selected_customer_regret = regrets[0];
-        auto cust_to_insert = selected_customer_regret.customer;
-
-        // Find its best position again (could be cached, but this is safer)
-        Route* best_route_for_insert = nullptr;
-        int best_pos_for_insert = -1;
-        double best_cost_for_insert = std::numeric_limits<double>::max();
-
-        for (auto& route : solution.routes) {
-            for (int pos = 1; pos < route.getInfos().size(); ++pos) {
-                if (route.canInsert(cust_to_insert, pos)) {
-                    double cost = route.getInsertionCost(cust_to_insert, pos);
-                    if (cost < best_cost_for_insert) {
-                        best_cost_for_insert = cost;
-                        best_route_for_insert = &route;
-                        best_pos_for_insert = pos;
-                    }
-                }
+            if (regret > max_regret) {
+                max_regret = regret;
+                best_customer_to_insert = customer;
+                best_route_for_best_customer = insertions[0].route;
+                best_pos_for_best_customer = insertions[0].position;
             }
+            ++it;
         }
 
-        if (!best_route_for_insert) return false; // Should not happen if regrets list was not empty
-
-        best_route_for_insert->insert(cust_to_insert, best_pos_for_insert);
-        unassigned.erase(std::remove(unassigned.begin(), unassigned.end(), cust_to_insert), unassigned.end());
+        if (best_customer_to_insert) {
+            best_route_for_best_customer->insert(best_customer_to_insert, best_pos_for_best_customer);
+            // Remove the inserted customer from unassigned list
+            unassigned.erase(std::remove(unassigned.begin(), unassigned.end(), best_customer_to_insert), unassigned.end());
+        } else {
+            // No customer could be inserted, stop the repair process
+            return false;
+        }
     }
 
     return true;

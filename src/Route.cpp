@@ -241,7 +241,7 @@ EvaluationResult Route::evaluateInsertion(std::shared_ptr<Node> node, size_t pos
     return result;
 }
 
-// --- Các phương thức khác (không thay đổi nhiều) ---
+
 
 bool Route::removeCustomer(std::shared_ptr<Customer> customer) {
     for (size_t i = 0; i < infos.size(); ++i) {

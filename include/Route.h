@@ -7,6 +7,7 @@
 #pragma once
 #include <vector>
 #include <memory>
+#include <limits> // Thêm dòng này
 #include "Vehicle.h"
 #include "RouteInfo.h"
 #include "Instance.h"

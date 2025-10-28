@@ -169,14 +169,8 @@ bool Route::propogateAndUpdate(std::vector<RouteInfo>& route_infos, size_t start
 void Route::recalculateFrom(size_t start_index) {
     // Hàm này giờ chỉ đơn giản là gọi logic lan truyền hợp nhất
     // trên chính tuyến đường của nó và vô hiệu hóa cache.
-    if (propogateAndUpdate(this->infos, start_index)) {
-        invalidateCache();
-    } else {
-        // Trường hợp này không nên xảy ra nếu các toán tử (ví dụ: evaluateInsertion)
-        // đã kiểm tra tính hợp lệ trước khi chèn. Nó cho thấy một trạng thái không hợp lệ
-        // đã được tạo ra. Tạm thời chỉ vô hiệu hóa cache.
-        invalidateCache();
-    }
+    propogateAndUpdate(this->infos, start_index);
+    invalidateCache(); // Luôn vô hiệu hóa cache sau mỗi lần tính toán lại
 }
 
 void Route::insert(std::shared_ptr<Node> node, size_t position) {
@@ -199,7 +193,7 @@ void Route::remove(size_t position) {
         
         // TỐI ƯU HÓA: Tính toán lại từ vị trí vừa xóa.
         // Điểm tại `position` bây giờ là một điểm mới, cần cập nhật trạng thái của nó và các điểm sau đó.
-        recalculateFrom(position);
+        recalculateFrom(0);
     }
 }
 

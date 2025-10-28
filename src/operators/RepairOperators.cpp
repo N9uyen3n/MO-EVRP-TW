@@ -1,85 +1,214 @@
 #include "../include/operators/RepairOperators.h"
 #include "../include/Instance.h"
 #include "../include/Customer.h"
+#include "../include/Station.h"
 #include "../include/Route.h"
 #include <iostream>
 #include <limits>
 #include <algorithm>
 #include <vector>
 
+// Helper function to find the nearest station to a given node
+static std::shared_ptr<Station> findNearestStation(const std::shared_ptr<Node>& fromNode, const std::vector<std::shared_ptr<Station>>& stations, const Instance& instance) {
+    if (stations.empty()) {
+        return nullptr;
+    }
+    double min_dist = std::numeric_limits<double>::max();
+    std::shared_ptr<Station> nearest_station = nullptr;
+    for (const auto& station : stations) {
+        double dist = instance.getDistance(fromNode->getId(), station->getId());
+        if (dist < min_dist) {
+            min_dist = dist;
+            nearest_station = station;
+        }
+    }
+    return nearest_station;
+}
+
 // --- GreedyInsertion ---
 bool GreedyInsertion::repair(Solution& solution, const Instance& instance, std::vector<std::shared_ptr<Customer>>& unassigned, std::mt19937& rng) {
+    // --- DEBUG ---
+    std::cout << "[DEBUG] GreedyRepair starting with " << unassigned.size() << " unassigned customers." << std::endl;
+    // --- END DEBUG ---
+
     std::vector<std::shared_ptr<Customer>> customers_to_insert = unassigned;
     unassigned.clear();
 
-    // Randomize the order of customers to be inserted
+    std::vector<std::shared_ptr<Station>> stations;
+    for (const auto& node : instance.getNodes()) {
+        if (auto s = std::dynamic_pointer_cast<Station>(node)) {
+            stations.push_back(s);
+        }
+    }
+
     std::shuffle(customers_to_insert.begin(), customers_to_insert.end(), rng);
 
     for (const auto& customer : customers_to_insert) {
+        // --- DEBUG ---
+        std::cout << "  [DEBUG] GreedyRepair evaluating customer C" << customer->getId() << std::endl;
+        // --- END DEBUG ---
+
         double best_cost_delta = std::numeric_limits<double>::max();
         Route* best_route = nullptr;
         int best_position = -1;
+        bool requires_station = false;
+        std::shared_ptr<Station> station_for_plan_b = nullptr;
+        int station_pos = -1;
+        
+        int feasible_plan_a = 0; // DEBUG
+        int feasible_plan_b = 0; // DEBUG
 
         for (auto& route : solution.routes) {
-            // A route is at least [depot, depot]. We can insert in between.
             for (int pos = 1; pos < route.getInfos().size(); ++pos) {
-                EvaluationResult result = route.evaluateInsertion(customer, pos);
-                if (result.isFeasible) {
-                    if (result.costDelta < best_cost_delta) {
-                        best_cost_delta = result.costDelta;
+                // Plan A: Direct insertion
+                EvaluationResult direct_result = route.evaluateInsertion(customer, pos);
+                if (direct_result.isFeasible) {
+                    feasible_plan_a++; // DEBUG
+                    if (direct_result.costDelta < best_cost_delta) {
+                        best_cost_delta = direct_result.costDelta;
                         best_route = &route;
                         best_position = pos;
+                        requires_station = false;
+                    }
+                } else if (!direct_result.isFeasible) {
+                    // Plan B: Try inserting a station
+                    auto node_before = route.getInfos()[pos - 1].node;
+                    auto station_to_try = findNearestStation(node_before, stations, instance);
+                    if (station_to_try) {
+                        Route tempRoute = route;
+                        EvaluationResult station_result = tempRoute.evaluateInsertion(station_to_try, pos);
+                        if (station_result.isFeasible) {
+                            tempRoute.insert(station_to_try, pos);
+                            EvaluationResult customer_result = tempRoute.evaluateInsertion(customer, pos + 1);
+                            if (customer_result.isFeasible) {
+                                feasible_plan_b++; // DEBUG
+                                double combined_cost = station_result.costDelta + customer_result.costDelta;
+                                if (combined_cost < best_cost_delta) {
+                                    best_cost_delta = combined_cost;
+                                    best_route = &route;
+                                    best_position = pos + 1;
+                                    requires_station = true;
+                                    station_for_plan_b = station_to_try;
+                                    station_pos = pos;
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+        
+        // --- DEBUG ---
+        std::cout << "    [DEBUG] C" << customer->getId() << ": Found " << feasible_plan_a << " Plan A spots, " << feasible_plan_b << " Plan B spots." << std::endl;
+        // --- END DEBUG ---
 
         if (best_route) {
-            best_route->insert(customer, best_position);
+            // --- DEBUG ---
+            std::cout << "    [DEBUG] C" << customer->getId() << " inserted successfully." << std::endl;
+            // --- END DEBUG ---
+            if (requires_station) {
+                best_route->insert(station_for_plan_b, station_pos);
+                best_route->insert(customer, best_position);
+            } else {
+                best_route->insert(customer, best_position);
+            }
         } else {
-            // If no feasible insertion is found, add customer back to unassigned
+            // --- DEBUG ---
+            std::cout << "    [DEBUG] C" << customer->getId() << " FAILED TO INSERT. Adding to unassigned." << std::endl;
+            // --- END DEBUG ---
             unassigned.push_back(customer);
         }
     }
+    
+    // --- DEBUG ---
+    std::cout << "[DEBUG] GreedyRepair finished. " << unassigned.size() << " customers remain unassigned." << std::endl;
+    // --- END DEBUG ---
 
-    // Return true if all customers were inserted, false otherwise
     return unassigned.empty();
 }
 
 
 // --- RegretInsertion ---
 bool RegretInsertion::repair(Solution& solution, const Instance& instance, std::vector<std::shared_ptr<Customer>>& unassigned, std::mt19937& rng) {
+    // --- DEBUG ---
+    std::cout << "[DEBUG] RegretRepair starting with " << unassigned.size() << " unassigned customers." << std::endl;
+    // --- END DEBUG ---
+    
+    std::vector<std::shared_ptr<Station>> stations;
+    for (const auto& node : instance.getNodes()) {
+        if (auto s = std::dynamic_pointer_cast<Station>(node)) {
+            stations.push_back(s);
+        }
+    }
+
     while (!unassigned.empty()) {
         std::shared_ptr<Customer> best_customer_to_insert = nullptr;
         double max_regret = -1.0;
-        Route* best_route_for_best_customer = nullptr;
-        int best_pos_for_best_customer = -1;
+        
+        struct BestInsertionAction {
+            Route* route;
+            int position;
+            bool requires_station;
+            std::shared_ptr<Station> station;
+            int station_pos;
+        } best_action;
 
-        auto it = unassigned.begin();
-        while (it != unassigned.end()) {
-            const auto& customer = *it;
+        auto customer_it = unassigned.begin();
+        while (customer_it != unassigned.end()) {
+            const auto& customer = *customer_it;
+            
             struct InsertionInfo {
                 double costDelta;
                 Route* route;
                 int position;
+                bool requires_station;
+                std::shared_ptr<Station> station;
+                int station_pos;
             };
             std::vector<InsertionInfo> insertions;
+            
+            int feasible_plan_a = 0; // DEBUG
+            int feasible_plan_b = 0; // DEBUG
 
             for (auto& route : solution.routes) {
                 for (int pos = 1; pos < route.getInfos().size(); ++pos) {
-                    EvaluationResult result = route.evaluateInsertion(customer, pos);
-                    if (result.isFeasible) {
-                        insertions.push_back({result.costDelta, &route, pos});
+                    // Plan A
+                    EvaluationResult direct_result = route.evaluateInsertion(customer, pos);
+                    if (direct_result.isFeasible) {
+                        feasible_plan_a++; // DEBUG
+                        insertions.push_back({direct_result.costDelta, &route, pos, false, nullptr, -1});
+                    } else {
+                        // Plan B
+                        auto node_before = route.getInfos()[pos - 1].node;
+                        auto station_to_try = findNearestStation(node_before, stations, instance);
+                        if (station_to_try) {
+                            Route tempRoute = route;
+                            EvaluationResult station_result = tempRoute.evaluateInsertion(station_to_try, pos);
+                            if (station_result.isFeasible) {
+                                tempRoute.insert(station_to_try, pos);
+                                EvaluationResult customer_result = tempRoute.evaluateInsertion(customer, pos + 1);
+                                if (customer_result.isFeasible) {
+                                    feasible_plan_b++; // DEBUG
+                                    Route tempRoute2 = tempRoute;
+                                    tempRoute2.insert(customer, pos + 1);
+                                    double total_delta = tempRoute2.getTotalTime() - route.getTotalTime();
+                                    insertions.push_back({total_delta, &route, pos + 1, true, station_to_try, pos});
+                                }
+                            }
+                        }
                     }
                 }
             }
+            
+            // --- DEBUG ---
+            std::cout << "    [DEBUG] RegretRepair evaluating C" << customer->getId() << ": Found " << feasible_plan_a << " (A) spots, " << feasible_plan_b << " (B) spots. Total insertions: " << insertions.size() << std::endl;
+            // --- END DEBUG ---
 
             if (insertions.empty()) {
-                ++it;
-                continue; // This customer cannot be inserted anywhere, check next
+                ++customer_it;
+                continue; 
             }
 
-            // Sort insertions by costDelta
             std::sort(insertions.begin(), insertions.end(), [](const auto& a, const auto& b) {
                 return a.costDelta < b.costDelta;
             });
@@ -91,31 +220,35 @@ bool RegretInsertion::repair(Solution& solution, const Instance& instance, std::
                     regret += (insertions[i].costDelta - insertions[0].costDelta);
                 }
             } else {
-                // If only one insertion is possible, it's very important.
-                // We can assign a high regret. A simple approach is to use a large value 
-                // or a value related to its own cost, to prioritize it.
-                regret = std::numeric_limits<double>::max() / 2; // A large value to prioritize
+                regret = std::numeric_limits<double>::max() / 2;
             }
-
 
             if (regret > max_regret) {
                 max_regret = regret;
                 best_customer_to_insert = customer;
-                best_route_for_best_customer = insertions[0].route;
-                best_pos_for_best_customer = insertions[0].position;
+                best_action = {insertions[0].route, insertions[0].position, insertions[0].requires_station, insertions[0].station, insertions[0].station_pos};
             }
-            ++it;
+            ++customer_it;
         }
 
         if (best_customer_to_insert) {
-            best_route_for_best_customer->insert(best_customer_to_insert, best_pos_for_best_customer);
-            // Remove the inserted customer from unassigned list
+            // --- DEBUG ---
+            std::cout << "  [DEBUG] RegretRepair inserting C" << best_customer_to_insert->getId() << " (Max Regret)" << std::endl;
+            // --- END DEBUG ---
+            if (best_action.requires_station) {
+                best_action.route->insert(best_action.station, best_action.station_pos);
+            }
+            best_action.route->insert(best_customer_to_insert, best_action.position);
+            
             unassigned.erase(std::remove(unassigned.begin(), unassigned.end(), best_customer_to_insert), unassigned.end());
         } else {
-            // No customer could be inserted, stop the repair process
+            // --- DEBUG ---
+            std::cout << "[DEBUG] RegretRepair FAILED. No best customer found. " << unassigned.size() << " customers remain." << std::endl;
+            // --- END DEBUG ---
             return false;
         }
     }
 
+    std::cout << "[DEBUG] RegretRepair finished successfully." << std::endl;
     return true;
 }

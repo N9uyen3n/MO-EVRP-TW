@@ -1,6 +1,7 @@
 #include "../include/ALNS.h"
 #include "../include/Instance.h"
 #include "../include/Customer.h"
+#include "../include/Station.h"
 #include "../include/Depot.h"
 #include "../include/Vehicle.h"
 #include <iostream>
@@ -26,7 +27,7 @@ ALNS::ALNS(ObjectiveManager manager, std::shared_ptr<Instance> instance)
     }
 
     // Improved configuration with validation
-    maxIterations = 3000;
+    maxIterations = 500;
     segmentSize = 100;
     destructionRate = 0.2;
     
@@ -221,14 +222,23 @@ std::vector<Solution> ALNS::solve() {
         // --- BƯỚC 2: PHÁ HỦY VÀ SỬA CHỮA GIẢI PHÁP ---
         // Áp dụng toán tử phá hủy để loại bỏ một số khách hàng khỏi giải pháp
         auto removedCustomers = destroyOp->destroy(tempSolution, *instance, destructionRate, rng);
+
+        // --- DEBUG ---
+        std::cout << "[DEBUG] ALNS::solve - Destroyed " << removedCustomers.size() << " customers: { ";
+        for(const auto& c : removedCustomers) {
+            std::cout << "C" << c->getId() << " ";
+        }
+        std::cout << "}" << std::endl;
+        // --- END DEBUG ---
+
         // Áp dụng toán tử sửa chữa để chèn lại các khách hàng đã bị loại bỏ
         bool repaired = repairOp->repair(tempSolution, *instance, removedCustomers, rng);
 
         // --- BƯỚC 3: (TÙY CHỌN) ÁP DỤNG TÌM KIẾM ĐỊA PHƯƠNG (LOCAL SEARCH) ---
         // Nếu giải pháp được sửa chữa thành công, áp dụng LS để cải thiện thêm
-        if (repaired) {
-            applyLocalSearch(tempSolution);
-        }
+        // if (repaired) {
+        //     applyLocalSearch(tempSolution);
+        // }
 
         // --- BƯỚC 4: ĐÁNH GIÁ VÀ CHẤP NHẬN GIẢI PHÁP MỚI ---
         // Chỉ xem xét nếu giải pháp mới là hợp lệ
@@ -289,6 +299,7 @@ std::vector<Solution> ALNS::solve() {
             if (iteration % (segmentSize * 5) == 0) {
                 logProgress(iteration, acceptedSolutions, rejectedSolutions, 
                            totalFeasible, totalInfeasible);
+                std::cout << currentSolution.toString();
             }
         }
 
@@ -398,19 +409,40 @@ void ALNS::updateWeights() {
 // ============================================================================
 // INITIAL SOLUTION - Improved with better route construction
 // ============================================================================
-Solution ALNS::generateInitialSolution() {
-    std::cout << "Generating initial solution..." << std::endl;
-    
-    Solution sol;
-    std::shared_ptr<Node> depot = nullptr;
-    std::vector<std::shared_ptr<Customer>> customers;
+// Helper function to find the nearest station to a given node
+std::shared_ptr<Station> findNearestStation(const std::shared_ptr<Node>& fromNode, const std::vector<std::shared_ptr<Station>>& stations, const std::shared_ptr<const Instance>& instance) {
+    if (stations.empty()) {
+        return nullptr;
+    }
+    double min_dist = std::numeric_limits<double>::max();
+    std::shared_ptr<Station> nearest_station = nullptr;
+    for (const auto& station : stations) {
+        double dist = instance->getDistance(fromNode->getId(), station->getId());
+        if (dist < min_dist) {
+            min_dist = dist;
+            nearest_station = station;
+        }
+    }
+    return nearest_station;
+}
 
-    // Collect nodes
+
+Solution ALNS::generateInitialSolution() {
+    std::cout << "Generating initial solution using Sweep Algorithm with station insertion logic..." << std::endl;
+    Solution sol;
+
+    // 1. Phân loại các nút
+    std::shared_ptr<Depot> depot;
+    std::vector<std::shared_ptr<Customer>> customers;
+    std::vector<std::shared_ptr<Station>> stations;
+
     for (const auto& node : instance->getNodes()) {
-        if (dynamic_cast<Depot*>(node.get())) {
-            depot = node;
-        } else if (auto customer = std::dynamic_pointer_cast<Customer>(node)) {
-            customers.push_back(customer);
+        if (auto d = std::dynamic_pointer_cast<Depot>(node)) {
+            depot = d;
+        } else if (auto c = std::dynamic_pointer_cast<Customer>(node)) {
+            customers.push_back(c);
+        } else if (auto s = std::dynamic_pointer_cast<Station>(node)) {
+            stations.push_back(s);
         }
     }
 
@@ -418,27 +450,107 @@ Solution ALNS::generateInitialSolution() {
         throw std::runtime_error("Depot not found in instance!");
     }
 
-    // Create one route per customer (simple initial solution)
+    // 2. Thuật toán Sweep: Sắp xếp khách hàng theo góc
+    std::sort(customers.begin(), customers.end(), [&](const auto& a, const auto& b) {
+        return std::atan2(a->getY() - depot->getY(), a->getX() - depot->getX()) <
+               std::atan2(b->getY() - depot->getY(), b->getX() - depot->getX());
+    });
+
     int routeId = 0;
-    for (const auto& customer : customers) {
-        auto vehicle = std::make_shared<Vehicle>(
-            routeId, 
-            instance->getVehicleCapacity(), 
-            instance->getVehicleBattery(), 
-            instance->getVehicleEnergyRate()
-        );
-        
+
+    auto create_new_route = [&]() {
+        auto vehicle = std::make_shared<Vehicle>(routeId, instance->getVehicleCapacity(), instance->getVehicleBattery(), instance->getVehicleEnergyRate());
         Route newRoute(routeId++, vehicle, instance);
         newRoute.insert(depot, 0);
-        newRoute.insert(customer, 1);
-        newRoute.insert(depot, 2);
+        newRoute.insert(depot, 1);
+        return newRoute;
+    };
 
-        sol.routes.push_back(newRoute);
+    sol.routes.push_back(create_new_route());
+
+    for (const auto& customer : customers) {
+        bool inserted = false;
+        int best_route_idx = -1;
+        int best_pos = -1;
+        double min_cost_delta = std::numeric_limits<double>::max();
+        bool requires_station = false;
+        std::shared_ptr<Station> station_for_plan_b = nullptr;
+        int station_pos = -1;
+
+        for (int i = 0; i < sol.routes.size(); ++i) {
+            Route& route = sol.routes[i];
+            for (int pos = 1; pos < route.getInfos().size(); ++pos) {
+                // Plan A: Direct insertion
+                EvaluationResult direct_result = route.evaluateInsertion(customer, pos);
+                if (direct_result.isFeasible && direct_result.costDelta < min_cost_delta) {
+                    min_cost_delta = direct_result.costDelta;
+                    best_route_idx = i;
+                    best_pos = pos;
+                    requires_station = false;
+                } else if (!direct_result.isFeasible) {
+                    // Plan B: Try inserting a station
+                    auto node_before = route.getInfos()[pos - 1].node;
+                    auto station_to_try = findNearestStation(node_before, stations, instance);
+                    if (station_to_try) {
+                        Route tempRoute = route;
+                        EvaluationResult station_result = tempRoute.evaluateInsertion(station_to_try, pos);
+                        if (station_result.isFeasible) {
+                            tempRoute.insert(station_to_try, pos);
+                            EvaluationResult customer_result = tempRoute.evaluateInsertion(customer, pos + 1);
+                            if (customer_result.isFeasible) {
+                                double combined_cost = station_result.costDelta + customer_result.costDelta;
+                                if (combined_cost < min_cost_delta) {
+                                    min_cost_delta = combined_cost;
+                                    best_route_idx = i;
+                                    best_pos = pos + 1;
+                                    requires_station = true;
+                                    station_for_plan_b = station_to_try;
+                                    station_pos = pos;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (best_route_idx != -1) {
+            if (requires_station) {
+                sol.routes[best_route_idx].insert(station_for_plan_b, station_pos);
+                sol.routes[best_route_idx].insert(customer, best_pos);
+            } else {
+                sol.routes[best_route_idx].insert(customer, best_pos);
+            }
+            inserted = true;
+        }
+
+        if (!inserted) {
+            // Fallback: create a new route for this customer
+            Route newRoute = create_new_route();
+            // Try to insert with a station if needed
+            EvaluationResult direct_result = newRoute.evaluateInsertion(customer, 1);
+            if (direct_result.isFeasible) {
+                newRoute.insert(customer, 1);
+            } else {
+                auto station_to_try = findNearestStation(depot, stations, instance);
+                if (station_to_try) {
+                    newRoute.insert(station_to_try, 1);
+                    newRoute.insert(customer, 2);
+                }
+            }
+            sol.routes.push_back(newRoute);
+        }
     }
-
-    std::cout << "Initial solution: " << sol.routes.size() << " routes, "
-              << customers.size() << " customers" << std::endl;
     
+    // Clean up empty routes
+    sol.routes.erase(
+        std::remove_if(sol.routes.begin(), sol.routes.end(),
+            [](const Route& r) { return r.getCustomerCount() == 0; }),
+        sol.routes.end()
+    );
+
+
+    std::cout << "Initial solution generated with " << sol.routes.size() << " routes." << std::endl;
     return sol;
 }
 
@@ -471,151 +583,266 @@ bool ALNS::updateArchive(Solution& newSolution) {
 }
 
 // ============================================================================
-// FEASIBILITY CHECK - Optimized with early termination
+// FEASIBILITY CHECK - Comprehensive validation
 // ============================================================================
 // bool ALNS::isFeasible(const Solution& solution) {
 //     if (solution.routes.empty()) {
-//         return false;
+//         return true; // Một giải pháp không có tuyến nào (nếu không có khách hàng) là hợp lệ
 //     }
-
+    
 //     constexpr double EPSILON = 1e-4;
+//     std::set<int> customers_served; // Dùng để kiểm tra tính duy nhất
+//     int total_customers_in_solution = 0;
 
 //     for (const auto& route : solution.routes) {
 //         const auto& infos = route.getInfos();
         
+//         // --- Vấn đề 1 & 4: Kiểm tra cấu trúc tuyến ---
 //         if (infos.empty()) {
-//             continue;
+//             continue; // Bỏ qua tuyến rỗng (nếu Local Search tạo ra)
+//         }
+//         if (infos.size() < 2) {
+//              return false; // Tuyến phải có ít nhất [Depot, Depot]
+//         }
+//         if (!std::dynamic_pointer_cast<Depot>(infos.front().node) ||
+//             !std::dynamic_pointer_cast<Depot>(infos.back().node)) {
+//             return false; // Phải bắt đầu và kết thúc tại Depot
 //         }
 
 //         auto vehicle = route.getVehicle();
 //         const double capacity = vehicle->getCapacity();
 //         const double batteryCapacity = vehicle->getBatteryCapacity();
 
-//         // Check initial load
-//         if (infos[0].departure_load > capacity + EPSILON) {
-//             return false;
-//         }
-
+//         // --- Kiểm tra tính nhất quán của từng điểm dừng ---
+//         // (Giả định rằng `checkAndUpdateInfos` đã làm đúng)
+//         // (Chúng ta chỉ cần kiểm tra lại các giá trị đã tính)
 //         for (const auto& info : infos) {
+            
 //             // Battery constraints
 //             if (info.arrival_battery < -EPSILON || 
 //                 info.departure_battery > batteryCapacity + EPSILON) {
-//                 return false;
+//                 return false; // Pin vi phạm
 //             }
 
 //             // Load constraints
 //             if (info.departure_load < -EPSILON || 
 //                 info.departure_load > capacity + EPSILON) {
-//                 return false;
+//                 return false; // Tải trọng vi phạm
 //             }
 
 //             // Time window constraints
 //             if (auto customer = std::dynamic_pointer_cast<const Customer>(info.node)) {
+//                 // Vấn đề 2: Check DueDate
 //                 if (info.arrival_time > customer->getDueDate() + EPSILON) {
-//                     return false;
+//                     return false; // Trễ giờ
 //                 }
-//             } else if (auto depot = std::dynamic_pointer_cast<const Depot>(info.node)) {
-//                 if (info.arrival_time > depot->getLastTime() + EPSILON) {
-//                     return false;
+                
+//                 // GHI CHÚ: Không cần check ReadyTime (arrival < readyTime)
+//                 // vì `recalculateInfos` đã xử lý bằng cách thêm wait_time.
+                
+//                 // Kiểm tra tính duy nhất
+//                 if (customers_served.count(customer->getId())) {
+//                     return false; // Khách hàng này đã được phục vụ ở tuyến khác
 //                 }
-//             }
-//         }
+//                 customers_served.insert(customer->getId());
+//                 total_customers_in_solution++;
 
-//         // Final load should be zero
-//         if (std::abs(infos.back().departure_load) > EPSILON) {
-//             return false;
+//             } 
 //         }
+        
+//         // ** LOẠI BỎ LỖI: Không kiểm tra tải trọng về 0 **
+//         // if (std::abs(infos.back().departure_load) > EPSILON) {
+//         //     return false;
+//         // }
+//     }
+
+//     // --- Kiểm tra tính toàn vẹn của Solution ---
+//     // Đảm bảo mọi khách hàng trong 'instance' đều được phục vụ
+//     int total_customers_in_instance = 0;
+//     for (const auto& node : instance->getNodes()) {
+//         if (std::dynamic_pointer_cast<Customer>(node)) {
+//             total_customers_in_instance++;
+//         }
+//     }
+    
+//     if (total_customers_in_solution != total_customers_in_instance) {
+//         return false; // Số lượng khách hàng phục vụ không khớp với bài toán
 //     }
 
 //     return true;
 // }
- // ============================================================================
-// HÀM CŨ: VIẾT LẠI `isFeasible` (KHẮC PHỤC VẤN ĐỀ 1, 2, 3, 4)
-// ============================================================================
+
 bool ALNS::isFeasible(const Solution& solution) {
     if (solution.routes.empty()) {
+        std::cout << "[DEBUG isFeasible] No routes, considered feasible." << std::endl; // Debug
         return true; // Một giải pháp không có tuyến nào (nếu không có khách hàng) là hợp lệ
     }
-    
+
     constexpr double EPSILON = 1e-4;
     std::set<int> customers_served; // Dùng để kiểm tra tính duy nhất
     int total_customers_in_solution = 0;
 
     for (const auto& route : solution.routes) {
         const auto& infos = route.getInfos();
-        
+
         // --- Vấn đề 1 & 4: Kiểm tra cấu trúc tuyến ---
         if (infos.empty()) {
+            // Tuyến rỗng nhưng không phải giải pháp rỗng thì không hợp lệ trừ khi local search tạo ra
+            // Tạm thời bỏ qua nếu LS có thể tạo tuyến rỗng rồi xóa sau
+            // std::cout << "[DEBUG isFeasible] Route " << route.getId() << " is empty (but solution is not)." << std::endl;
             continue; // Bỏ qua tuyến rỗng (nếu Local Search tạo ra)
         }
         if (infos.size() < 2) {
+             std::cout << "[DEBUG isFeasible] Route " << route.getId() << " has less than 2 nodes. Size=" << infos.size() << std::endl;
              return false; // Tuyến phải có ít nhất [Depot, Depot]
         }
-        if (!std::dynamic_pointer_cast<Depot>(infos.front().node) ||
-            !std::dynamic_pointer_cast<Depot>(infos.back().node)) {
+        // Kiểm tra node đầu cuối có phải là Depot không
+        auto start_node_ptr = infos.front().node;
+        auto end_node_ptr = infos.back().node;
+        if (!start_node_ptr || !end_node_ptr ||
+            !std::dynamic_pointer_cast<Depot>(start_node_ptr) ||
+            !std::dynamic_pointer_cast<Depot>(end_node_ptr)) {
+            std::cout << "[DEBUG isFeasible] Route " << route.getId() << " does not start/end with Depot."
+                      << " Start: " << (start_node_ptr ? start_node_ptr->getId() : -1) << " Type: " << (start_node_ptr ? typeid(*start_node_ptr).name() : "null")
+                      << ", End: " << (end_node_ptr ? end_node_ptr->getId() : -1) << " Type: " << (end_node_ptr ? typeid(*end_node_ptr).name() : "null") << std::endl;
             return false; // Phải bắt đầu và kết thúc tại Depot
         }
 
+
         auto vehicle = route.getVehicle();
+        if (!vehicle) {
+             std::cout << "[DEBUG isFeasible] Route " << route.getId() << " has null vehicle pointer." << std::endl;
+             return false; // Lỗi logic, route phải có vehicle
+        }
         const double capacity = vehicle->getCapacity();
         const double batteryCapacity = vehicle->getBatteryCapacity();
 
         // --- Kiểm tra tính nhất quán của từng điểm dừng ---
-        // (Giả định rằng `checkAndUpdateInfos` đã làm đúng)
-        // (Chúng ta chỉ cần kiểm tra lại các giá trị đã tính)
-        for (const auto& info : infos) {
-            
+        for (size_t i = 0; i < infos.size(); ++i) { // Use index for better debugging
+            const auto& info = infos[i];
+            const auto& node = info.node; // Lấy node ra để kiểm tra null
+
+             if (!node) {
+                  std::cout << "[DEBUG isFeasible] Null node pointer encountered in route " << route.getId() << " at index " << i << std::endl;
+                  return false; // Lỗi logic
+             }
+
+
             // Battery constraints
-            if (info.arrival_battery < -EPSILON || 
+            if (info.arrival_battery < -EPSILON ||
                 info.departure_battery > batteryCapacity + EPSILON) {
+                 std::cout << "[DEBUG isFeasible] Battery violation on route " << route.getId() << " at node " << i << " (ID: " << node->getId() << ")"
+                           << ": arrival=" << info.arrival_battery << ", departure=" << info.departure_battery << ", capacity=" << batteryCapacity << std::endl;
                 return false; // Pin vi phạm
             }
 
             // Load constraints
-            if (info.departure_load < -EPSILON || 
+            // Check absolute load bounds
+             if (info.arrival_load < -EPSILON || info.arrival_load > capacity + EPSILON) {
+                 std::cout << "[DEBUG isFeasible] Arrival Load violation on route " << route.getId() << " at node " << i << " (ID: " << node->getId() << ")"
+                           << ": arrival_load=" << info.arrival_load << ", capacity=" << capacity << std::endl;
+                 return false;
+             }
+            if (info.departure_load < -EPSILON ||
                 info.departure_load > capacity + EPSILON) {
-                return false; // Tải trọng vi phạm
+                  std::cout << "[DEBUG isFeasible] Departure Load violation on route " << route.getId() << " at node " << i << " (ID: " << node->getId() << ")"
+                           << ": departure_load=" << info.departure_load << ", capacity=" << capacity << std::endl;
+                 return false; // Tải trọng vi phạm
             }
+             // Check load drop only happens at customers
+             if (i > 0 && info.arrival_load < infos[i-1].departure_load - EPSILON) {
+                  std::cout << "[DEBUG isFeasible] Load decreased unexpectedly between node " << infos[i-1].node->getId() << " and " << node->getId() << std::endl;
+                 return false;
+             }
+             if (auto cust_check = std::dynamic_pointer_cast<const Customer>(node)) {
+                 if (std::abs(info.arrival_load - info.departure_load - cust_check->getDemand()) > EPSILON) {
+                     std::cout << "[DEBUG isFeasible] Load drop mismatch at Customer " << node->getId() << ": arrival=" << info.arrival_load << ", departure=" << info.departure_load << ", demand=" << cust_check->getDemand() << std::endl;
+                     return false;
+                 }
+             } else { // Stations and Depots
+                 // Cho phép load thay đổi ở depot đầu tiên (khởi tạo)
+                 if (i > 0 && std::abs(info.arrival_load - info.departure_load) > EPSILON) {
+                     std::cout << "[DEBUG isFeasible] Load changed unexpectedly at non-customer node " << node->getId() << ": arrival=" << info.arrival_load << ", departure=" << info.departure_load << std::endl;
+                     return false;
+                 }
+             }
+
 
             // Time window constraints
-            if (auto customer = std::dynamic_pointer_cast<const Customer>(info.node)) {
+            if (auto customer = std::dynamic_pointer_cast<const Customer>(node)) {
                 // Vấn đề 2: Check DueDate
                 if (info.arrival_time > customer->getDueDate() + EPSILON) {
+                     std::cout << "[DEBUG isFeasible] DueDate violation on route " << route.getId() << " at customer " << i << " (ID: " << node->getId() << ")"
+                               << ": arrival_time=" << info.arrival_time << ", dueDate=" << customer->getDueDate() << std::endl;
                     return false; // Trễ giờ
                 }
-                
-                // GHI CHÚ: Không cần check ReadyTime (arrival < readyTime)
-                // vì `recalculateInfos` đã xử lý bằng cách thêm wait_time.
-                
+                 // Check ReadyTime implicitly (start service time should be >= ready time)
+                 double start_service = info.arrival_time + std::max(0.0, customer->getReadyTime() - info.arrival_time);
+                 if (start_service < customer->getReadyTime() - EPSILON) {
+                      std::cout << "[DEBUG isFeasible] ReadyTime violation (logic error?) on route " << route.getId() << " at customer " << i << " (ID: " << node->getId() << ")"
+                                << ": start_service=" << start_service << ", readyTime=" << customer->getReadyTime() << std::endl;
+                     return false;
+                 }
+
+
                 // Kiểm tra tính duy nhất
                 if (customers_served.count(customer->getId())) {
+                     std::cout << "[DEBUG isFeasible] Customer " << customer->getId() << " served multiple times!" << std::endl;
                     return false; // Khách hàng này đã được phục vụ ở tuyến khác
                 }
                 customers_served.insert(customer->getId());
                 total_customers_in_solution++;
 
-            } 
-        }
-        
-        // ** LOẠI BỎ LỖI: Không kiểm tra tải trọng về 0 **
-        // if (std::abs(infos.back().departure_load) > EPSILON) {
-        //     return false;
-        // }
-    }
+            }
+             else if (auto depot = std::dynamic_pointer_cast<const Depot>(node)) {
+                 // Check depot end time only for the last node
+                 if (i == infos.size() - 1 && info.arrival_time > depot->getLastTime() + EPSILON) {
+                      std::cout << "[DEBUG isFeasible] Depot end time violation on route " << route.getId()
+                                << ": arrival_time=" << info.arrival_time << ", lastTime=" << depot->getLastTime() << std::endl;
+                     return false;
+                 }
+            }
+             else if (std::dynamic_pointer_cast<Station>(node)) {
+                 // Có thể thêm kiểm tra ràng buộc thời gian cho Station nếu cần
+             } else {
+                  std::cout << "[DEBUG isFeasible] Unknown node type encountered in route " << route.getId() << " at index " << i << " (ID: " << node->getId() << ")" << std::endl;
+                  return false; // Lỗi logic
+             }
+        } // End for loop through infos
+
+        // Kiểm tra tải trọng cuối cùng tại depot cuối cùng phải bằng 0
+         if (infos.size() > 0) { // Check if route is not empty
+             const auto& last_info = infos.back();
+             if (std::abs(last_info.departure_load) > EPSILON) {
+                 std::cout << "[DEBUG isFeasible] Final load at end depot of route " << route.getId() << " is not zero: " << last_info.departure_load << std::endl;
+                 return false;
+             }
+         }
+
+    } // End for loop through routes
 
     // --- Kiểm tra tính toàn vẹn của Solution ---
     // Đảm bảo mọi khách hàng trong 'instance' đều được phục vụ
     int total_customers_in_instance = 0;
-    for (const auto& node : instance->getNodes()) {
-        if (std::dynamic_pointer_cast<Customer>(node)) {
-            total_customers_in_instance++;
+    if (instance) { // Check if instance is valid
+        for (const auto& node : instance->getNodes()) {
+            if (std::dynamic_pointer_cast<Customer>(node)) {
+                total_customers_in_instance++;
+            }
         }
+    } else {
+        std::cerr << "[ERROR isFeasible] Instance pointer is null!" << std::endl;
+        return false; // Cannot verify customer count without instance
     }
-    
+
+
     if (total_customers_in_solution != total_customers_in_instance) {
+         std::cout << "[DEBUG isFeasible] Customer count mismatch: served=" << total_customers_in_solution
+                   << ", instance=" << total_customers_in_instance << std::endl;
         return false; // Số lượng khách hàng phục vụ không khớp với bài toán
     }
 
+    // std::cout << "[DEBUG isFeasible] Solution is FEASIBLE." << std::endl; // Optional Debug
     return true;
 }
 
@@ -719,4 +946,31 @@ void ALNS::printFooter(long long duration, int accepted, int rejected,
     }
 
     std::cout << std::string(80, '=') << std::endl;
+}
+
+#include <sstream>
+#include "../include/Station.h"
+
+std::string Solution::toString() const {
+    std::stringstream ss;
+    ss << "Solution with " << routes.size() << " routes:\n";
+    for (const auto& route : routes) {
+        ss << "  Route " << route.getId() << ": ";
+        const auto& infos = route.getInfos();
+        for (size_t i = 0; i < infos.size(); ++i) {
+            const auto& node = infos[i].node;
+            if (dynamic_cast<const Depot*>(node.get())) {
+                ss << "Depot(" << node->getId() << ")";
+            } else if (auto c = dynamic_cast<const Customer*>(node.get())) {
+                ss << "Customer(" << c->getId() << ")";
+            } else if (auto s = dynamic_cast<const Station*>(node.get())) {
+                ss << "Station(" << s->getId() << ")";
+            }
+            if (i < infos.size() - 1) {
+                ss << " -> ";
+            }
+        }
+        ss << "\n";
+    }
+    return ss.str();
 }

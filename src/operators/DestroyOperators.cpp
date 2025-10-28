@@ -193,17 +193,33 @@ std::vector<std::shared_ptr<Customer>> ZoneRemoval::destroy(Solution& solution, 
     if (toRemove == 0 && !all_customers.empty()) toRemove = 1;
 
     // Remove center customer
+    // --- DEBUG ---
+    std::cout << "[DEBUG] ZoneRemoval deciding to remove center C" << center->getId() << std::endl;
+    // --- END DEBUG ---
     removed_customers.push_back(center);
     for (auto& route : solution.routes) {
-        if (route.removeCustomer(center)) break;
+        if (route.removeCustomer(center)) {
+            // --- DEBUG ---
+            std::cout << "[DEBUG] ZoneRemoval successfully removed center C" << center->getId() << " from route " << route.getId() << std::endl;
+            // --- END DEBUG ---
+            break;
+        }
     }
 
     // Remove closest ones
     for (int i = 0; i < toRemove - 1 && i < nearby.size(); ++i) {
         auto customer_to_remove = nearby[i].first;
+        // --- DEBUG ---
+        std::cout << "[DEBUG] ZoneRemoval deciding to remove nearby C" << customer_to_remove->getId() << std::endl;
+        // --- END DEBUG ---
         removed_customers.push_back(customer_to_remove);
         for (auto& route : solution.routes) {
-            if (route.removeCustomer(customer_to_remove)) break;
+            if (route.removeCustomer(customer_to_remove)) {
+                // --- DEBUG ---
+                std::cout << "[DEBUG] ZoneRemoval successfully removed nearby C" << customer_to_remove->getId() << " from route " << route.getId() << std::endl;
+                // --- END DEBUG ---
+                break;
+            }
         }
     }
 

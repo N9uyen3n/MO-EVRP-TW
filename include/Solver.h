@@ -38,6 +38,8 @@ struct Solution {
         std::uniform_int_distribution<> dist(0, customers.size() - 1);
         return customers[dist(rng)];
     }
+
+    std::string toString() const;
 };
 
 // Abstract base class for all solver implementations.

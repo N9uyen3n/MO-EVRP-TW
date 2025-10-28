@@ -62,15 +62,7 @@ int main(int argc, char* argv[]) {
             }
             output_file << "]" << std::endl;
 
-            int route_count = 1;
-            for (const auto& route : solution.routes) {
-                output_file << "  Route " << route_count++ << " (Vehicle " << route.getVehicle()->getId() << "): ";
-                const auto& nodes = route.getInfos();
-                for (size_t i = 0; i < nodes.size(); ++i) {
-                    output_file << nodes[i].node->getId() << (i == nodes.size() - 1 ? "" : " -> ");
-                }
-                output_file << std::endl;
-            }
+            output_file << solution.toString();
         }
         output_file << "\n==================================================\n";
         // --- END: Modified code to print routes to file ---

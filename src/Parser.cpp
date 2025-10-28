@@ -75,7 +75,7 @@ std::shared_ptr<Instance> Parser::parse(const std::string& filename) {
                 } else if (typeStr == "c") {
                     nodes.push_back(std::make_shared<Customer>(id, x, y, demand, readyTime, dueDate, serviceTime));
                 } else if (typeStr == "f") {
-                    nodes.push_back(std::make_shared<Station>(id, x, y, 0.0)); // Placeholder rate
+                    nodes.push_back(std::make_shared<Station>(id, x, y, 0.0)); 
                 }
             }
         }

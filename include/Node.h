@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 class Node {
     public:
@@ -12,6 +13,7 @@ class Node {
         double getReadyTime() const;
         double getDueDate() const;
         double getServiceTime() const;
+        virtual std::string toString() const;
 
     private:
         int id; // ID của Node

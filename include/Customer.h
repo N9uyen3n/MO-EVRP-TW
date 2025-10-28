@@ -1,5 +1,6 @@
 #pragma once
 #include "Node.h"
+#include <string>
 
 class Customer : public Node {
     public:
@@ -9,6 +10,7 @@ class Customer : public Node {
         double getReadyTime() const;
         double getDueDate() const;
         double getServiceTime() const;
+        std::string toString() const override;
 
     private:
         double demand;

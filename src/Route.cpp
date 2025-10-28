@@ -3,6 +3,7 @@
 #include "../include/Customer.h"
 #include "../include/Station.h"
 #include "../include/Depot.h"
+
 #include <numeric>
 #include <algorithm>
 
@@ -205,38 +206,42 @@ void Route::remove(size_t position) {
 EvaluationResult Route::evaluateInsertion(std::shared_ptr<Node> node, size_t position) {
     EvaluationResult result;
 
-    // KIỂM TRA NHANH RÀNG BUỘC 1: Tải trọng (nếu là khách hàng)
-    if (auto customer_to_insert = std::dynamic_pointer_cast<Customer>(node)) {
-        double current_total_demand = 0;
-        for(const auto& info : infos) {
-            if(auto c = std::dynamic_pointer_cast<Customer>(info.node)) {
-                current_total_demand += c->getDemand();
-            }
-        }
-        if (current_total_demand + customer_to_insert->getDemand() > vehicle->getCapacity() + 1e-6) {
-            return result; // Trả về isFeasible = false
-        }
-    }
-
-    // KIỂM TRA ĐẦY ĐỦ RÀNG BUỘC 2 & 3: Thời gian và Năng lượng
-    double currentCost = this->getTotalTime(); // Sử dụng tổng thời gian làm chi phí
-
-    // Bước 1: Tạo bản sao tạm thời của tuyến đường để giả lập việc chèn
+    // Bước 1: Tạo một bản sao tạm thời của tuyến đường để mô phỏng
     std::vector<RouteInfo> temp_infos = this->infos;
     
-    // Bước 2: Chèn điểm mới vào bản sao
+    // Chèn điểm nút mới vào vị trí được chỉ định trong bản sao
     RouteInfo newInfo;
     newInfo.node = node;
     temp_infos.insert(temp_infos.begin() + position, newInfo);
 
-    // Bước 3: Lan truyền các cập nhật và kiểm tra tính khả thi trên bản sao
-    if (propogateAndUpdate(temp_infos, position)) {
-        // Bước 4: Nếu khả thi, tính toán chi phí chênh lệch
+    // --- KIỂM TRA RÀNG BUỘC TẢI TRỌNG (CAPACITY) MỘT CÁCH CHÍNH XÁC ---
+    // Tính toán tổng nhu cầu mới của toàn bộ tuyến đường giả lập
+    double new_total_demand = 0;
+    for(const auto& info : temp_infos) {
+        if(auto c = std::dynamic_pointer_cast<Customer>(info.node)) {
+            new_total_demand += c->getDemand();
+        }
+    }
+    // Nếu tổng nhu cầu mới vượt quá sức chứa của xe, việc chèn là không hợp lệ
+    if (new_total_demand > vehicle->getCapacity() + 1e-6) {
+        return result; // Trả về isFeasible = false
+    }
+
+    // --- KIỂM TRA ĐẦY ĐỦ CÁC RÀNG BUỘC KHÁC (THỜI GIAN, PIN) ---
+    // Gọi propogateAndUpdate trên bản sao, **bắt đầu từ đầu (chỉ số 0)**.
+    // Đây là thay đổi quan trọng nhất: đảm bảo trạng thái ban đầu (tải trọng tại depot)
+    // được tính toán lại chính xác cho tuyến đường mới.
+    if (propogateAndUpdate(temp_infos, 0)) {
+        // Nếu việc lan truyền thành công (tuyến đường vẫn hợp lệ),
+        // thì đánh dấu việc chèn là khả thi.
         result.isFeasible = true;
-        double newCost = temp_infos.back().arrival_time; // Chi phí mới là thời gian đến điểm cuối cùng
+        
+        // Tính toán chi phí chênh lệch (delta) dựa trên tổng thời gian
+        double newCost = temp_infos.back().arrival_time; // Chi phí mới là thời gian đến điểm cuối
+        double currentCost = this->getTotalTime();       // Chi phí hiện tại của tuyến đường
         result.costDelta = newCost - currentCost;
     }
-    // Bước 5: Nếu không khả thi, `result.isFeasible` vẫn là false
+    // Nếu propogateAndUpdate trả về false, result.isFeasible sẽ giữ nguyên giá trị mặc định là false.
 
     return result;
 }

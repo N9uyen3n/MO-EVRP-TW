@@ -97,36 +97,34 @@ void ALNS::applyLocalSearch(Solution& solution) {
                 Route& route_i = solution.routes[i]; // Tuyến A (nguồn)
                 Route& route_j = solution.routes[j]; // Tuyến B (đích)
 
-                // Thử di dời (Relocate) mọi khách hàng từ route_i sang route_j
+                // Lặp qua mọi khách hàng trong route_i để thử di dời
                 // Lưu ý: lặp ngược để việc xóa theo chỉ số không ảnh hưởng đến các phần tử chưa xét
                 for (int c_idx = route_i.getInfos().size() - 2; c_idx >= 1; --c_idx) {
                     
                     auto customerToMove = std::dynamic_pointer_cast<Customer>(route_i.getInfos()[c_idx].node);
-                    if (!customerToMove) continue; // Bỏ qua nếu không phải là khách hàng (ví dụ: trạm sạc)
+                    if (!customerToMove) continue; // Bỏ qua nếu không phải là khách hàng
 
-                    // --- Bước 1: Tính chi phí TIẾT KIỆM được khi gỡ khách hàng khỏi route_i ---
-                    // Cách làm an toàn và chính xác nhất là mô phỏng việc xóa trên một bản sao
-                    // và tính lại chi phí (tổng thời gian).
-                    double cost_i_before = route_i.getTotalTime();
-                    Route temp_route_i = route_i; // Tạo bản sao tạm thời
-                    
-                    // Xóa khách hàng khỏi bản sao. `remove` theo chỉ số là đủ vì đây là bản sao.
-                    temp_route_i.remove(c_idx);
-                    
-                    double cost_i_after = temp_route_i.getTotalTime();
-                    double costSaving = cost_i_before - cost_i_after;
+                    // --- SỬA LỖI: TÍNH TOÁN CHI PHÍ TIẾT KIỆM (COST SAVING) MỘT CÁCH CHÍNH XÁC ---
+                    // Lấy các điểm liền trước và liền sau của khách hàng trong route_i
+                    auto prev_node = route_i.getInfos()[c_idx - 1].node;
+                    auto next_node = route_i.getInfos()[c_idx + 1].node;
+
+                    // Chi phí tiết kiệm = (thời gian từ trước -> hiện tại + thời gian từ hiện tại -> sau) - (thời gian từ trước -> sau)
+                    double time_saving = (instance->getTime(prev_node->getId(), customerToMove->getId()) +
+                                        instance->getTime(customerToMove->getId(), next_node->getId())) -
+                                       instance->getTime(prev_node->getId(), next_node->getId());
 
                     int bestNewPos = -1;
                     double bestTotalDelta = std::numeric_limits<double>::max();
 
-                    // --- Bước 2: Tìm vị trí chèn tốt nhất trong route_j ---
+                    // --- Tìm vị trí chèn tốt nhất trong route_j ---
                     for (int pos_j = 1; pos_j < route_j.getInfos().size(); ++pos_j) {
-                        // Sử dụng hàm evaluateInsertion mạnh mẽ đã được tái cấu trúc
+                        // Sử dụng hàm evaluateInsertion để đánh giá việc chèn
                         EvaluationResult result = route_j.evaluateInsertion(customerToMove, pos_j);
                         
                         if (result.isFeasible) {
-                            double costIncrease = result.costDelta;
-                            double totalDelta = costIncrease - costSaving;
+                            // result.costDelta là chi phí tăng thêm khi chèn vào route_j
+                            double totalDelta = result.costDelta - time_saving;
 
                             if (totalDelta < bestTotalDelta) {
                                 bestTotalDelta = totalDelta;
@@ -135,8 +133,8 @@ void ALNS::applyLocalSearch(Solution& solution) {
                         }
                     }
 
-                    // --- Bước 3: Thực hiện di dời nếu có lợi (delta tổng < 0) ---
-                    if (bestNewPos != -1 && bestTotalDelta < -1e-4) { // Sử dụng sai số nhỏ
+                    // --- Thực hiện di dời nếu có lợi (delta tổng < 0) ---
+                    if (bestNewPos != -1 && bestTotalDelta < -1e-6) { // Sử dụng sai số nhỏ
                         
                         // Thực hiện thay đổi trên các tuyến đường thực tế
                         route_i.remove(c_idx);
@@ -144,7 +142,7 @@ void ALNS::applyLocalSearch(Solution& solution) {
 
                         improvement = true; // Báo hiệu đã có cải thiện
                         
-                        // Thoát và bắt đầu lại Local Search từ đầu
+                        // Thoát và bắt đầu lại Local Search từ đầu để đảm bảo tính nhất quán
                         goto restart_ls; 
                     }
                 } // kết thúc lặp qua khách hàng
@@ -165,96 +163,111 @@ void ALNS::applyLocalSearch(Solution& solution) {
     );
 }
 
+
 // ============================================================================
-// MAIN SOLVE METHOD - Improved with better logging and statistics
+// MAIN SOLVE METHOD - Cốt lõi của thuật toán ALNS
 // ============================================================================
 std::vector<Solution> ALNS::solve() {
+    // --- KHỞI TẠO ---
     if (!instance) {
         throw std::runtime_error("Instance is null in solve()");
     }
 
+    // Bắt đầu đếm thời gian thực thi
     auto startTime = std::chrono::high_resolution_clock::now();
     
+    // In thông tin cấu hình của thuật toán
     printHeader();
     
-    // Initialize solution and statistics
+    // --- TẠO GIẢI PHÁP BAN ĐẦU ---
+    // Tạo ra một giải pháp ban đầu (thường là một giải pháp đơn giản nhưng hợp lệ)
     Solution currentSolution = generateInitialSolution();
+    // Tính toán các giá trị mục tiêu cho giải pháp ban đầu
     calculateObjectives(currentSolution);
+    // Cập nhật kho lưu trữ Pareto (archive) với giải pháp ban đầu này
     updateArchive(currentSolution);
     
+    // `bestSolution` dùng để theo dõi giải pháp tốt nhất tìm thấy (có thể không cần thiết trong đa mục tiêu, nhưng hữu ích cho so sánh)
     Solution bestSolution = currentSolution;
-    int iterationsSinceImprovement = 0;
-    int acceptedSolutions = 0;
-    int rejectedSolutions = 0;
-    int totalFeasible = 0;
-    int totalInfeasible = 0;
+    
+    // --- KHỞI TẠO CÁC BIẾN THỐNG KÊ VÀ ĐIỀU KHIỂN ---
+    int iterationsSinceImprovement = 0; // Đếm số vòng lặp kể từ lần cải thiện cuối cùng (dùng cho reheating)
+    int acceptedSolutions = 0;          // Số giải pháp mới được chấp nhận
+    int rejectedSolutions = 0;          // Số giải pháp mới bị từ chối
+    int totalFeasible = 0;              // Tổng số giải pháp hợp lệ được tạo ra
+    int totalInfeasible = 0;            // Tổng số giải pháp không hợp lệ được tạo ra
 
-    // Main optimization loop
+    // ========================================================
+    // --- VÒNG LẶP CHÍNH CỦA ALNS ---
+    // ========================================================
     for (int iteration = 0; iteration < maxIterations; ++iteration) {
+        // Tạo một bản sao của giải pháp hiện tại để thực hiện các thay đổi
         Solution tempSolution = currentSolution;
 
-        // Select operators
+        // --- BƯỚC 1: CHỌN TOÁN TỬ PHÁ HỦY VÀ SỬA CHỮA ---
+        // Sử dụng phương pháp Roulette-wheel để chọn toán tử dựa trên trọng số của chúng
         auto destroyPair = selectOperator(destroyOperators, destroyWeights);
-        IDestroyOperator* destroyOp = destroyPair.first;
-        size_t destroyIdx = destroyPair.second;
+        IDestroyOperator* destroyOp = destroyPair.first; // Toán tử phá hủy được chọn
+        size_t destroyIdx = destroyPair.second;          // Chỉ số của toán tử
 
         auto repairPair = selectOperator(repairOperators, repairWeights);
-        IRepairOperator* repairOp = repairPair.first;
-        size_t repairIdx = repairPair.second;
+        IRepairOperator* repairOp = repairPair.first;   // Toán tử sửa chữa được chọn
+        size_t repairIdx = repairPair.second;           // Chỉ số của toán tử
         
+        // Tăng bộ đếm số lần sử dụng cho các toán tử được chọn
         destroyUses[destroyIdx]++;
         repairUses[repairIdx]++;
 
-        // Apply destroy and repair
+        // --- BƯỚC 2: PHÁ HỦY VÀ SỬA CHỮA GIẢI PHÁP ---
+        // Áp dụng toán tử phá hủy để loại bỏ một số khách hàng khỏi giải pháp
         auto removedCustomers = destroyOp->destroy(tempSolution, *instance, destructionRate, rng);
+        // Áp dụng toán tử sửa chữa để chèn lại các khách hàng đã bị loại bỏ
         bool repaired = repairOp->repair(tempSolution, *instance, removedCustomers, rng);
 
+        // --- BƯỚC 3: (TÙY CHỌN) ÁP DỤNG TÌM KIẾM ĐỊA PHƯƠNG (LOCAL SEARCH) ---
+        // Nếu giải pháp được sửa chữa thành công, áp dụng LS để cải thiện thêm
         if (repaired) {
             applyLocalSearch(tempSolution);
         }
 
+        // --- BƯỚC 4: ĐÁNH GIÁ VÀ CHẤP NHẬN GIẢI PHÁP MỚI ---
+        // Chỉ xem xét nếu giải pháp mới là hợp lệ
         if (repaired && isFeasible(tempSolution)) {
             totalFeasible++;
+            // Tính toán các giá trị mục tiêu cho giải pháp mới
             calculateObjectives(tempSolution);
 
-            // Evaluate solution quality
+            // So sánh giải pháp mới (`tempSolution`) với giải pháp hiện tại (`currentSolution`)
             Dominance status = dominanceCheck(tempSolution, currentSolution);
+            // Cập nhật kho lưu trữ Pareto với giải pháp mới (nếu nó không bị trội)
             bool addedToArchive = updateArchive(tempSolution);
 
-            // Update operator scores based on performance
+            // --- CẬP NHẬT ĐIỂM THƯỞNG CHO TOÁN TỬ ---
             int reward = 0;
-            if (addedToArchive) {
-                reward = sigma1;
+            if (addedToArchive) { // Nếu giải pháp mới cải thiện được kho Pareto
+                reward = sigma1; // Thưởng cao nhất
+                iterationsSinceImprovement = 0; // Reset bộ đếm vì đã có cải thiện
+            } else if (status == DOMINATES) { // Nếu giải pháp mới trội hơn giải pháp hiện tại
+                reward = sigma2; // Thưởng trung bình
                 iterationsSinceImprovement = 0;
-                
-                // Update best solution if it dominates current best
-                if (dominanceCheck(tempSolution, bestSolution) == DOMINATES) {
-                    bestSolution = tempSolution;
-                }
-            } else if (status == DOMINATES) {
-                reward = sigma2;
-                iterationsSinceImprovement = 0;
-            } else if (status != DOMINATED) {
-                reward = sigma3;
+            } else if (status != DOMINATED) { // Nếu giải pháp mới không bị trội (non-dominated)
+                reward = sigma3; // Thưởng thấp
             }
 
+            // Cộng điểm thưởng cho các toán tử đã được sử dụng
             if (reward > 0) {
                 destroyScores[destroyIdx] += reward;
                 repairScores[repairIdx] += reward;
-                
-                // Track best scores
-                destroyBestScores[destroyIdx] = std::max(destroyBestScores[destroyIdx], static_cast<size_t>(reward));
-                repairBestScores[repairIdx] = std::max(repairBestScores[repairIdx], static_cast<size_t>(reward));
             }
 
-            // Acceptance decision with improved SA
+            // --- TIÊU CHUẨN CHẤP NHẬN (SIMULATED ANNEALING) ---
             bool accepted = false;
-            if (status == DOMINATES) {
+            if (status == DOMINATES) { // Luôn chấp nhận giải pháp tốt hơn
                 currentSolution = tempSolution;
                 accepted = true;
-            } else if (status != DOMINATED) {
-                // Enhanced SA with adaptive acceptance
-                double acceptProb = std::exp(-1.0 / temperature);
+            } else if (status != DOMINATED) { // Nếu giải pháp mới không bị trội
+                // Chấp nhận giải pháp kém hơn với một xác suất nhất định (Simulated Annealing)
+                double acceptProb = std::exp(-1.0 / temperature); // Xác suất phụ thuộc vào "nhiệt độ"
                 std::uniform_real_distribution<> dist(0.0, 1.0);
                 if (dist(rng) < acceptProb) {
                     currentSolution = tempSolution;
@@ -262,48 +275,48 @@ std::vector<Solution> ALNS::solve() {
                 }
             }
 
-            if (accepted) {
-                acceptedSolutions++;
-            } else {
-                rejectedSolutions++;
-            }
+            if (accepted) acceptedSolutions++; else rejectedSolutions++;
         } else {
-            totalInfeasible++;
+            totalInfeasible++; // Tăng bộ đếm giải pháp không hợp lệ
         }
 
-        // Periodic weight updates
+        // --- BƯỚC 5: CẬP NHẬT TRỌNG SỐ VÀ NHIỆT ĐỘ ---
+        // Cập nhật trọng số của các toán tử sau mỗi `segmentSize` vòng lặp
         if (iteration > 0 && iteration % segmentSize == 0) {
             updateWeights();
             
-            // Log progress
+            // In ra tiến trình sau mỗi 5 segments
             if (iteration % (segmentSize * 5) == 0) {
                 logProgress(iteration, acceptedSolutions, rejectedSolutions, 
                            totalFeasible, totalInfeasible);
             }
         }
 
-        // Adaptive temperature cooling with reheating
+        // Giảm nhiệt độ theo tỷ lệ `coolingRate` (làm nguội)
         temperature *= coolingRate;
         if (temperature < minimumTemperature) {
             temperature = minimumTemperature;
         }
         
-        // Reheating strategy if stuck
+        // Chiến lược "Reheating": Nếu không có cải thiện trong một thời gian dài, tăng lại nhiệt độ
         if (iterationsSinceImprovement > maxIterations / 4) {
-            temperature = initialTemperature * 0.5;
-            iterationsSinceImprovement = 0;
+            temperature = initialTemperature * 0.5; // Reset nhiệt độ về một mức cao hơn
+            iterationsSinceImprovement = 0; // Reset bộ đếm
             std::cout << "  [Reheating] Temperature reset to " << temperature << std::endl;
         }
         
         iterationsSinceImprovement++;
     }
 
+    // --- KẾT THÚC ---
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     
+    // In báo cáo tổng kết
     printFooter(duration.count(), acceptedSolutions, rejectedSolutions, 
                 totalFeasible, totalInfeasible);
     
+    // Trả về tập hợp các giải pháp không bị trội (Pareto front)
     return archive;
 }
 

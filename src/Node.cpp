@@ -1,4 +1,5 @@
 #include "../include/Node.h"
+#include <sstream>
 
 Node::Node(int id, double x, double y) 
     : id(id), x(x), y(y) {}
@@ -29,3 +30,10 @@ double Node::getX() const {
 double Node::getY() const {
     return y;
 }
+
+std::string Node::toString() const {
+    std::stringstream ss;
+    ss << "Node(id: " << id << ", x: " << x << ", y: " << y << ")";
+    return ss.str();
+}
+

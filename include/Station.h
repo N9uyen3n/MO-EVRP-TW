@@ -1,5 +1,6 @@
 #pragma once
 #include "Node.h"
+#include <string>
 
 class Station : public Node {
 public:
@@ -7,6 +8,7 @@ public:
     ~Station() override = default;
 
     double getChargingRate() const;
+    std::string toString() const override;
 
 private:
     // Tốc đọ nạp nược (phút / năng lượng)

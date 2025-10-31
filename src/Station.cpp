@@ -1,8 +1,8 @@
 #include "../include/Station.h"
 #include <sstream>
 
-Station::Station(int id, double x, double y, double chargingRate)
-    : Node(id, x, y, 0, 999999, 0), chargingRate(chargingRate) {}
+Station::Station(int id, std::string stringId, double x, double y, double chargingRate)
+    : Node(id, stringId, x, y, 0, 999999, 0), chargingRate(chargingRate) {}
 
 double Station::getChargingRate() const {
     return chargingRate;

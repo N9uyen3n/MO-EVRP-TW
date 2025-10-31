@@ -52,22 +52,18 @@ int main(int argc, char* argv[]) {
         std::cout << "Initializing ALNS for small test..." << std::endl;
         auto alns_solver = std::make_shared<ALNS>(
             instance, rng,
-            500,        // <-- Giảm từ 25000 xuống 500
-            0.999,        // (Tăng tốc độ nguội)
-            /* initialTempControl */ 0.05,
-            /* score_newBest */ 33.0,
-            /* score_better */ 20.0,
-            /* score_accepted */ 13.0,
-            /* reactionFactor */ 0.1,
-            /* segmentIterations_NC */ 50,  // <-- Giảm từ 250
-            /* segmentIterations_NS */ 100, // <-- Giảm từ 2000
-            /* iterations_NRR */ 100,       // <-- Giảm
-            /* consecutive_nRR */ 50,        // <-- Giảm
-            /* iterations_NSR */ 20,        // <-- Giảm
-            // Tham số toán tử (giữ nguyên)
-            /* shaw_p1 */ 9.0, /* shaw_p2 */ 13.0, /* shaw_p3 */ 2.0, /* shaw_p4 */ 5.0, /* shaw_eta */ 6.0,
-            /* regret_k_val */ 3,
-            /* worst_dist_kappa */ 5.0
+            1000,
+            0.95,
+            0.05,
+            33.0,
+            20.0,
+            13.0,
+            0.1,
+            50,
+            100,
+            100,
+            50,
+            20
         );
 
         // 3. Chạy Solver

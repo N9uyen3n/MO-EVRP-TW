@@ -1,8 +1,9 @@
 #include "../include/Customer.h"
 #include <sstream>
-
-Customer::Customer(int id, double x, double y, double demand, double readyTime, double dueDate, double serviceTime)
-    : Node(id, x, y), demand(demand), readyTime(readyTime), dueDate(dueDate), serviceTime(serviceTime) {}
+#include <string>
+Customer::Customer(int id, std::string stringId, double x, double y,
+    double demand, double readyTime, double dueDate, double serviceTime)
+    : Node(id, stringId, x, y), demand(demand), readyTime(readyTime), dueDate(dueDate), serviceTime(serviceTime) {}
 
 double Customer::getDemand() const {
     return demand;
@@ -22,6 +23,7 @@ double Customer::getServiceTime() const {
 
 std::string Customer::toString() const {
     std::stringstream ss;
-    ss << "Customer(id: " << getId() << " , x: " << getX() << ", y: " << getY() << ", demand: " << demand << ", readyTime: " << readyTime << ", dueDate: " << dueDate << ", serviceTime: " << serviceTime << ")";
+    ss << "Customer(id: " << getId() << " , stringId: " << getStringId() << " , x: " << getX() << ", y: " <<
+        getY() << ", demand: " << demand << ", readyTime: " << readyTime << ", dueDate: " << dueDate << ", serviceTime: " << serviceTime << ")";
     return ss.str();
 }   

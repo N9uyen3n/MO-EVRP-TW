@@ -90,6 +90,10 @@ double Instance::getVehicleVelocity() const {
     return vehicleVelocity;
 }
 
+std::set<std::tuple<int>> Instance::getStationIds() const {
+    return this->stationIds;
+}
+
 const std::shared_ptr<Node>& Instance::getNodeById(int id) const {
     if (id >= 0 && id < nodes.size()) {
         // Assuming node IDs are contiguous and 0-based, which is how they are parsed.

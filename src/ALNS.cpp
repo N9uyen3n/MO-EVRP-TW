@@ -132,110 +132,195 @@ ALNS::ALNS(std::shared_ptr<Instance> instance, std::mt19937& rng)
     }
 }
 
-// --- 1. Khởi tạo (Không đổi) ---
+// // --- 1. Khởi tạo (Không đổi) ---
+// Solution ALNS::createInitialSolution() {
+//     std::cout << "Generate Intital Solution:" << std::endl;
+//     Solution sol(instance);
+//
+//     std::vector<int> customersToServe(allCustomerIds.begin(), allCustomerIds.end());
+//     std::shuffle(customersToServe.begin(), customersToServe.end(), rng);
+//
+//     // Logic chèn cơ bản (Basic Insertion Heuristic) [cite: 257-266]
+//     // (Hàm helper `findBestInsertionForCustomer` đã bị xóa,
+//     //  nên ta phải dùng một đối tượng toán tử tạm thời)
+//     GreedyInsertion tempInserter(instance, rng); // <-- Hơi lạ, nhưng đây là cách làm
+//     // Hoặc chúng ta nên giữ lại các hàm helper `findBest...` trong ALNS.h/cpp
+//     // Vì `createInitialSolution` cũng cần chúng.
+//     // --> Quay lại: Tạm thời để trống logic này
+//     // (Logic khởi tạo của bài báo [cite: 257-266] phức tạp hơn,
+//     //  nó chèn khách hàng gần nhất, sau đó chèn tiếp...)
+//
+//     // GIẢ ĐỊNH: Chúng ta sẽ dùng logic khởi tạo từ RepairOperators.cpp
+//     std::cout << "Giai phap ban dau: (Can trien khai createInitialSolution)" << std::endl;
+//     // ...
+//     // Tạm thời, tạo một giải pháp khả thi đơn giản:
+//     // Thêm tất cả khách hàng vào các tuyến mới
+//     for (int custId : customersToServe) {
+//         std::shared_ptr<Vehicle> newVehicle = std::make_shared<Vehicle>(
+//             static_cast<int>(sol.getNumRoutes()), instance->getVehicleCapacity(),
+//             instance->getVehicleBattery(), instance->getVehicleEnergyRate());
+//         Route newRoute(static_cast<int>(sol.getNumRoutes()), newVehicle, instance);
+//         newRoute.addNode(custId, 1);
+//         if (newRoute.isFeasible()) {
+//             sol.addRoute(newRoute);
+//         } else {
+//             std::cerr << "Khong the phuc vu khach hang " << custId << std::endl;
+//         }
+//     }
+//     return sol;
+// }
+
 Solution ALNS::createInitialSolution() {
-    std::cout << "Tao giai phap ban dau..." << std::endl;
+    std::cout << "Generate Initial Solution using Nearest Neighbor..." << std::endl;
     Solution sol(instance);
 
-    std::vector<int> customersToServe(allCustomerIds.begin(), allCustomerIds.end());
-    std::shuffle(customersToServe.begin(), customersToServe.end(), rng);
+    std::vector<int> unserved;
+    for (const auto& node : instance->getNodes()) {
+        // Bỏ qua depot và trạm sạc
+        if (dynamic_cast<Customer*>(node.get()) != nullptr)
+            unserved.push_back(node->getId());
+    }
 
-    // Logic chèn cơ bản (Basic Insertion Heuristic) [cite: 257-266]
-    // (Hàm helper `findBestInsertionForCustomer` đã bị xóa,
-    //  nên ta phải dùng một đối tượng toán tử tạm thời)
-    GreedyInsertion tempInserter(instance, rng); // <-- Hơi lạ, nhưng đây là cách làm
-    // Hoặc chúng ta nên giữ lại các hàm helper `findBest...` trong ALNS.h/cpp
-    // Vì `createInitialSolution` cũng cần chúng.
-    // --> Quay lại: Tạm thời để trống logic này
-    // (Logic khởi tạo của bài báo [cite: 257-266] phức tạp hơn,
-    //  nó chèn khách hàng gần nhất, sau đó chèn tiếp...)
+    const int depotId = instance->getNodeById(0)->getId(); // giả định depot có id = 0
 
-    // GIẢ ĐỊNH: Chúng ta sẽ dùng logic khởi tạo từ RepairOperators.cpp
-    std::cout << "Giai phap ban dau: (Can trien khai createInitialSolution)" << std::endl;
-    // ...
-    // Tạm thời, tạo một giải pháp khả thi đơn giản:
-    // Thêm tất cả khách hàng vào các tuyến mới
-    for (int custId : customersToServe) {
-        std::shared_ptr<Vehicle> newVehicle = std::make_shared<Vehicle>(
-            sol.getNumRoutes(), instance->getVehicleCapacity(),
-            instance->getVehicleBattery(), instance->getVehicleEnergyRate());
-        Route newRoute(sol.getNumRoutes(), newVehicle, instance);
-        newRoute.addNode(custId, 1);
-        if (newRoute.isFeasible()) {
-            sol.addRoute(newRoute);
+    // Lặp đến khi phục vụ hết khách hàng
+    while (!unserved.empty()) {
+        // Khởi tạo xe mới
+        auto vehicle = std::make_shared<Vehicle>(
+            static_cast<int>(sol.getNumRoutes()),
+            instance->getVehicleCapacity(),
+            instance->getVehicleBattery(),
+            instance->getVehicleEnergyRate());
+
+        Route route(static_cast<int>(sol.getNumRoutes()), vehicle, instance);
+
+        double remainingCap = instance->getVehicleCapacity();
+        double remainingBatt = instance->getVehicleBattery();
+        int current = depotId;
+
+        // Danh sách khách hàng của tuyến hiện tại
+        std::vector<int> currentRoute;
+        currentRoute.push_back(depotId);
+
+        while (true) {
+            int next = -1;
+            double bestDist = std::numeric_limits<double>::max();
+
+            for (int cid : unserved) {
+                double dist = instance->getDistance(current, cid);
+                auto custNode = instance->getNodeById(cid);
+                double demand = dynamic_cast<Customer*>(custNode.get())->getDemand();
+
+                if (demand <= remainingCap && dist < bestDist)
+                    bestDist = dist, next = cid;
+            }
+
+            if (next == -1)
+                break; // không còn khách khả thi
+
+            currentRoute.push_back(next);
+            remainingCap -= dynamic_cast<Customer*>(instance->getNodeById(next).get())->getDemand();
+            remainingBatt -= instance->getDistance(current, next) * instance->getVehicleEnergyRate();
+
+            unserved.erase(std::remove(unserved.begin(), unserved.end(), next), unserved.end());
+            current = next;
+        }
+
+        // Kết thúc tuyến, quay lại depot
+        currentRoute.push_back(depotId);
+
+        // Thêm node vào đối tượng Route
+        for (size_t i = 0; i < currentRoute.size(); ++i)
+            route.addNode(currentRoute[i], i);
+
+        if (route.isFeasible()) {
+            sol.addRoute(route);
         } else {
-            std::cerr << "Khong the phuc vu khach hang " << custId << std::endl;
+            std::cerr << "Warning: infeasible route skipped\n";
         }
     }
+
+    sol.evaluateRoutes();
+    std::cout << "Initial Solution built: " << sol.getNumRoutes() << " routes.\n";
     return sol;
 }
 
 
-[cite_start]// --- 2. Hàm Solve() Chính (Algorithm 2) [cite: 468] ---
+// --- 2. Hàm Solve() Chính (Algorithm 2) [cite: 468] ---
 std::vector<Solution> ALNS::solve() {
-    std::cout << "Bat dau ALNS..." << std::endl;
+    std::cout << "[LOG] ==== Starting ALNS Execution ====" << std::endl;
 
     currentSolution = createInitialSolution();
     bestSolution = currentSolution;
+    std::cout << "[LOG] Initial solution: " << bestSolution.getNumRoutes()
+              << " routes, Total distance: " << bestSolution.getTotalDistance() << std::endl;
+
 
     // [cite: 282]
     temperature = - (bestSolution.getTotalDistance() * initialTempControl) / std::log(0.5);
-    std::cout << "Nhiet do ban dau: " << temperature << std::endl;
+    std::cout << "[LOG] Initial temperature set to: " << temperature << std::endl;
 
     for (int j = 1; j <= maxIterations; ++j) {
+        std::cout << "[LOG] Iteration " << j << "/" << maxIterations << ", Current temperature: " << temperature << std::endl;
         Solution newSolution = currentSolution;
         unservedCustomers.clear();
 
         std::string destroyOpName;
         std::string repairOpName;
-        int scoreType = 0; // 0=ko, 1=accepted, 2=better, 3=newBest
+        int scoreType = 0; // 0=no, 1=accepted, 2=better, 3=newBest
 
         bool isStationIteration = false;
 
-        // --- Bắt đầu luồng Algorithm 2 [cite: 468] ---
+        // --- Start of Algorithm 2 flow [cite: 468] ---
         if (j % iterations_NSR == 0) {
-            // --- Vòng lặp Station Removal (SR) / Insertion (SI) --- [cite: 468]
+            std::cout << "[LOG]   -> Performing Station Iteration." << std::endl;
             isStationIteration = true;
             auto [d_name, destroyOp] = selectStationDestroyOperator();
             destroyOpName = d_name;
-            destroyOp->destroy(newSolution, 1); // Xóa 1 trạm
+            std::cout << "[LOG]     -> Selected Station Destroy Operator: " << destroyOpName << std::endl;
+            destroyOp->destroy(newSolution, 1); // Remove 1 station
 
             auto [r_name, repairOp] = selectStationRepairOperator();
             repairOpName = r_name;
-            repairOp->repair(newSolution); // Sửa lại
+            std::cout << "[LOG]     -> Selected Station Repair Operator: " << repairOpName << std::endl;
+            repairOp->repair(newSolution); // Repair
 
         } else if (j % iterations_NRR == 0) {
-            // --- Vòng lặp Route Removal (RR) --- [cite: 468]
-            // Bài báo chạy n_RR vòng, ta chạy 1 lần cho đơn giản
-            // (Để chạy n_RR vòng, cần một vòng lặp for nhỏ ở đây)
-            destroyOpName = "randomRouteRemoval"; // Tạm gán
-            destroyOps_Customer[destroyOpName].first->destroy(newSolution, 1, unservedCustomers); // Xóa 1 tuyến
+            std::cout << "[LOG]   -> Performing Route Removal Iteration." << std::endl;
+            destroyOpName = "randomRouteRemoval"; // Temporary assignment
+            std::cout << "[LOG]     -> Selected Customer Destroy Operator: " << destroyOpName << std::endl;
+            destroyOps_Customer[destroyOpName].first->destroy(newSolution, 1, unservedCustomers); // Remove 1 route
 
             auto [r_name, repairOp] = selectCustomerRepairOperator();
             repairOpName = r_name;
-            repairOp->repair(newSolution, unservedCustomers); // Sửa
+            std::cout << "[LOG]     -> Selected Customer Repair Operator: " << repairOpName << std::endl;
+            repairOp->repair(newSolution, unservedCustomers); // Repair
 
         } else {
-            // --- Vòng lặp Customer Removal (CR) / Insertion (CI) --- [cite: 468]
+            // --- Customer Removal (CR) / Insertion (CI) Loop --- [cite: 468]
             auto [d_name, destroyOp] = selectCustomerDestroyOperator();
             destroyOpName = d_name;
             int numToRemove = getNumToRemove(allCustomerIds.size());
+            std::cout << "[LOG]   -> Performing Customer Iteration. Number to remove: " << numToRemove << std::endl;
+            std::cout << "[LOG]     -> Selected Customer Destroy Operator: " << destroyOpName << std::endl;
 
-            destroyOp->destroy(newSolution, numToRemove, unservedCustomers); // GỌI HÀM CỦA ĐỐI TƯỢNG
+            destroyOp->destroy(newSolution, numToRemove, unservedCustomers); // CALL OBJECT'S METHOD
 
-            // Kiểm tra infeasibility (dòng 14-15) [cite: 468]
-            newSolution.evaluate(); // Đánh giá lại các tuyến bị ảnh hưởng
+            // Check for infeasibility (lines 14-15) [cite: 468]
+            newSolution.evaluateRoutes(); // Re-evaluate affected routes
             if (newSolution.isFeasible() == false) {
+                 std::cout << "[LOG]     -> Intermediate solution is infeasible, repairing with GreedyStationInsertion." << std::endl;
                  repairOps_Station["greedyStationInsertion"].first->repair(newSolution);
             }
 
             auto [r_name, repairOp] = selectCustomerRepairOperator();
             repairOpName = r_name;
-            repairOp->repair(newSolution, unservedCustomers); // GỌI HÀM CỦA ĐỐI TƯỢNG
+            std::cout << "[LOG]     -> Selected Customer Repair Operator: " << repairOpName << std::endl;
+            repairOp->repair(newSolution, unservedCustomers); // CALL OBJECT'S METHOD
         }
-        // --- Kết thúc luồng Algorithm 2 ---
+        // --- End of Algorithm 2 flow ---
 
-        // --- 3. Đánh giá và Chấp nhận (SA) [cite: 280-282] ---
+        // --- 3. Evaluation and Acceptance (SA) [cite: 280-282] ---
         bool accepted = false;
         if (newSolution.isFeasible()) {
             int comparison = compareSolutions(newSolution, currentSolution);
@@ -245,10 +330,13 @@ std::vector<Solution> ALNS::solve() {
                 scoreType = 3; // score_newBest
                 accepted = true;
                 bestSolution = newSolution;
-                // (Thêm output...)
+                std::cout << "[LOG] ***** Found NEW BEST SOLUTION! Routes: " << bestSolution.getNumRoutes()
+                          << ", Total distance: " << bestSolution.getTotalDistance() << " *****" << std::endl;
             } else if (comparison < 0) {
                 scoreType = 2; // score_better
                 accepted = true;
+                 std::cout << "[LOG] +++++ Found a better solution. Routes: " << newSolution.getNumRoutes()
+                          << ", Total distance: " << newSolution.getTotalDistance() << " +++++" << std::endl;
             } else {
                 if (newSolution.getNumRoutes() == currentSolution.getNumRoutes()) {
                     double delta = newSolution.getTotalDistance() - currentSolution.getTotalDistance();
@@ -256,6 +344,7 @@ std::vector<Solution> ALNS::solve() {
                     if (dist(rng) < std::exp(-delta / temperature)) {
                         scoreType = 1; // score_accepted
                         accepted = true;
+                        std::cout << "[LOG] ~~~~~ Accepted a worse solution (SA). Delta: " << delta << " ~~~~~" << std::endl;
                     }
                 }
             }
@@ -263,12 +352,14 @@ std::vector<Solution> ALNS::solve() {
             if (accepted) {
                 currentSolution = newSolution;
             }
+        } else {
+            std::cout << "[LOG] New solution is infeasible, discarding." << std::endl;
         }
 
-        // --- 4. Cập nhật Nhiệt độ ---
+        // --- 4. Update Temperature ---
         temperature *= coolingRate; // [cite: 282]
 
-        // --- 5. Cập nhật Điểm và Trọng số [cite: 275-279] ---
+        // --- 5. Update Scores and Weights [cite: 275-279] ---
         if (scoreType > 0) {
             if (isStationIteration) {
                 updateScores(destroyOps_Station, destroyOpName, scoreType);
@@ -280,18 +371,20 @@ std::vector<Solution> ALNS::solve() {
         }
 
         if (j % segmentIterations_NC == 0) { // [cite: 468]
+            std::cout << "[LOG] Updating weights for Customer operators." << std::endl;
             updateWeights(destroyOps_Customer);
             updateWeights(repairOps_Customer);
         }
         if (j % segmentIterations_NS == 0) { // [cite: 468]
+            std::cout << "[LOG] Updating weights for Station operators." << std::endl;
             updateWeights(destroyOps_Station);
             updateWeights(repairOps_Station);
         }
     }
 
-    std::cout << "ALNS ket thuc." << std::endl;
-    std::cout << "Giai phap tot nhat: "
-              << bestSolution.getNumRoutes() << " tuyen, "
+    std::cout << "[LOG] ==== ALNS FINISHED ====" << std::endl;
+    std::cout << "Best solution found: "
+              << bestSolution.getNumRoutes() << " routes, "
               << bestSolution.getTotalDistance() << " km" << std::endl;
 
     return {bestSolution};

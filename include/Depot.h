@@ -1,9 +1,10 @@
 #pragma once
 #include "Node.h"
+#include <string>
 
 class Depot : public Node {
 public:
-    Depot(int id, double x, double y);
+    Depot(int id, std::string stringId, double x, double y);
     ~Depot() override = default;
 
     // Xóa 'const' ở đây vì hàm này CẦN thay đổi giá trị

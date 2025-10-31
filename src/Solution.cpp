@@ -93,6 +93,13 @@ bool Solution::isFeasible() const {
     return checkGlobalFeasibility();
 }
 
+void Solution::evaluateRoutes() {
+    // Lặp qua từng tuyến đường trong danh sách
+    for (auto& route : this->routes) {
+        route.evaluate();
+    }
+}
+
 /**
  * @brief Hàm nội bộ kiểm tra tính khả thi TOÀN CỤC.
  * 1. Mọi tuyến con phải khả thi.

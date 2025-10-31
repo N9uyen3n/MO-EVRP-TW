@@ -4,7 +4,7 @@
 
 class Station : public Node {
 public:
-    Station(int id, double x, double y, double chargingRate);
+    Station(int id, std::string stringId, double x, double y, double chargingRate);
     ~Station() override = default;
 
     double getChargingRate() const;

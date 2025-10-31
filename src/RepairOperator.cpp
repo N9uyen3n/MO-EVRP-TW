@@ -65,12 +65,12 @@ std::vector<InsertionResult> ICustomerRepair::findKBestInsertionsForCustomer(int
 
 void ICustomerRepair::createNewRouteForCustomer(Solution& solution, int custId) {
     std::shared_ptr<Vehicle> newVehicle = std::make_shared<Vehicle>(
-        solution.getNumRoutes(),
+        static_cast<int>(solution.getNumRoutes()),
         instance->getVehicleCapacity(),
         instance->getVehicleBattery(),
         instance->getVehicleEnergyRate()
     );
-    Route newRoute(solution.getNumRoutes(), newVehicle, instance);
+    Route newRoute(static_cast<int>(solution.getNumRoutes()), newVehicle, instance);
     newRoute.addNode(custId, 1);
 
     if (newRoute.isFeasible()) {

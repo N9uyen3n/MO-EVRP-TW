@@ -4,7 +4,8 @@
 
 class Customer : public Node {
     public:
-        Customer(int id, double x, double y, double demand, double readyTime, double dueDate, double serviceTime);
+        Customer(int id, std::string stringId ,double x, double y, double demand,
+            double readyTime, double dueDate, double serviceTime);
         ~Customer() override = default;
         double getDemand() const;
         double getReadyTime() const;

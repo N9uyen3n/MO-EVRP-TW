@@ -2,14 +2,18 @@
 #define SOLVER_H
 
 #include <vector>
-#include "Solution.h"
+#include <random>
+#include "Instance.h"
+#include "Route.h"
+#include "Customer.h"
+#include "Solution.h" // Thêm include này
 
 
 // Abstract base class for all solver implementations.
 class Solver {
 public:
-    virtual std::vector<Solution> solve();
-    virtual ~Solver() = default;
+    virtual std::vector<Solution> solve() = 0;
+    virtual ~Solver();
 
 protected:
     Solver() = default;

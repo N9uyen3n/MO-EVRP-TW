@@ -26,6 +26,7 @@ set(SOURCES src/main.cpp
         src/ALNS.cpp
         src/RepairOperator.cpp
         src/DestroyOperator.cpp
+        src/Solver.cpp
 )
 
 # 2. Dùng 'add_executable' để tạo tệp thực thi tên là 'test5'

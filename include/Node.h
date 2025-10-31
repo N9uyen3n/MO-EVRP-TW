@@ -3,8 +3,9 @@
 
 class Node {
     public:
-        Node(int id, double x, double y); // Constructor cho Node cơ bản
-        Node(int id, double x, double y, double readyTime, double dueDate, double serviceTime); // Constructor cho Node với thông tin chi tiết
+        Node(int id, std::string stringId, double x, double y); // Constructor cho Node cơ bản
+        Node(int id, std::string stringId, double x, double y,
+            double readyTime, double dueDate, double serviceTime); // Constructor cho Node với thông tin chi tiết
         virtual ~Node() = default;
 
         int getId() const;
@@ -14,10 +15,12 @@ class Node {
         double getReadyTime() const;
         double getDueDate() const;
         double getServiceTime() const;
+        std::string getStringId() const;
         virtual std::string toString() const;
 
     private:
         int id; // ID của Node
+        std::string stringId;
         double x; // Tọa độ X
         double y; // Tọa độ Y
         double readyTime; // Thời gian sẵn sàng

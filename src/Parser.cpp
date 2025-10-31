@@ -32,7 +32,7 @@ std::shared_ptr<Instance> Parser::parse(const std::string& filename) {
 
     // Skip header line
     std::getline(file, line);
-
+    int id = 0;
     while (std::getline(file, line)) {
         // Trim whitespace
         line.erase(line.begin(), std::find_if(line.begin(), line.end(), [](unsigned char ch) {
@@ -45,7 +45,6 @@ std::shared_ptr<Instance> Parser::parse(const std::string& filename) {
         if (line.empty()) continue;
 
         std::stringstream ss(line);
-
         // Differentiate between parameter lines (containing '/') and node lines.
         if (line.find('/') != std::string::npos) {
             // This is a parameter line
@@ -67,18 +66,20 @@ std::shared_ptr<Instance> Parser::parse(const std::string& filename) {
             if (stringId.empty() || typeStr.empty()) continue;
 
             char firstChar = stringId[0];
-            if (firstChar == 'D' || firstChar == 'S' || firstChar == 'C') {
-                int id = std::stoi(stringId.substr(1));
 
+            if (firstChar == 'D' || firstChar == 'S' || firstChar == 'C') {
                 if (typeStr == "d") {
-                    nodes.push_back(std::make_shared<Depot>(id, x, y));
+                    nodes.push_back(std::make_shared<Depot>(id, stringId, x, y));
                 } else if (typeStr == "c") {
-                    nodes.push_back(std::make_shared<Customer>(id, x, y, demand, readyTime, dueDate, serviceTime));
+                    nodes.push_back(std::make_shared<Customer>(id, stringId, x, y, demand,
+                        readyTime, dueDate, serviceTime));
                 } else if (typeStr == "f") {
-                    nodes.push_back(std::make_shared<Station>(id, x, y, 0.0)); 
+                    nodes.push_back(std::make_shared<Station>(id, stringId, x, y, 0.0));
                 }
+
             }
         }
+        id++;
     }
 
     // Post-process stations to add the correct charging rate

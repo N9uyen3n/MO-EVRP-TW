@@ -24,7 +24,7 @@ public:
 
     // --- Utilities ---
     size_t getNumRoutes() const { return routes.size(); }
-
+    void evaluateRoutes();
     void evaluate();
 
 private:

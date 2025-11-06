@@ -65,9 +65,15 @@ int main(int argc, char* argv[]) {
             50,
             20
         );
+        // Code test tạo khởi đầu
+        std::cout << "\n----- Create Intitail Solution -----" << std::endl;
 
-        // 3. Chạy Solver
+        // Solution solutions = alns_solver->createInitialSolution();
+        // std::cout << "--- Starting ALNS Solver ---" << std::endl;
+        // solutions.toString();
+        // // 3. Chạy Solver
         std::cout << "\n--- Starting ALNS Solver ---" << std::endl;
+
         std::vector<Solution> solutions = alns_solver->solve();
         std::cout << "--- ALNS Solver Finished ---" << std::endl;
 

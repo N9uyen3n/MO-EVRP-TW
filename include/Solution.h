@@ -25,7 +25,8 @@ public:
     // --- Utilities ---
     size_t getNumRoutes() const { return routes.size(); }
     void evaluateRoutes();
-    void evaluate();
+
+    void toString() const;
 
 private:
     std::shared_ptr<Instance> instance;

@@ -1,4 +1,8 @@
 #include "Solution.h"
+
+#include <iostream>
+#include <ostream>
+
 #include "Instance.h"
 #include "Customer.h" // Cần để kiểm tra node có phải là Customer không
 #include <set>       // Cần cho việc kiểm tra khách hàng trùng lặp
@@ -144,4 +148,11 @@ bool Solution::checkGlobalFeasibility() const {
     // 3. Kiểm tra cuối cùng:
     // Số khách hàng đã phục vụ có bằng số khách hàng trong bài toán không?
     return customers_served.size() == all_customers_in_instance.size();
+}
+
+void Solution::toString() const {
+    for (const auto& route : routes) {
+        route.toString();
+        // std::cout << std::endl;
+    }
 }

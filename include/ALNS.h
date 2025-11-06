@@ -64,6 +64,9 @@ public:
          int iterations_NRR, int consecutive_nRR, int iterations_NSR);
     std::vector<Solution> solve() override;
 
+    // --- 1. Khởi tạo ---
+    Solution createInitialSolution();
+
 private:
     // --- Cấu trúc dữ liệu ALNS ---
     std::shared_ptr<Instance> instance;
@@ -104,9 +107,6 @@ private:
     CustomerRepairMap  repairOps_Customer;
     StationDestroyMap  destroyOps_Station;
     StationRepairMap   repairOps_Station;
-
-    // --- 1. Khởi tạo ---
-    Solution createInitialSolution();
 
     // (Đã xóa tất cả các khai báo hàm toán tử cũ: randomRemoval, greedyInsertion, v.v...)
 

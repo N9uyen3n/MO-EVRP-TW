@@ -57,6 +57,8 @@ class Route {
         // --- Evaluation ---
         void evaluate(); // tính toán lại toàn bộ chi phí tuyến
 
+        void toString() const;
+
     private:
         int id;
         std::shared_ptr<Vehicle> vehicle;

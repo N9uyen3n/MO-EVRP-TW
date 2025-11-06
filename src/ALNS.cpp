@@ -131,117 +131,362 @@ ALNS::ALNS(std::shared_ptr<Instance> instance, std::mt19937& rng)
         }
     }
 }
-
-// // --- 1. Khởi tạo (Không đổi) ---
-// Solution ALNS::createInitialSolution() {
-//     std::cout << "Generate Intital Solution:" << std::endl;
-//     Solution sol(instance);
-//
-//     std::vector<int> customersToServe(allCustomerIds.begin(), allCustomerIds.end());
-//     std::shuffle(customersToServe.begin(), customersToServe.end(), rng);
-//
-//     // Logic chèn cơ bản (Basic Insertion Heuristic) [cite: 257-266]
-//     // (Hàm helper `findBestInsertionForCustomer` đã bị xóa,
-//     //  nên ta phải dùng một đối tượng toán tử tạm thời)
-//     GreedyInsertion tempInserter(instance, rng); // <-- Hơi lạ, nhưng đây là cách làm
-//     // Hoặc chúng ta nên giữ lại các hàm helper `findBest...` trong ALNS.h/cpp
-//     // Vì `createInitialSolution` cũng cần chúng.
-//     // --> Quay lại: Tạm thời để trống logic này
-//     // (Logic khởi tạo của bài báo [cite: 257-266] phức tạp hơn,
-//     //  nó chèn khách hàng gần nhất, sau đó chèn tiếp...)
-//
-//     // GIẢ ĐỊNH: Chúng ta sẽ dùng logic khởi tạo từ RepairOperators.cpp
-//     std::cout << "Giai phap ban dau: (Can trien khai createInitialSolution)" << std::endl;
-//     // ...
-//     // Tạm thời, tạo một giải pháp khả thi đơn giản:
-//     // Thêm tất cả khách hàng vào các tuyến mới
-//     for (int custId : customersToServe) {
-//         std::shared_ptr<Vehicle> newVehicle = std::make_shared<Vehicle>(
-//             static_cast<int>(sol.getNumRoutes()), instance->getVehicleCapacity(),
-//             instance->getVehicleBattery(), instance->getVehicleEnergyRate());
-//         Route newRoute(static_cast<int>(sol.getNumRoutes()), newVehicle, instance);
-//         newRoute.addNode(custId, 1);
-//         if (newRoute.isFeasible()) {
-//             sol.addRoute(newRoute);
-//         } else {
-//             std::cerr << "Khong the phuc vu khach hang " << custId << std::endl;
-//         }
-//     }
-//     return sol;
-// }
-
 Solution ALNS::createInitialSolution() {
-    std::cout << "Generate Initial Solution using Nearest Neighbor..." << std::endl;
+    std::cout << "Generate Initial Solution using Smart Nearest Neighbor with Charging..." << std::endl;
     Solution sol(instance);
 
+    // Lấy danh sách khách hàng chưa phục vụ
     std::vector<int> unserved;
     for (const auto& node : instance->getNodes()) {
-        // Bỏ qua depot và trạm sạc
-        if (dynamic_cast<Customer*>(node.get()) != nullptr)
+        if (dynamic_cast<Customer*>(node.get()) != nullptr && node->getId() != 0) {
             unserved.push_back(node->getId());
+        }
     }
 
-    const int depotId = instance->getNodeById(0)->getId(); // giả định depot có id = 0
+    // Lấy danh sách trạm sạc
+    std::vector<int> stationIds;
+    for (const auto& node : instance->getNodes()) {
+        if (dynamic_cast<Station*>(node.get()) != nullptr) {
+            stationIds.push_back(node->getId());
+        }
+    }
 
-    // Lặp đến khi phục vụ hết khách hàng
-    while (!unserved.empty()) {
-        // Khởi tạo xe mới
+    const int depotId = 0;
+    auto depotNode = instance->getNodeById(depotId);
+    const double maxRouteTime = depotNode->getDueDate();
+    const double vehCapacity = instance->getVehicleCapacity();
+    const double vehMaxBattery = instance->getVehicleBattery();
+    const double vehEnergyRate = instance->getVehicleEnergyRate();
+
+    std::cout << "Total customers: " << unserved.size() << "\n";
+    std::cout << "Stations: " << stationIds.size() << "\n";
+    std::cout << "Vehicle: capacity=" << vehCapacity << ", battery=" << vehMaxBattery << "\n";
+    std::cout << "Max route time: " << maxRouteTime << "\n\n";
+
+    int maxAttempts = unserved.size() * 3;
+    int attemptCount = 0;
+    int consecutiveFailures = 0;
+
+    // Lambda: Tính chi phí thực tế để phục vụ khách hàng (bao gồm cả sạc nếu cần)
+    auto calculateRealCost = [&](int fromNode, int custId, double currentTime, double currentBatt) -> double {
+        auto custNode = std::dynamic_pointer_cast<Customer>(instance->getNodeById(custId));
+
+        double directDist = instance->getDistance(fromNode, custId);
+        double directEnergy = directDist * vehEnergyRate;
+
+        // Nếu đủ pin đi trực tiếp
+        if (directEnergy <= currentBatt) {
+            return directDist;
+        }
+
+        // Cần sạc -> tìm trạm tốt nhất trên đường
+        double bestCost = std::numeric_limits<double>::max();
+        for (int sid : stationIds) {
+            double dist_to_station = instance->getDistance(fromNode, sid);
+            double energy_to_station = dist_to_station * vehEnergyRate;
+
+            if (energy_to_station <= currentBatt) {
+                double dist_station_to_cust = instance->getDistance(sid, custId);
+                double totalDist = dist_to_station + dist_station_to_cust;
+
+                if (totalDist < bestCost) {
+                    bestCost = totalDist;
+                }
+            }
+        }
+
+        return bestCost;
+    };
+
+    // Lambda: Đánh giá mức độ "urgent" của khách hàng (time window chặt)
+    auto getUrgency = [&](int custId, double currentTime) -> double {
+        auto custNode = std::dynamic_pointer_cast<Customer>(instance->getNodeById(custId));
+        double timeToDeadline = custNode->getDueDate() - currentTime;
+        double windowSize = custNode->getDueDate() - custNode->getReadyTime();
+
+        // Urgent nếu sắp hết time window
+        return 1.0 / (timeToDeadline + 1.0);
+    };
+
+    while (!unserved.empty() && attemptCount < maxAttempts) {
+        attemptCount++;
+
         auto vehicle = std::make_shared<Vehicle>(
             static_cast<int>(sol.getNumRoutes()),
-            instance->getVehicleCapacity(),
-            instance->getVehicleBattery(),
-            instance->getVehicleEnergyRate());
-
+            vehCapacity, vehMaxBattery, vehEnergyRate);
         Route route(static_cast<int>(sol.getNumRoutes()), vehicle, instance);
 
-        double remainingCap = instance->getVehicleCapacity();
-        double remainingBatt = instance->getVehicleBattery();
         int current = depotId;
+        double currentTime = 0.0;
+        double remainingCap = vehCapacity;
+        double remainingBatt = vehMaxBattery;
 
-        // Danh sách khách hàng của tuyến hiện tại
-        std::vector<int> currentRoute;
-        currentRoute.push_back(depotId);
+        std::vector<int> currentRouteNodes;
+        bool addedAny = false;
+        int stepsWithoutCustomer = 0;
+        const int maxStepsWithoutCustomer = 3; // Giới hạn số lần sạc liên tiếp
 
         while (true) {
-            int next = -1;
-            double bestDist = std::numeric_limits<double>::max();
+            int bestCustomer = -1;
+            double bestScore = std::numeric_limits<double>::max();
 
+            // === CHIẾN LƯỢC 1: TÌM KHÁCH HÀNG VỚI SCORING FUNCTION ===
             for (int cid : unserved) {
-                double dist = instance->getDistance(current, cid);
-                auto custNode = instance->getNodeById(cid);
-                double demand = dynamic_cast<Customer*>(custNode.get())->getDemand();
+                auto custNode = std::dynamic_pointer_cast<Customer>(instance->getNodeById(cid));
 
-                if (demand <= remainingCap && dist < bestDist)
-                    bestDist = dist, next = cid;
+                double demand = custNode->getDemand();
+                double dist = instance->getDistance(current, cid);
+                double travelTime = instance->getTime(current, cid);
+                double energyToCustomer = dist * vehEnergyRate;
+                double arrivalTime = currentTime + travelTime;
+
+                // Kiểm tra ràng buộc cơ bản
+                if (demand > remainingCap) continue;
+                if (energyToCustomer > remainingBatt) continue;
+                if (arrivalTime > custNode->getDueDate()) continue;
+
+                // Kiểm tra khả năng hoàn thành route
+                double waitTime = std::max(0.0, custNode->getReadyTime() - arrivalTime);
+                double timeAtCustomer = arrivalTime + waitTime + custNode->getServiceTime();
+                double energyAtCustomer = remainingBatt - energyToCustomer;
+
+                double timeToDepot = instance->getTime(cid, depotId);
+                double energyToDepot = instance->getDistance(cid, depotId) * vehEnergyRate;
+
+                bool canReturnDirectly = (energyToDepot <= energyAtCustomer) &&
+                                       (timeAtCustomer + timeToDepot <= maxRouteTime);
+
+                bool canReturnViaStation = false;
+                if (!canReturnDirectly && !stationIds.empty()) {
+                    for (int sid : stationIds) {
+                        double dist_c_s = instance->getDistance(cid, sid);
+                        double energy_c_s = dist_c_s * vehEnergyRate;
+
+                        if (energy_c_s <= energyAtCustomer) {
+                            auto stationNode = std::dynamic_pointer_cast<Station>(instance->getNodeById(sid));
+                            double time_c_s = instance->getTime(cid, sid);
+                            double arrival_s = timeAtCustomer + time_c_s;
+
+                            double energyAfterTravel_s = energyAtCustomer - energy_c_s;
+                            double chargeNeeded = vehMaxBattery - energyAfterTravel_s;
+                            double chargeTime = chargeNeeded * stationNode->getChargingRate();
+
+                            double timeAtStation = arrival_s + chargeTime;
+                            double time_s_d = instance->getTime(sid, depotId);
+
+                            if (timeAtStation + time_s_d <= maxRouteTime) {
+                                canReturnViaStation = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!canReturnDirectly && !canReturnViaStation) continue;
+
+                // === SCORING FUNCTION: Kết hợp nhiều yếu tố ===
+                double realCost = calculateRealCost(current, cid, currentTime, remainingBatt);
+                double urgency = getUrgency(cid, currentTime);
+                double capacityUtilization = demand / vehCapacity;
+
+                // Score thấp = tốt hơn
+                // - Ưu tiên khách gần (realCost thấp)
+                // - Ưu tiên khách urgent (urgency cao)
+                // - Ưu tiên khách có demand lớn (tận dụng capacity)
+                double score = realCost * 1.0 - urgency * 50.0 - capacityUtilization * 20.0;
+
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestCustomer = cid;
+                }
             }
 
-            if (next == -1)
-                break; // không còn khách khả thi
+            // === XỬ LÝ KHÁCH HÀNG TỐT NHẤT ===
+            if (bestCustomer != -1) {
+                auto custNode = std::dynamic_pointer_cast<Customer>(instance->getNodeById(bestCustomer));
 
-            currentRoute.push_back(next);
-            remainingCap -= dynamic_cast<Customer*>(instance->getNodeById(next).get())->getDemand();
-            remainingBatt -= instance->getDistance(current, next) * instance->getVehicleEnergyRate();
+                double dist = instance->getDistance(current, bestCustomer);
+                double travelTime = instance->getTime(current, bestCustomer);
+                double arrivalTime = currentTime + travelTime;
+                double waitTime = std::max(0.0, custNode->getReadyTime() - arrivalTime);
+                double serviceTime = custNode->getServiceTime();
+                double energyUsed = dist * vehEnergyRate;
+                double demand = custNode->getDemand();
 
-            unserved.erase(std::remove(unserved.begin(), unserved.end(), next), unserved.end());
-            current = next;
+                current = bestCustomer;
+                currentTime = arrivalTime + waitTime + serviceTime;
+                remainingBatt -= energyUsed;
+                remainingCap -= demand;
+                currentRouteNodes.push_back(bestCustomer);
+                unserved.erase(std::remove(unserved.begin(), unserved.end(), bestCustomer), unserved.end());
+                addedAny = true;
+                stepsWithoutCustomer = 0;
+                attemptCount = 0;
+                consecutiveFailures = 0;
+
+                continue;
+            }
+
+            // === CHIẾN LƯỢC 2: SMART CHARGING - Chỉ sạc khi thực sự cần thiết ===
+            stepsWithoutCustomer++;
+
+            if (stepsWithoutCustomer > maxStepsWithoutCustomer) {
+                // Đã sạc quá nhiều mà vẫn không phục vụ được -> kết thúc route
+                break;
+            }
+
+            // Kiểm tra xem có khách hàng nào CÓ THỂ đến được sau khi sạc không
+            bool worthCharging = false;
+            for (int cid : unserved) {
+                auto custNode = std::dynamic_pointer_cast<Customer>(instance->getNodeById(cid));
+                double demand = custNode->getDemand();
+
+                if (demand <= remainingCap) {
+                    // Tính xem nếu sạc đầy có đến được khách này không
+                    double distToCust = instance->getDistance(current, cid);
+                    double energyToCust = distToCust * vehEnergyRate;
+
+                    if (energyToCust <= vehMaxBattery) {
+                        worthCharging = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!worthCharging) {
+                // Không đáng sạc -> kết thúc route
+                break;
+            }
+
+            // Tìm trạm sạc TỐT NHẤT (không chỉ gần nhất)
+            int bestStation = -1;
+            double bestStationScore = std::numeric_limits<double>::max();
+
+            for (int sid : stationIds) {
+                double dist_c_s = instance->getDistance(current, sid);
+                double energy_c_s = dist_c_s * vehEnergyRate;
+
+                if (energy_c_s > remainingBatt) continue;
+
+                auto stationNode = std::dynamic_pointer_cast<Station>(instance->getNodeById(sid));
+                double time_c_s = instance->getTime(current, sid);
+                double arrival_s = currentTime + time_c_s;
+
+                double energyAfterTravel_s = remainingBatt - energy_c_s;
+                double chargeNeeded = vehMaxBattery - energyAfterTravel_s;
+                if (chargeNeeded < 1e-6) continue; // Bỏ qua trạm không cần sạc
+
+                double chargeTime = chargeNeeded * stationNode->getChargingRate();
+                double timeAtStation = arrival_s + chargeTime;
+                double time_s_d = instance->getTime(sid, depotId);
+
+                if (timeAtStation + time_s_d > maxRouteTime) continue;
+
+                // Đánh giá trạm dựa trên: khoảng cách + số khách hàng có thể đến được từ trạm
+                int reachableCustomers = 0;
+                for (int cid : unserved) {
+                    double distFromStation = instance->getDistance(sid, cid);
+                    double energyFromStation = distFromStation * vehEnergyRate;
+                    if (energyFromStation <= vehMaxBattery) {
+                        reachableCustomers++;
+                    }
+                }
+
+                // Score thấp = tốt (gần + nhiều khách tiếp cận được)
+                double score = dist_c_s * 1.0 - reachableCustomers * 10.0;
+
+                if (score < bestStationScore) {
+                    bestStationScore = score;
+                    bestStation = sid;
+                }
+            }
+
+            if (bestStation != -1) {
+                auto stationNode = std::dynamic_pointer_cast<Station>(instance->getNodeById(bestStation));
+                double dist = instance->getDistance(current, bestStation);
+                double travelTime = instance->getTime(current, bestStation);
+                double arrivalTime = currentTime + travelTime;
+                double energyUsed = dist * vehEnergyRate;
+
+                double energyAfterTravel = remainingBatt - energyUsed;
+                double chargeNeeded = vehMaxBattery - energyAfterTravel;
+                double chargeTime = chargeNeeded * stationNode->getChargingRate();
+
+                current = bestStation;
+                currentTime = arrivalTime + chargeTime;
+                remainingBatt = vehMaxBattery;
+                currentRouteNodes.push_back(bestStation);
+
+                continue;
+            }
+
+            // Không tìm được gì -> kết thúc route
+            break;
         }
 
-        // Kết thúc tuyến, quay lại depot
-        currentRoute.push_back(depotId);
+        // === HOÀN TẤT ROUTE ===
+        if (!addedAny && !unserved.empty()) {
+            consecutiveFailures++;
 
-        // Thêm node vào đối tượng Route
-        for (size_t i = 0; i < currentRoute.size(); ++i)
-            route.addNode(currentRoute[i], i);
+            if (consecutiveFailures >= 3) {
+                std::cerr << "ERROR: Cannot serve remaining customers after multiple attempts.\n";
+                std::cerr << "Remaining: " << unserved.size() << " customers\n";
 
-        if (route.isFeasible()) {
-            sol.addRoute(route);
-        } else {
-            std::cerr << "Warning: infeasible route skipped\n";
+                // In thông tin chi tiết
+                for (int id : unserved) {
+                    auto custNode = std::dynamic_pointer_cast<Customer>(instance->getNodeById(id));
+                    double minDist = std::numeric_limits<double>::max();
+                    for (int sid : stationIds) {
+                        double d = instance->getDistance(sid, id);
+                        minDist = std::min(minDist, d);
+                    }
+                    double depotDist = instance->getDistance(depotId, id);
+
+                    std::cerr << "  Customer " << id << ": demand=" << custNode->getDemand()
+                              << ", depot_dist=" << depotDist
+                              << ", nearest_station_dist=" << minDist
+                              << ", TW=[" << custNode->getReadyTime() << "," << custNode->getDueDate() << "]\n";
+                }
+                break;
+            }
+            continue;
         }
+
+        if (addedAny) {
+            for (size_t i = 0; i < currentRouteNodes.size(); ++i) {
+                route.addNode(currentRouteNodes[i], i + 1);
+            }
+
+            route.evaluate();
+
+            if (route.isFeasible()) {
+                sol.addRoute(route);
+                consecutiveFailures = 0;
+            } else {
+                for (int nodeId : currentRouteNodes) {
+                    if (dynamic_cast<Customer*>(instance->getNodeById(nodeId).get()) != nullptr) {
+                        unserved.push_back(nodeId);
+                    }
+                }
+                consecutiveFailures++;
+            }
+        }
+    }
+
+    if (!unserved.empty()) {
+        std::cerr << "\n⚠ WARNING: " << unserved.size() << " customers could not be served!\n";
     }
 
     sol.evaluateRoutes();
-    std::cout << "Initial Solution built: " << sol.getNumRoutes() << " routes.\n";
+
+    std::cout << "\n========================================\n";
+    std::cout << "Initial Solution Summary:\n";
+    std::cout << "  Routes: " << sol.getNumRoutes() << "\n";
+    std::cout << "  Unserved: " << unserved.size() << "\n";
+    std::cout << "  Total Distance: " << sol.getTotalDistance() << "\n";
+    std::cout << "  Feasible: " << (sol.isFeasible() ? "YES" : "NO") << "\n";
+    std::cout << "========================================\n";
+
     return sol;
 }
 
@@ -254,6 +499,7 @@ std::vector<Solution> ALNS::solve() {
     bestSolution = currentSolution;
     std::cout << "[LOG] Initial solution: " << bestSolution.getNumRoutes()
               << " routes, Total distance: " << bestSolution.getTotalDistance() << std::endl;
+    currentSolution.toString();
 
 
     // [cite: 282]

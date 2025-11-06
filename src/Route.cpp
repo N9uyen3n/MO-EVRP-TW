@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <algorithm> // Cho std::max
 #include <cmath>     // Cho std::abs (kiểm tra số thực)
+#include <iostream>
+#include <ostream>
 
 /**
  * @brief Khởi tạo một tuyến đường mới, ban đầu chỉ chứa depot (bắt đầu và kết thúc).
@@ -27,7 +29,7 @@ Route::Route(int id, std::shared_ptr<Vehicle> vehicle, const std::shared_ptr<Ins
  */
 void Route::addNode(int nodeId, size_t position) {
     if (position < 1 || position > nodeSequence.size() - 1) {
-        throw std::out_of_range("Vị trí thêm node không hợp lệ. Phải nằm giữa 2 depot.");
+        throw std::out_of_range("Vi tri them node khong hop le. Phai nam giua 2 depot.");
     }
     // Chèn vào *trước* vị trí 'position'
     nodeSequence.insert(nodeSequence.begin() + position, nodeId);
@@ -40,7 +42,7 @@ void Route::addNode(int nodeId, size_t position) {
  */
 void Route::removeNode(size_t position) {
     if (position < 1 || position > nodeSequence.size() - 2) {
-        throw std::out_of_range("Vị trí xóa node không hợp lệ. Không thể xóa depot.");
+        throw std::out_of_range("Vi tri xoa node khong hợp lệ. Khong the xoa depot.");
     }
     nodeSequence.erase(nodeSequence.begin() + position);
     evaluate(); // Đánh giá lại tuyến đường
@@ -84,7 +86,7 @@ void Route::evaluate() {
     // 3. Khởi tạo trạng thái tại Depot (bắt đầu)
     auto start_depot = std::dynamic_pointer_cast<Depot>(instance->getNodeById(0));
     states[0].arrivalTime = start_depot->getReadyTime();
-    states[0].departureTime = start_depot->getDueDate();
+    states[0].departureTime = start_depot->getReadyTime();
     states[0].remainingBattery = vehicle->getBatteryCapacity(); // Pin đầy
     states[0].remainingLoad = vehicle->getCapacity();
     states[0].chargeAmount = 0.0;
@@ -243,4 +245,12 @@ double Route::getTotalChargeAmount() const{
 
 double Route::getTotalTime() const{
     return evalResult.totalTime;
+}
+
+void Route::toString() const {
+    std::cout << "Route Id:" << id <<std::endl;
+    for (size_t i = 0; i < nodeSequence.size() - 1; ++i) {
+        std::cout << nodeSequence[i] << "->";
+    }
+    std::cout << nodeSequence[nodeSequence.size() - 1] << std::endl;
 }

@@ -37,7 +37,9 @@ std::string Node::getStringId() const {
 }
 std::string Node::toString() const {
     std::stringstream ss;
-    ss << "Node(id: " << id << ", String ID: " << stringId <<", x: " << x << ", y: " << y << ")";
+    // ss << "Node(id: " << id << ", String ID: " << stringId <<", x: " << x << ", y: " << y << ")";
+    ss << "Node(id: " << id << " , stringId: " << stringId << " , x: " << x << ", y: " <<
+     y << ", readyTime: " << readyTime << ", dueDate: " << dueDate << ")";
     return ss.str();
 }
 

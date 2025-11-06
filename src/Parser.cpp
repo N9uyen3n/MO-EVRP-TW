@@ -69,12 +69,14 @@ std::shared_ptr<Instance> Parser::parse(const std::string& filename) {
 
             if (firstChar == 'D' || firstChar == 'S' || firstChar == 'C') {
                 if (typeStr == "d") {
-                    nodes.push_back(std::make_shared<Depot>(id, stringId, x, y));
+                    nodes.push_back(std::make_shared<Depot>(id, stringId, x, y,
+                        readyTime, dueDate));
                 } else if (typeStr == "c") {
                     nodes.push_back(std::make_shared<Customer>(id, stringId, x, y, demand,
                         readyTime, dueDate, serviceTime));
                 } else if (typeStr == "f") {
-                    nodes.push_back(std::make_shared<Station>(id, stringId, x, y, 0.0));
+                    nodes.push_back(std::make_shared<Station>(id, stringId, x, y,
+                        readyTime, dueDate, chargingRate));
                 }
 
             }
@@ -83,16 +85,16 @@ std::shared_ptr<Instance> Parser::parse(const std::string& filename) {
     }
 
     // Post-process stations to add the correct charging rate
-    for (auto& node : nodes) {
-        // Use dynamic_cast to check if a Node is actually a Station
-        if (auto station = std::dynamic_pointer_cast<Station>(node)) {
-            // This is inefficient, we are creating new stations, it's better to modify them.
-            // For now, let's find and replace.
-            // A better design would be to store chargingRate in the parser and pass it to constructor.
-            // But let's stick to this for simplicity of demonstration.
-            *station = Station(station->getId(), station->getX(), station->getY(), chargingRate);
-        }
-    }
+    // for (auto& node : nodes) {
+    //     // Use dynamic_cast to check if a Node is actually a Station
+    //     if (auto station = std::dynamic_pointer_cast<Station>(node)) {
+    //         // This is inefficient, we are creating new stations, it's better to modify them.
+    //         // For now, let's find and replace.
+    //         // A better design would be to store chargingRate in the parser and pass it to constructor.
+    //         // But let's stick to this for simplicity of demonstration.
+    //         station = Station(station->getId(), station->getX(), station->getY(), chargingRate);
+    //     }
+    // }
 
     file.close();
 

@@ -83,6 +83,15 @@ double Solution::getTotalTime() const {
     }
     return total;
 }
+
+double Solution::getMaxTime() const {
+    double total = 0.0;
+    for (const auto& route : routes) {
+        if (total < route.getTotalTime()) total = route.getTotalTime(); // Lấy từ evalResult của route
+    }
+    return total;
+}
+
 /**
  * @brief Hàm trả về số xe
  */
@@ -151,6 +160,8 @@ bool Solution::checkGlobalFeasibility() const {
 }
 
 void Solution::toString() const {
+    std::cout << "Total Vehicles: " << getTotalVehicles() << " Total Distance: " << getTotalDistance()
+    << " Total Energy: " << getTotalEnergy() << " Total Time: " << getTotalTime() << " Max Time: " << getMaxTime() << std::endl;
     for (const auto& route : routes) {
         route.toString();
         // std::cout << std::endl;

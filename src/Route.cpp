@@ -248,7 +248,9 @@ double Route::getTotalTime() const{
 }
 
 void Route::toString() const {
-    std::cout << "Route Id:" << id <<std::endl;
+    std::cout << "Route Id:" << id << " - Total Distance: " << evalResult.totalDistance <<
+        " - Total Time: " << evalResult.totalTime <<
+        " - Total Charge Amount: " << evalResult.totalChargeAmount << std::endl;
     for (size_t i = 0; i < nodeSequence.size() - 1; ++i) {
         std::cout << nodeSequence[i] << "->";
     }

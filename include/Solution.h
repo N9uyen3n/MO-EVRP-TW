@@ -19,6 +19,7 @@ public:
     double getTotalDistance() const;
     double getTotalEnergy() const;
     double getTotalTime() const;
+    double getMaxTime() const;
     int getTotalVehicles()const;
     bool isFeasible() const;
 

@@ -44,9 +44,11 @@ int main(int argc, char* argv[]) {
         // instancePath = "data/solomon/c101C10.txt";
         // instancePath = "data/solomon/rc204C15.txt";
         // instancePath = "data/solomon/c103C5.txt";
-        // instancePath = "data/solomon/c208C15.txt";
-        // instancePath = "data/solomon/c101_21.txt";
-        instancePath = "data/solomon/rc202C15.txt";
+        // instancePath = "../data/solomon/c208C15.txt";
+        // instancePath = "../data/solomon/c101_21.txt";
+        instancePath = "../data/solomon/r107_21.txt";
+
+        // instancePath = "../data/solomon/rc202C15.txt";
 
 
         std::cout << "[INFO] No instance file provided. Using default: " << instancePath << "\n";

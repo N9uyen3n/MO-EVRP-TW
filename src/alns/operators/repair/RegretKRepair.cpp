@@ -10,36 +10,46 @@ std::string RegretKRepair::getName() const {
     return "Regret-" + std::to_string(k_regret) + " Repair";
 }
 
+// Helper function
+namespace {
+void createNewRouteForCustomer(Solution& solution, int customerId, std::shared_ptr<Instance> instance) {
+    int newRouteId = solution.getNumRoutes();
+    auto vehicle = std::make_shared<Vehicle>(
+        newRouteId,
+        instance->getVehicleCapacity(),
+        instance->getVehicleBattery(),
+        instance->getVehicleEnergyRate()
+    );
+    Route newRoute(newRouteId, vehicle, instance);
+    newRoute.addNode(customerId, 1);
+    newRoute.evaluate();
+    solution.addRoute(newRoute);
+}
+}
+
+
 void RegretKRepair::execute(Solution& solution, const std::vector<int>& unservedCustomers, std::mt19937& rng) {
     std::vector<int> remainingCustomers = unservedCustomers;
 
-    // Lặp cho đến khi chèn hết khách hàng
     while (!remainingCustomers.empty()) {
         int bestCustId = -1;
         int bestRouteIdx = -1;
         int bestPos = -1;
         double maxRegret = -1.0;
 
-        // Tìm Regret cho từng khách hàng
         for (int custId : remainingCustomers) {
-            // Tìm k vị trí chèn tốt nhất cho khách hàng này
             std::vector<InsertionCost> kBest = findKBestInsertions(custId, solution, rng);
 
-            if (kBest.empty()) continue; // Không chèn được vào đâu
+            if (kBest.empty()) continue;
 
-            // Tính giá trị Regret
-            // Regret = Cost(Best_k) - Cost(Best_1)
-            // (Hoặc tổng hiệu số tùy biến thể. Ở đây dùng Regret-2 cơ bản: 2nd - 1st)
             double regretVal = 0.0;
             double bestCost = kBest[0].cost;
 
             if (kBest.size() >= k_regret) {
-                regretVal = kBest[k_regret - 1].cost - bestCost;
-            } else if (kBest.size() > 1) {
-                // Nếu không đủ k vị trí, lấy vị trí tệ nhất tìm được trừ vị trí tốt nhất
-                regretVal = kBest.back().cost - bestCost;
+                for(size_t i = 1; i < k_regret; ++i) {
+                    regretVal += (kBest[i].cost - bestCost);
+                }
             } else {
-                // Chỉ có đúng 1 chỗ để chèn -> Regret rất lớn (cần ưu tiên chèn ngay)
                 regretVal = std::numeric_limits<double>::max(); 
             }
 
@@ -51,55 +61,85 @@ void RegretKRepair::execute(Solution& solution, const std::vector<int>& unserved
             }
         }
 
-        // Thực hiện chèn khách hàng có Regret lớn nhất
         if (bestCustId != -1) {
             solution.getRoutes()[bestRouteIdx].addNode(bestCustId, bestPos);
             solution.getRoutes()[bestRouteIdx].evaluate();
-
-            // Xóa khách hàng này khỏi danh sách remaining
             remainingCustomers.erase(std::remove(remainingCustomers.begin(), remainingCustomers.end(), bestCustId), remainingCustomers.end());
         } else {
-            // Không chèn được khách nào nữa (Infeasible toàn tập)
-            // Break để tránh lặp vô tận
-            break; 
+            // If no customer could be inserted, create a new route for the first one
+            if (!remainingCustomers.empty()) {
+                createNewRouteForCustomer(solution, remainingCustomers[0], instance);
+                remainingCustomers.erase(remainingCustomers.begin());
+            }
         }
     }
 }
 
 std::vector<RegretKRepair::InsertionCost> RegretKRepair::findKBestInsertions(int customerId, Solution& solution, std::mt19937& rng) {
-    std::vector<InsertionCost> allInsertions;
+    
+    struct Candidate {
+        int routeIdx;
+        size_t position;
+        double estimatedCost;
+        bool operator<(const Candidate& other) const {
+            return estimatedCost < other.estimatedCost;
+        }
+    };
+
+    std::vector<Candidate> candidates;
     auto& routes = solution.getRoutes();
 
+    // Tier 1 & 2: Generate candidates with fast, approximate checks
     for (int r = 0; r < routes.size(); ++r) {
-        const auto& nodes = routes[r].getNodes();
-        for (size_t j = 0; j < nodes.size() - 1; ++j) {
-            InsertionResult res = routes[r].checkInsertionCost(customerId, j + 1);
-            if (res.isFeasible) {
-                // Hàm mục tiêu tổng quát cho Regret (thường là Distance)
-                double baseCost = res.deltaDistance; 
-
-                // Thêm Nhiễu (Noise) để đa dạng hóa
-                // Cost' = Cost * (1 + random(-noise, noise))
-                if (noiseParam > 0) {
-                    std::uniform_real_distribution<double> dist(-noiseParam, noiseParam);
-                    baseCost *= (1.0 + dist(rng));
-                    if (baseCost < 0) baseCost = 0; // An toàn
-                }
-
-                allInsertions.push_back({r, j + 1, baseCost, true});
+        for (size_t pos = 1; pos < routes[r].getNodes().size(); ++pos) {
+            if (!routes[r].canPossiblyInsert(customerId, pos)) {
+                continue;
+            }
+            auto fastResult = routes[r].fastForwardCheck(customerId, pos);
+            if (fastResult.isFeasible) {
+                candidates.push_back({r, pos, fastResult.deltaDistance});
             }
         }
     }
 
-    // Sắp xếp tăng dần theo cost
-    std::sort(allInsertions.begin(), allInsertions.end(), [](const InsertionCost& a, const InsertionCost& b) {
+    if (candidates.empty()) {
+        return {};
+    }
+
+    std::sort(candidates.begin(), candidates.end());
+
+    // Tier 3: Verify top candidates with exact cost
+    std::vector<InsertionCost> exactInsertions;
+    const int VERIFY_COUNT = k_regret * 2; // Verify more candidates than needed
+
+    for (int i = 0; i < std::min((int)candidates.size(), VERIFY_COUNT); ++i) {
+        auto& candidate = candidates[i];
+        auto exactResult = routes[candidate.routeIdx].checkInsertionCost(customerId, candidate.position);
+
+        if (exactResult.isFeasible) {
+            double baseCost = exactResult.deltaDistance;
+            if (noiseParam > 0) {
+                std::uniform_real_distribution<double> dist(-noiseParam, noiseParam);
+                baseCost *= (1.0 + dist(rng));
+                if (baseCost < 0) baseCost = 0;
+            }
+            exactInsertions.push_back({candidate.routeIdx, candidate.position, baseCost, true});
+        }
+    }
+
+    if (exactInsertions.empty()) {
+        return {};
+    }
+
+    // Sort again based on exact costs
+    std::sort(exactInsertions.begin(), exactInsertions.end(), [](const InsertionCost& a, const InsertionCost& b) {
         return a.cost < b.cost;
     });
 
-    // Chỉ lấy top k
-    if (allInsertions.size() > k_regret) {
-        allInsertions.resize(k_regret);
+    // Return only the top k results
+    if (exactInsertions.size() > k_regret) {
+        exactInsertions.resize(k_regret);
     }
 
-    return allInsertions;
+    return exactInsertions;
 }

@@ -95,7 +95,15 @@ private:
 
     // --- Heuristics Helpers ---
     struct RouteCentroid { double x, y; };
+    std::vector<RouteCentroid> computeAllCentroids(const Solution& solution);
     RouteCentroid computeCentroid(const Route& route) const;
-    bool areRoutesClose(const Route& r1, const Route& r2, double threshold = 50.0) const;
-    std::vector<int> getBoundaryNodes(const Route& route) const; // Lấy node đầu/cuối để optimize
+    bool areRoutesClose(const RouteCentroid& c1, const RouteCentroid& c2, double threshold = 50.0) const;
+    std::vector<std::pair<int, double>> rankNodesByRemovalSavings(const Route& route);
+    
+    // For Position-level filtering
+    std::vector<size_t> findBestInsertionPositions(const Route& route, int nodeId, int topK = 5) const;
+
+private:
+    // Different heuristics for the public findBestInsertionPositions
+    std::vector<size_t> findBestInsertionPositions_TimeAware(const Route& route, int nodeId, int topK) const;
 };

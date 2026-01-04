@@ -1,80 +1,114 @@
 #include "../../../../include/alns/operators/repair/GreedyDistanceInsertion.h"
 #include "../../../../include/core/Solution.h"
 #include "../../../../include/core/Route.h"
-#include "../../../../include/core/Vehicle.h" // [BẮT BUỘC] Để tạo xe mới
+#include "../../../../include/core/Vehicle.h"
+#include "../../../../include/core/Instance.h"
+#include "../../../../include/core/Customer.h"
 #include <algorithm>
 #include <limits>
 #include <vector>
 
-// 1. Triển khai Constructor
+namespace { // Anonymous namespace for file-local helper function
+    void createNewRouteForCustomer(Solution& solution, int customerId, std::shared_ptr<Instance> instance) {
+        int newRouteId = solution.getNumRoutes();
+        auto vehicle = std::make_shared<Vehicle>(
+            newRouteId,
+            instance->getVehicleCapacity(),
+            instance->getVehicleBattery(),
+            instance->getVehicleEnergyRate()
+        );
+        Route newRoute(newRouteId, vehicle, instance);
+        newRoute.addNode(customerId, 1);
+        newRoute.evaluate();
+        solution.addRoute(newRoute);
+    }
+}
+
 GreedyDistanceInsertion::GreedyDistanceInsertion(std::shared_ptr<Instance> inst)
     : instance(inst) {}
 
-// 2. Triển khai getName
 std::string GreedyDistanceInsertion::getName() const {
     return "Greedy Distance Insertion";
 }
 
-// 3. Triển khai execute
 void GreedyDistanceInsertion::execute(Solution& solution, const std::vector<int>& unservedCustomers, std::mt19937& rng) {
-    // Copy danh sách để xử lý và xáo trộn ngẫu nhiên
     std::vector<int> customers = unservedCustomers;
     std::shuffle(customers.begin(), customers.end(), rng);
 
     auto& routes = solution.getRoutes();
 
     for (int customerId : customers) {
-        int bestRouteIdx = -1;
-        int bestPos = -1;
-        double minCost = std::numeric_limits<double>::max();
-
-        // --- BƯỚC 1: Tìm vị trí chèn tốt nhất trong các tuyến hiện có ---
+        
+        auto customerNode = instance->getNodeById(customerId);
+        double customerDemand = std::static_pointer_cast<Customer>(customerNode)->getDemand();
+        
+        std::vector<int> feasibleRoutesIndices;
         for (int r = 0; r < routes.size(); ++r) {
+            if (routes[r].quickCapacityCheck(customerDemand)) {
+                feasibleRoutesIndices.push_back(r);
+            }
+        }
+        
+        if (feasibleRoutesIndices.empty()) {
+            createNewRouteForCustomer(solution, customerId, instance);
+            continue;
+        }
+
+        struct Candidate {
+            int routeIdx;
+            size_t position;
+            double estimatedCost;
+            bool operator<(const Candidate& other) const {
+                return estimatedCost < other.estimatedCost;
+            }
+        };
+        
+        std::vector<Candidate> candidates;
+        
+        for (int r : feasibleRoutesIndices) {
             const auto& nodes = routes[r].getNodes();
-            // Duyệt các vị trí (chèn vào sau node j, tức là vị trí j+1)
-            for (size_t j = 0; j < nodes.size() - 1; ++j) {
-
-                InsertionResult res = routes[r].checkInsertionCost(customerId, j + 1);
-
-                if (res.isFeasible) {
-                    // MỤC TIÊU: Minimize Delta Distance (Quãng đường tăng thêm ít nhất)
-                    if (res.deltaDistance < minCost) {
-                        minCost = res.deltaDistance;
-                        bestRouteIdx = r;
-                        bestPos = j + 1;
-                    }
+            for (size_t pos = 1; pos < nodes.size(); ++pos) {
+                
+                if (!routes[r].canPossiblyInsert(customerId, pos)) {
+                    continue;
+                }
+                
+                auto fastResult = routes[r].fastForwardCheck(customerId, pos);
+                
+                if (fastResult.isFeasible) {
+                    candidates.push_back({r, pos, fastResult.deltaDistance});
                 }
             }
         }
-
-        // --- BƯỚC 2: Thực hiện chèn hoặc TẠO TUYẾN MỚI ---
-        if (bestRouteIdx != -1) {
-            // Trường hợp A: Chèn vào tuyến cũ
-            routes[bestRouteIdx].addNode(customerId, bestPos);
-            routes[bestRouteIdx].evaluate(); // Cập nhật trạng thái tuyến
-        } else {
-            // Trường hợp B: Không tìm thấy vị trí khả thi -> TẠO TUYẾN MỚI
-            // Nếu không làm bước này, khách hàng sẽ bị bỏ sót -> Solution Invalid.
-
-            int newRouteId = solution.getNumRoutes();
-
-            // Tạo xe mới dựa trên thông số từ Instance
-            auto vehicle = std::make_shared<Vehicle>(
-                newRouteId,
-                instance->getVehicleCapacity(),     // 1. Capacity
-                instance->getVehicleBattery(),      // 2. Battery
-                instance->getVehicleEnergyRate()    // 3. EnergyRate
+        
+        if (candidates.empty()) {
+            createNewRouteForCustomer(solution, customerId, instance);
+            continue;
+        }
+        
+        std::sort(candidates.begin(), candidates.end());
+        
+        const int MAX_VERIFY = 3;
+        bool inserted = false;
+        
+        for (int i = 0; i < std::min(MAX_VERIFY, (int)candidates.size()); ++i) {
+            auto& candidate = candidates[i];
+            
+            auto exactResult = routes[candidate.routeIdx].checkInsertionCost(
+                customerId, 
+                candidate.position
             );
-
-            // Khởi tạo tuyến mới
-            Route newRoute(newRouteId, vehicle, instance);
-
-            // Chèn khách hàng vào vị trí 1 (giữa 2 depot: 0 -> Khách -> 0)
-            newRoute.addNode(customerId, 1);
-            newRoute.evaluate();
-
-            // Thêm tuyến vào giải pháp
-            solution.addRoute(newRoute);
+            
+            if (exactResult.isFeasible) {
+                routes[candidate.routeIdx].addNode(customerId, candidate.position);
+                routes[candidate.routeIdx].evaluate();
+                inserted = true;
+                break;
+            }
+        }
+        
+        if (!inserted) {
+            createNewRouteForCustomer(solution, customerId, instance);
         }
     }
 }

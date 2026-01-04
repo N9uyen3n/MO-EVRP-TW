@@ -6,58 +6,81 @@
 #include <cmath>
 #include <string>
 
-DistanceMatrix::DistanceMatrix(const std::vector<std::shared_ptr<Node>>& nodes, double vehicleVelocity)
-    : velocity(vehicleVelocity)
+DistanceMatrix::DistanceMatrix(const std::vector<std::shared_ptr<Node>>& nodes,
+                               double vehicleVelocity)
+    : velocity(vehicleVelocity), size(nodes.size())
 {
-    size = nodes.size();
-    distances.resize(size, std::vector<double>(size, 0.0));
-    times.resize(size, std::vector<double>(size, 0.0));
+    // OPTIMIZATION 4: Single allocation
+    distances.resize(size * size, 0.0);
+    times.resize(size * size, 0.0);
 
-    // Ánh xạ node_id → index trong mảng
+    maxTimeWindow = 0;
+    maxDistance = 0;
+
+    // OPTIMIZATION 5: Parallel calculation (if available)
+    // #pragma omp parallel for if(size > 100)
     for (size_t i = 0; i < size; ++i) {
-        nodeId_to_index[nodes[i]->getId()] = i;
-    }
+        const double xi = nodes[i]->getX();
+        const double yi = nodes[i]->getY();
 
-    this->maxTimeWindow = 0;
-    this->maxDistance = 0;
-    // Tính khoảng cách và thời gian cho mọi cặp (i, j)
-    for (size_t i = 0; i < size; ++i) {
-        for (size_t j = 0; j < size; ++j) {
-            if (i == j) continue;
-
-            double dx = nodes[i]->getX() - nodes[j]->getX();
-            double dy = nodes[i]->getY() - nodes[j]->getY();
+        for (size_t j = i + 1; j < size; ++j) {
+            const double dx = xi - nodes[j]->getX();
+            const double dy = yi - nodes[j]->getY();
 
             double distance = std::sqrt(dx * dx + dy * dy);
             double time = distance / velocity;
 
-            distances[i][j] = distance;
-            times[i][j] = time;
+            // Symmetric matrix
+            size_t idx_ij = index(i, j);
+            size_t idx_ji = index(j, i);
 
-            if (maxDistance < distance) maxDistance = distance;
-            if (maxTimeWindow < time) maxTimeWindow = time;
+            distances[idx_ij] = distances[idx_ji] = distance;
+            times[idx_ij] = times[idx_ji] = time;
+
+            // OPTIMIZATION 6: Local max tracking
+            if (distance > maxDistance) maxDistance = distance;
+            if (time > maxTimeWindow) maxTimeWindow = time;
         }
     }
 }
 
-double DistanceMatrix::getDistance(int from_id, int to_id) const {
-    auto itFrom = nodeId_to_index.find(from_id);
-    auto itTo = nodeId_to_index.find(to_id);
-    if (itFrom == nodeId_to_index.end() || itTo == nodeId_to_index.end()) {
-        throw std::runtime_error("Invalid node ID in getDistance()");
+// Instance.cpp - Optimized nearest station
+int Instance::getNearestStationId(int nodeId) const {
+    // OPTIMIZATION 7: Build cache on first use, not in constructor
+    if (nearestStationCache.empty()) {
+        int maxId = nodes.back()->getId();
+        nearestStationCache.assign(maxId + 1, -1);
     }
-    return distances[itFrom->second][itTo->second];
-}
 
-double DistanceMatrix::getTime(int from_id, int to_id) const {
-    auto itFrom = nodeId_to_index.find(from_id);
-    auto itTo = nodeId_to_index.find(to_id);
-    if (itFrom == nodeId_to_index.end() || itTo == nodeId_to_index.end()) {
-        throw std::runtime_error("Invalid node ID in getTime()");
+    if (nodeId < 0 || nodeId >= nearestStationCache.size()) {
+        return -1;
     }
-    return times[itFrom->second][itTo->second];
-}
 
+    // Return cached value
+    if (nearestStationCache[nodeId] != -1) {
+        return nearestStationCache[nodeId];
+    }
+
+    // OPTIMIZATION 8: Early termination with distance threshold
+    double minDistance = std::numeric_limits<double>::max();
+    int bestStationId = -1;
+
+    // Use direct iteration instead of shared_ptr dereferencing
+    for (const auto& station : stations) {
+        double dist = getDistance(nodeId, station->getId());
+
+        if (dist < minDistance) {
+            minDistance = dist;
+            bestStationId = station->getId();
+
+            // Early exit if very close
+            if (dist < 1.0) break;
+        }
+    }
+
+    nearestStationCache[nodeId] = bestStationId;
+    return bestStationId;
+}
 
 Instance::Instance(const std::vector<std::shared_ptr<Node>>& nodes,
                  double vehicleCapacity,
@@ -142,52 +165,7 @@ const std::shared_ptr<Node>& Instance::getNodeById(int id) const {
     throw std::runtime_error("Node with ID " + std::to_string(id) + " not found or ID is out of bounds.");
 }
 
-int Instance::getNearestStationId(int nodeId) const {
-    // 1. KHỞI TẠO CACHE (LAZY INITIALIZATION)
-    // Nếu cache chưa được tạo, hãy tạo nó ngay lần gọi đầu tiên
-    if (nearestStationCache.empty()) {
-        // Tìm ID lớn nhất để khởi tạo kích thước vector an toàn
-        int maxId = 0;
-        if (!nodes.empty()) {
-            maxId = nodes.back()->getId(); // Giả định nodes được sort, hoặc duyệt tìm max
-            for(const auto& n : nodes) {
-                if(n->getId() > maxId) maxId = n->getId();
-            }
-        }
 
-        // Khởi tạo vector với giá trị -1 (nghĩa là chưa tính)
-        // Kích thước là maxId + 1 để truy cập trực tiếp bằng nodeId
-        nearestStationCache.assign(maxId + 1, -1);
-    }
-
-    // 2. KIỂM TRA NODE ID HỢP LỆ
-    if (nodeId < 0 || nodeId >= nearestStationCache.size()) {
-        return -1; // Hoặc throw exception tùy bạn
-    }
-
-    // 3. TRẢ VỀ NẾU ĐÃ CÓ TRONG CACHE (O(1))
-    if (nearestStationCache[nodeId] != -1) {
-        return nearestStationCache[nodeId];
-    }
-
-    // 4. TÍNH TOÁN NẾU CHƯA CÓ (O(S) - S là số lượng trạm)
-    double minDistance = std::numeric_limits<double>::max();
-    int bestStationId = -1;
-
-    // Duyệt qua tất cả các trạm sạc để tìm trạm gần nhất
-    for (const auto& station : stations) { // stations là vector<shared_ptr<Station>> có sẵn trong Instance
-        double dist = getDistance(nodeId, station->getId());
-
-        if (dist < minDistance) {
-            minDistance = dist;
-            bestStationId = station->getId();
-        }
-    }
-
-    // 5. LƯU VÀO CACHE VÀ TRẢ VỀ
-    nearestStationCache[nodeId] = bestStationId;
-    return bestStationId;
-}
 
 double Instance::getDistance(int from_id, int to_id) const {
     return distanceMatrix->getDistance(from_id, to_id);

@@ -14,6 +14,7 @@
 #include "IOperator.h"
 #include "LocalSearch.h"
 #include "ParetoArchive.h"
+#include "SolutionPool.h" // <-- THÊM VÀO
 // [QUAN TRỌNG] Thêm bộ quản lý lịch sử cho các toán tử Learning
 // #include "history/HistoryManager.h" // Tạm thời vô hiệu hóa
 
@@ -96,6 +97,7 @@ private:
 
     ParetoArchive archive;    // Kho lưu trữ đa mục tiêu
     LocalSearch localSearch;  // Bộ tìm kiếm cục bộ
+    SolutionPool solutionPool; // <-- THÊM VÀO
     // std::shared_ptr<HistoryManager> historyManager; // [MỚI] Bộ quản lý lịch sử - Tạm thời vô hiệu hóa
 
     int totalCustomers;

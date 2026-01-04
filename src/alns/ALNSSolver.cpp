@@ -82,6 +82,7 @@ ALNSSolver::ALNSSolver(std::shared_ptr<Instance> instance, ALNSConfig config,
       config(config),
       archive(100),
       localSearch(instance),
+      solutionPool(2, instance), // <-- KHỞI TẠO POOL
       totalCustomers(0)
 {
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -155,7 +156,6 @@ std::vector<Solution> ALNSSolver::solve() {
     this->archive.tryAdd(s_current);
 
     if (!s_current.isFeasible()) {
-        // No specific error log function in the interface, std::cerr is an alternative
         std::cerr << "[ERROR] Initial solution is not feasible!" << std::endl;
         return {};
     }
@@ -164,33 +164,55 @@ std::vector<Solution> ALNSSolver::solve() {
     currentTemperature = config.startTemperature;
     int iterationsWithoutImprovement = 0;
 
+    // --- PROFILING SETUP ---
+    struct TimingStats {
+        long long destroy_us = 0;
+        long long repair_us = 0;
+        long long evaluate_us = 0;
+        long long ls_us = 0;
+        long long acceptance_us = 0;
+    } stats;
+    auto now = std::chrono::high_resolution_clock::now;
+    decltype(now()) t1, t2, t3, t4, t5, t6;
+    // --- END PROFILING SETUP ---
+
     std::uniform_real_distribution<> dis(0.0, 1.0);
 
     for (int i = 0; i < config.maxIterations; ++i) {
-        Solution s_new = this->s_current;
-        int n_to_remove = calculateNodesToRemove();
+        Solution& s_new = solutionPool.acquire();
+        s_new = this->s_current; 
+        
+        t1 = now(); // Start Destroy
 
-        // 1. Destroy
+        int n_to_remove = calculateNodesToRemove();
         int destroy_op_idx = destroyPool.select(randomEngine);
         auto destroy_op = std::static_pointer_cast<IDestroyOperator>(destroyPool.operators[destroy_op_idx]);
         std::vector<int> unserved_custs = destroy_op->execute(s_new, n_to_remove, randomEngine);
         destroyPool.usages[destroy_op_idx]++;
 
-        // 2. Repair
+        t2 = now(); // Start Repair
+        stats.destroy_us += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+
         int repair_op_idx = repairPool.select(randomEngine);
         auto repair_op = std::static_pointer_cast<IRepairOperator>(repairPool.operators[repair_op_idx]);
         repair_op->execute(s_new, unserved_custs, randomEngine);
         repairPool.usages[repair_op_idx]++;
 
+        t3 = now(); // Start Evaluate
+        stats.repair_us += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
+
         s_new.evaluateRoutes();
+
+        t4 = now(); // Start Local Search
+        stats.evaluate_us += std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
 
         if (!s_new.isFeasible()) {
             destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
             repairPool.scores[repair_op_idx] += config.scoreIdentical;
+            solutionPool.release(s_new);
             continue;
         }
 
-        // 3. Local Search
         if (config.useLocalSearch) {
             std::uniform_int_distribution<> dis_ls(0, 99);
             if (dis_ls(randomEngine) < config.localSearchIntensity) {
@@ -198,8 +220,10 @@ std::vector<Solution> ALNSSolver::solve() {
             }
         }
 
+        t5 = now(); // Start Acceptance
+        stats.ls_us += std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count();
+
         std::string result = "Rejected";
-        // 4. Acceptance
         if (s_new.dominates(s_current)) {
             s_current = s_new;
             destroyPool.scores[destroy_op_idx] += config.scoreDominating;
@@ -226,6 +250,9 @@ std::vector<Solution> ALNSSolver::solve() {
             }
         }
         
+t6 = now();
+        stats.acceptance_us += std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count();
+        
         logger->logEvolutionStep(i, destroy_op->getName(), repair_op->getName(), result, s_new);
 
         if (s_current.dominates(s_best)) {
@@ -239,8 +266,8 @@ std::vector<Solution> ALNSSolver::solve() {
         }
 
         if ((i + 1) % config.segmentIterations == 0) {
-            auto now = std::chrono::high_resolution_clock::now();
-            long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+            auto now_progress = std::chrono::high_resolution_clock::now();
+            long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now_progress - startTime).count();
             logger->logProgress(i + 1, time_ms, this->archive);
             logger->logOperatorSegment(i + 1, destroyPool, repairPool);
             destroyPool.updateWeights(config.decayParameter);
@@ -250,6 +277,7 @@ std::vector<Solution> ALNSSolver::solve() {
         }
 
         iterationsWithoutImprovement++;
+        solutionPool.release(s_new);
         if (iterationsWithoutImprovement >= config.maxIterationsWithoutImprovement) {
             std::cout << "[Stop] Converged after " << iterationsWithoutImprovement << " iterations without improvement." << std::endl;
             break;
@@ -258,6 +286,24 @@ std::vector<Solution> ALNSSolver::solve() {
 
     auto endTime = std::chrono::high_resolution_clock::now();
     long long total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+    // --- PRINT PROFILING RESULTS ---
+    long long total_us = stats.destroy_us + stats.repair_us + stats.evaluate_us + stats.ls_us + stats.acceptance_us;
+    if (total_us == 0) total_us = 1; // Avoid division by zero
+    std::cout << "\n\n=== ALNS Iteration Breakdown (" << config.maxIterations << " iters) ===\n";
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "Component          Time (ms)    Percentage\n";
+    std::cout << "-------------------------------------------\n";
+    std::cout << "Destroy            " << std::setw(10) << stats.destroy_us / 1000.0 << "    " << std::setw(8) << (100.0 * stats.destroy_us / total_us) << "%\n";
+    std::cout << "Repair             " << std::setw(10) << stats.repair_us / 1000.0 << "    " << std::setw(8) << (100.0 * stats.repair_us / total_us) << "%\n";
+    std::cout << "Evaluate           " << std::setw(10) << stats.evaluate_us / 1000.0 << "    " << std::setw(8) << (100.0 * stats.evaluate_us / total_us) << "%\n";
+    std::cout << "LocalSearch        " << std::setw(10) << stats.ls_us / 1000.0 << "    " << std::setw(8) << (100.0 * stats.ls_us / total_us) << "%\n";
+    std::cout << "Acceptance         " << std::setw(10) << stats.acceptance_us / 1000.0 << "    " << std::setw(8) << (100.0 * stats.acceptance_us / total_us) << "%\n";
+    std::cout << "-------------------------------------------\n";
+    std::cout << "Total Profiled:    " << std::setw(10) << total_us / 1000.0 << "    " << "100.00%\n";
+    std::cout << "===========================================\n\n";
+    // --- END PROFILING ---
+
 
     logger->logFinalFront(this->archive);
     logger->logSummary(total_ms, config.maxIterations, this->archive.getSize());

@@ -58,7 +58,6 @@ void GreedyStationRepair::execute(Solution& solution, const std::vector<int>& un
     }
 }
 
-// [ĐÃ SỬA LẦN 3] - Chống trùng lặp trạm sạc
 GreedyStationRepair::Insertion GreedyStationRepair::findBestGreedyStationInsertion(int customerId, Solution& solution) {
     Insertion bestIns; // Mặc định cost là infinity
     auto& routes = solution.getRoutes();
@@ -71,7 +70,12 @@ GreedyStationRepair::Insertion GreedyStationRepair::findBestGreedyStationInserti
             size_t position = j + 1;
 
             // 1. Thử chèn bình thường (Chỉ khách hàng)
-            InsertionResult res = routes[r].checkInsertionCost(customerId, position);
+            InsertionResult res = {false}; // Mặc định là infeasible
+            
+            // --- TỐI ƯU HÓA: Chỉ gọi checkInsertionCost nếu qua được bounding check ---
+            if (routes[r].canPossiblyInsert(customerId, position)) {
+                res = routes[r].checkInsertionCost(customerId, position);
+            }
 
             if (res.isFeasible) {
                 if (res.deltaDistance < bestIns.cost) {

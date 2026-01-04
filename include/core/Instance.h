@@ -12,18 +12,32 @@
 
 struct DistanceMatrix {
     private:
-        std::vector<std::vector<double>> distances;
-        std::vector<std::vector<double>> times;
+        // OPTIMIZATION 1: Sử dụng 1D array thay vì 2D vector
+        std::vector<double> distances;  // size x size, flattened
+        std::vector<double> times;
         size_t size;
         double velocity;
-        std::map<int, size_t> nodeId_to_index;
+
+        // OPTIMIZATION 2: Direct array access thay vì map
+        // Giả định ID là contiguous từ 0 đến n-1
+        inline size_t index(int from, int to) const {
+            return from * size + to;
+        }
 
     public:
-        DistanceMatrix(const std::vector<std::shared_ptr<Node>>& nodes, double vehicleVelocity);
         double maxDistance;
         double maxTimeWindow;
-        double getDistance(int from_id, int to_id) const;
-        double getTime(int from_id, int to_id) const;
+
+        DistanceMatrix(const std::vector<std::shared_ptr<Node>>& nodes, double vehicleVelocity);
+
+        // OPTIMIZATION 3: Inline hot functions
+        inline double getDistance(int from_id, int to_id) const {
+            return distances[index(from_id, to_id)];
+        }
+
+        inline double getTime(int from_id, int to_id) const {
+            return times[index(from_id, to_id)];
+        }
 };
 
 class Instance {

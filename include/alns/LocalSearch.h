@@ -10,6 +10,7 @@ enum class MoveType {
     // Phase 1: Distance
     INTRA_RELOCATE, // Bao gồm cả Or-Opt (chuyển 1 node)
     INTRA_TWO_OPT,
+    INTRA_SWAP,     // Swap 2 nodes trong cùng route
     INTER_RELOCATE,
     INTER_SWAP,
     INTER_TWO_OPT,
@@ -17,7 +18,8 @@ enum class MoveType {
     // Phase 2: Charging
     STATION_INSERT,
     STATION_REMOVE,
-    STATION_SWAP, // Thay thế trạm này bằng trạm khác
+    STATION_REMOVAL,  // Xóa trạm sạc không cần thiết
+    STATION_SWAP,     // Thay thế trạm này bằng trạm khác
 
     // Phase 4: Vehicle Reduction
     ROUTE_MERGE // Cố gắng gộp 2 tuyến làm 1
@@ -92,6 +94,8 @@ private:
     // --- Operators (Charging) ---
     bool searchStationRemoval(Solution& solution, MoveDescriptor& bestMove, const LocalSearchWeights& weights);
     bool searchStationInsertion(Solution& solution, MoveDescriptor& bestMove, const LocalSearchWeights& weights);
+    bool repositionStations(Solution& solution);
+    bool optimizeChargingAmounts(Solution& solution);
 
     // --- Heuristics Helpers ---
     struct RouteCentroid { double x, y; };
@@ -99,6 +103,7 @@ private:
     RouteCentroid computeCentroid(const Route& route) const;
     bool areRoutesClose(const RouteCentroid& c1, const RouteCentroid& c2, double threshold = 50.0) const;
     std::vector<std::pair<int, double>> rankNodesByRemovalSavings(const Route& route);
+    bool mergeRoutes(Solution& solution, int targetRouteIdx, int sourceRouteIdx);
     
     // For Position-level filtering
     std::vector<size_t> findBestInsertionPositions(const Route& route, int nodeId, int topK = 5) const;

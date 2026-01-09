@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.17)
 
 # Đặt tên dự án
-project(test13 LANGUAGES CXX)
+project(test14 LANGUAGES CXX)
 
 # Yêu cầu tiêu chuẩn C++17
 set(CMAKE_CXX_STANDARD 17)
@@ -43,10 +43,10 @@ target_include_directories(alns_lib PUBLIC
 # -------------------------------------------------------------
 # 3. Tạo file thực thi chính (Executable)
 # -------------------------------------------------------------
-add_executable(test13 src/main.cpp)
+add_executable(test14 src/main.cpp)
 
 # Liên kết thư viện alns_lib vào chương trình chính
-target_link_libraries(test13 PRIVATE alns_lib)
+target_link_libraries(test14 PRIVATE alns_lib)
 
 # -------------------------------------------------------------
 # 4. Tạo file thực thi kiểm thử (Test Executable) - Tùy chọn

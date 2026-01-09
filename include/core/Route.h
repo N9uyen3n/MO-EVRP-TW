@@ -45,6 +45,7 @@ public:
     Route(int id, std::shared_ptr<Vehicle> vehicle, const std::shared_ptr<Instance>& instance);
 
     int getId() const;
+    std::shared_ptr<Vehicle> getVehicle() const;
     void addNode(int nodeId, size_t position);
     void addNode(int nodeId);
     void removeNode(size_t position);
@@ -52,6 +53,7 @@ public:
     void reverseNodes(size_t i, size_t j);
 
     const std::vector<int>& getNodes() const;
+    std::vector<int> getCustomers() const; // Trả về danh sách ID khách hàng (không bao gồm station và depot)
     bool isFeasible() const;
     double getTotalDistance() const;
     double getTotalWaitTime() const;
@@ -59,6 +61,7 @@ public:
     double getTotalChargeAmount() const;
     double getTotalEnergyConsumption() const;
     double getTotalTime() const;
+    double getTotalDemand() const;
     void evaluate() const;
     const std::vector<NodeState>& getStates() const;
     int getNodeAt(size_t pos) const;
@@ -68,9 +71,9 @@ public:
     std::string toString() const;
     long long getHash() const;
 
-    InsertionResult checkInsertionCost(int customerId, size_t position) const;
-    bool canPossiblyInsert(int customerId, size_t position) const;
-    InsertionResult fastForwardCheck(int customerId, size_t position) const;
+    InsertionResult checkInsertionCost(int nodeId, size_t position) const;
+    bool canPossiblyInsert(int nodeIdToInsert, size_t position, int nodeIdToRemove = -1) const;
+    InsertionResult fastForwardCheck(int nodeId, size_t position) const;
     bool quickCapacityCheck(double demand) const;
 
 private:

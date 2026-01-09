@@ -42,11 +42,12 @@ int main(int argc, char* argv[]) {
         // Đường dẫn mặc định
         // instancePath = "data/solomon/c101C5.txt";
         // instancePath = "data/solomon/c101C10.txt";
-        // instancePath = "data/solomon/rc204C15.txt";
+        // instancePath = "../data/solomon/rc204C15.txt";
         // instancePath = "data/solomon/c103C5.txt";
         // instancePath = "../data/solomon/c208C15.txt";
         // instancePath = "../data/solomon/c101_21.txt";
-        instancePath = "../data/solomon/r107_21.txt";
+            instancePath = "../data/solomon/r107_21.txt";
+        // instancePath = "../data/solomon/c106C15.txt";
 
         // instancePath = "../data/solomon/rc202C15.txt";
 
@@ -71,9 +72,9 @@ int main(int argc, char* argv[]) {
         alns::ALNSConfig config;
 
         // --- Tham số cơ bản ---
-        config.maxIterations = 1000;
+        config.maxIterations = 2000;
         config.segmentIterations = 100;
-        config.maxIterationsWithoutImprovement = 700;
+        config.maxIterationsWithoutImprovement = 100;
 
         // --- Adaptive Weights ---
         config.decayParameter = 0.7;

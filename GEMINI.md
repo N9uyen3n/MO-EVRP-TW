@@ -20,6 +20,7 @@ Dưới đây là cấu trúc các tệp và thư mục mã nguồn quan trọng
 │   │   ├── IOperator.h
 │   │   ├── LocalSearch.h
 │   │   ├── ParetoArchive.h
+│   │   ├── SolutionPool.h
 │   │   └── operators
 │   │       ├── destroy
 │   │       │   ├── FewestCustomersRouteRemoval.h
@@ -54,12 +55,14 @@ Dưới đây là cấu trúc các tệp và thư mục mã nguồn quan trọng
 │   │   ├── ILogger.h
 │   │   └── NullLogger.h
 │   └── utils
+│       ├── CmdLineParser.h
 │       └── Utils.h
 └── src
     ├── alns
     │   ├── ALNSSolver.cpp
     │   ├── LocalSearch.cpp
     │   ├── ParetoArchive.cpp
+    │   ├── SolutionPool.cpp
     │   └── operators
     │       ├── destroy
     │       │   ├── FewestCustomersRouteRemoval.cpp
@@ -94,6 +97,8 @@ Dưới đây là cấu trúc các tệp và thư mục mã nguồn quan trọng
     ├── main.cpp
     ├── test
     │   └── TestALNS.cpp
+    ├── tuning
+    │   └── TuningApp.cpp
     └── utils
         └── Utils.cpp
 ```

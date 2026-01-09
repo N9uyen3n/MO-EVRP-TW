@@ -228,9 +228,9 @@ void Route::evaluate() const {
 }
 
 // Tier 1 - Exact Check
-InsertionResult Route::checkInsertionCost(int customerId, size_t position) const {
+InsertionResult Route::checkInsertionCost(int nodeId, size_t position) const {
     std::vector<int> simNodeSequence = *nodeSequence;
-    simNodeSequence.insert(simNodeSequence.begin() + position, customerId);
+    simNodeSequence.insert(simNodeSequence.begin() + position, nodeId);
     int n = simNodeSequence.size();
     const double EPSILON = 1e-9;
     std::vector<double> dp(n, 0.0);
@@ -325,8 +325,24 @@ InsertionResult Route::checkInsertionCost(int customerId, size_t position) const
 int Route::getId() const{
     return id;
 }
+
+std::shared_ptr<Vehicle> Route::getVehicle() const {
+    return vehicle;
+}
+
 const std::vector<int>& Route::getNodes() const{
     return *nodeSequence;
+}
+
+std::vector<int> Route::getCustomers() const {
+    std::vector<int> customers;
+    for (int nodeId : *nodeSequence) {
+        auto node = instance->getNodeById(nodeId);
+        if (node->getType() == NodeType::CUSTOMER) {
+            customers.push_back(nodeId);
+        }
+    }
+    return customers;
 }
 
 bool Route::isFeasible() const{
@@ -364,6 +380,17 @@ double Route::getTotalTime() const{
     return evalResult.totalTime;
 }
 
+double Route::getTotalDemand() const {
+    double totalDemand = 0.0;
+    // No need to call evaluate() here, as nodeSequence is independent of evaluation results
+    for (int nodeId : *nodeSequence) {
+        if (instance->getNodeById(nodeId)->getType() == NodeType::CUSTOMER) {
+            totalDemand += instance->getNodeById(nodeId)->getDemand();
+        }
+    }
+    return totalDemand;
+}
+
 const std::vector<NodeState>& Route::getStates() const {
     evaluate();
     return *states;
@@ -395,8 +422,7 @@ std::string Route::toString() const {
     std::stringstream ss;
     ss << std::fixed << std::setprecision(2);
 
-    ss << "--- Route ID: " << this->id << " ---"
-       << " Feasible: " << (this->evalResult.feasible ? "YES" : "NO") << "\n"
+    ss << "--- Route ID: " << this->id << " ---" << " Feasible: " << (this->evalResult.feasible ? "YES" : "NO") << "\n"
        << "   Total Distance:    " << std::setw(8) << this->evalResult.totalDistance << "\n"
        << "   Total Time:        " << std::setw(8) << this->evalResult.totalTime << "\n"
        << "   Total Energy Cons: " << std::setw(8) << this->evalResult.totalEnergyConsumption << "\n";
@@ -459,8 +485,8 @@ long long Route::getHash() const {
 }
 
 // Tier 3 - Bounding Check
-bool Route::canPossiblyInsert(int customerId, size_t position) const {
-    evaluate(); 
+bool Route::canPossiblyInsert(int nodeIdToInsert, size_t position, int nodeIdToRemove) const {
+    evaluate();
 
     if (position < 1 || position > nodeSequence->size() - 1) {
         return false;
@@ -471,39 +497,48 @@ bool Route::canPossiblyInsert(int customerId, size_t position) const {
 
     const auto& prev_state = states->at(position - 1);
     int prev_node_id = (*nodeSequence)[position - 1];
-    auto customer = std::static_pointer_cast<Customer>(instance->getNodeById(customerId));
+    auto nodeToInsert = instance->getNodeById(nodeIdToInsert);
     const double EPSILON = 1e-9;
 
-    if (customer->getDemand() > prev_state.remainingLoad + EPSILON) {
+    double availableLoad = prev_state.remainingLoad;
+    if (nodeIdToRemove != -1) {
+        auto nodeToRemove = instance->getNodeById(nodeIdToRemove);
+        if (nodeToRemove->getType() == NodeType::CUSTOMER) {
+            availableLoad += nodeToRemove->getDemand();
+        }
+    }
+
+    if (nodeToInsert->getDemand() > availableLoad + EPSILON) {
         return false;
     }
 
-    double energy_to_cust = instance->getDistance(prev_node_id, customerId) * vehicle->getEnergyConsumptionRate();
-    if (prev_state.remainingBattery < energy_to_cust - EPSILON) {
+    double energy_to_node = instance->getDistance(prev_node_id, nodeIdToInsert) * vehicle->getEnergyConsumptionRate();
+    if (prev_state.remainingBattery < energy_to_node - EPSILON) {
         return false;
     }
 
-    double travel_time_to_cust = instance->getTime(prev_node_id, customerId);
-    double arrival_at_cust = prev_state.departureTime + travel_time_to_cust;
-    if (arrival_at_cust > customer->getDueDate() + EPSILON) {
+    double travel_time_to_node = instance->getTime(prev_node_id, nodeIdToInsert);
+    double arrival_at_node = prev_state.departureTime + travel_time_to_node;
+    if (arrival_at_node > nodeToInsert->getDueDate() + EPSILON) {
         return false;
     }
 
     return true;
 }
 
+
 // Tier 2 - Fast, Approximate Check
-InsertionResult Route::fastForwardCheck(int customerId, size_t position) const {
+InsertionResult Route::fastForwardCheck(int nodeId, size_t position) const {
     evaluate(); 
 
     const double EPSILON = 1e-9;
 
     int prevNodeId = (*nodeSequence)[position - 1];
     int nextNodeId = (*nodeSequence)[position];
-    auto customerNode = std::static_pointer_cast<Customer>(instance->getNodeById(customerId));
+    auto customerNode = std::static_pointer_cast<Customer>(instance->getNodeById(nodeId));
 
     double oldEdgeDistance = instance->getDistance(prevNodeId, nextNodeId);
-    double newEdgeDistance = instance->getDistance(prevNodeId, customerId) + instance->getDistance(customerId, nextNodeId);
+    double newEdgeDistance = instance->getDistance(prevNodeId, nodeId) + instance->getDistance(nodeId, nextNodeId);
     double deltaDistance = newEdgeDistance - oldEdgeDistance;
 
     NodeState currentState = states->at(position - 1);
@@ -511,8 +546,8 @@ InsertionResult Route::fastForwardCheck(int customerId, size_t position) const {
     double simTotalWaitTime = 0;
 
     // prev -> customer
-    currentState.departureTime += instance->getTime(prevNodeId, customerId);
-    currentState.remainingBattery -= instance->getDistance(prevNodeId, customerId) * vehicle->getEnergyConsumptionRate();
+    currentState.departureTime += instance->getTime(prevNodeId, nodeId);
+    currentState.remainingBattery -= instance->getDistance(prevNodeId, nodeId) * vehicle->getEnergyConsumptionRate();
     currentLoad -= customerNode->getDemand();
 
     if (currentState.remainingBattery < -EPSILON || currentLoad < -EPSILON || currentState.departureTime > customerNode->getDueDate() + EPSILON) {
@@ -523,8 +558,8 @@ InsertionResult Route::fastForwardCheck(int customerId, size_t position) const {
     currentState.departureTime = currentState.departureTime + waitAtCust + customerNode->getServiceTime();
 
     // customer -> next
-    currentState.departureTime += instance->getTime(customerId, nextNodeId);
-    currentState.remainingBattery -= instance->getDistance(customerId, nextNodeId) * vehicle->getEnergyConsumptionRate();
+    currentState.departureTime += instance->getTime(nodeId, nextNodeId);
+    currentState.remainingBattery -= instance->getDistance(nodeId, nextNodeId) * vehicle->getEnergyConsumptionRate();
     if (currentState.remainingBattery < -EPSILON) return {false};
 
     // Ripple simulation

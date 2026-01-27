@@ -39,6 +39,7 @@ private:
 
     /**
      * @brief (ĐÃ SỬA) Tính 'k' vị trí chèn tốt nhất (dùng delta-cost)
+     * @param adaptiveK Adaptive K value based on problem size
      */
-    std::vector<InsertionCost> findKBestInsertions(int customerId, Solution& solution, std::mt19937& rng);
+    std::vector<InsertionCost> findKBestInsertions(int customerId, Solution& solution, std::mt19937& rng, int adaptiveK);
 };

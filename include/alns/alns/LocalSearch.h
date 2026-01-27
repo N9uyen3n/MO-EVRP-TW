@@ -85,8 +85,25 @@ private:
     // Reused across all search operations to avoid repeated allocations
     MoveDescriptor activeMove;
 
+    // ========== SEARCH CONTEXT CACHE ==========
+    // Cache centroids and neighbor lists to avoid redundant calculations
+    struct RouteCentroid { double x, y; };
+    
+    struct SearchContext {
+        std::vector<RouteCentroid> centroids;
+        std::vector<std::vector<int>> neighborLists;
+        bool isValid = false;
+        
+        void invalidate() { isValid = false; }
+    };
+    
+    SearchContext searchContext_;
+    
+    void updateSearchContext(const Solution& solution);
+
     // --- Core Logic ---
     void evaluateMove(const Solution& solution, MoveDescriptor& move, const LocalSearchWeights& weights);
+    MoveEvaluation evaluateRelocateDelta(const Solution& solution, const MoveDescriptor& move);
     void applyMove(Solution& solution, const MoveDescriptor& move);
 
     // --- Phases ---
@@ -96,9 +113,9 @@ private:
     bool runVehicleReduction(Solution& solution);
 
     // --- Operators (Distance) ---
-    bool searchRelocate(Solution& solution, MoveDescriptor& bestMove, const LocalSearchWeights& weights);
+    bool searchRelocate(Solution& solution, MoveDescriptor& bestMove, const LocalSearchWeights& weights, const SearchContext& ctx);
     bool searchTwoOpt(Solution& solution, MoveDescriptor& bestMove, const LocalSearchWeights& weights);
-    bool searchSwap(Solution& solution, MoveDescriptor& bestMove, const LocalSearchWeights& weights);
+    bool searchSwap(Solution& solution, MoveDescriptor& bestMove, const LocalSearchWeights& weights, const SearchContext& ctx);
     bool searchOrOpt(Solution& solution, MoveDescriptor& bestMove, const LocalSearchWeights& weights);
 
     // --- Operators (Charging) ---
@@ -108,7 +125,6 @@ private:
     bool optimizeChargingAmounts(Solution& solution);
 
     // --- Heuristics Helpers ---
-    struct RouteCentroid { double x, y; };
     RouteCentroid computeCentroid(const Route& route) const;
     std::vector<RouteCentroid> computeAllCentroids(const Solution& solution);
     bool areRoutesClose(const RouteCentroid& c1, const RouteCentroid& c2, double threshold = 50.0) const;

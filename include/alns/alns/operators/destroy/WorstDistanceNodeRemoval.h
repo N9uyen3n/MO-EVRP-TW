@@ -5,6 +5,7 @@
 
 /**
  * @brief Xóa các khách hàng "tệ" nhất (gây ra nhiều chi phí nhất).
+ * Enhanced version with multi-criteria evaluation (distance, energy, time).
  */
 class WorstDistanceNodeRemoval : public IDestroyOperator {
 public:
@@ -24,7 +25,32 @@ private:
     int determinism; // Tham số p
 
     /**
-     * @brief Tính chi phí (delta) khi xóa 1 node khỏi tuyến.
+     * @brief Structure to hold multi-criteria removal impact
+     */
+    struct RemovalImpact {
+        double distanceSaving = 0.0;
+        double energySaving = 0.0;
+        double timeReduction = 0.0;
+        double overallCost = 0.0;
+    };
+
+    /**
+     * @brief Calculate multi-criteria removal impact
+     */
+    RemovalImpact calculateRemovalImpact(const Route& route, size_t position);
+    
+    /**
+     * @brief Calculate route quality bonus (higher for worse routes)
+     */
+    double getRouteQualityBonus(const Route& route);
+    
+    /**
+     * @brief Calculate time window slack (higher = easier to reinsert)
+     */
+    double getTimeWindowSlack(int customerId, const Route& route);
+    
+    /**
+     * @brief Legacy method for backward compatibility
      */
     double calculateRemovalCost(const Route& route, size_t position);
 };

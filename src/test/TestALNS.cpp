@@ -42,6 +42,11 @@ int main(int argc, char *argv[]) {
   std::string modeStr = "ADAPTIVE_FAIRNESS"; // Default
   std::string outputDirOverride = "";
 
+  std::cout << "[DEBUG] argc: " << argc << "\n";
+  for (int i = 0; i < argc; ++i) {
+    std::cout << "[DEBUG] argv[" << i << "]: " << argv[i] << "\n";
+  }
+
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
 

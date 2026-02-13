@@ -20,12 +20,24 @@ echo -e "${CYAN} FAIRNESS EXPERIMENT RUNNER (LINUX)${NC}"
 echo -e "${CYAN}========================================${NC}"
 
 # Check executable
-EXE="$BUILD_DIR/test16" # Linux executable has no extension or .out
-if [ ! -f "$EXE" ]; then
-    echo -e "${RED}❌ ERROR: Executable $EXE not found${NC}"
+EXE=""
+if [ -f "build/test16" ]; then
+    EXE="build/test16"
+elif [ -f "test16" ]; then
+    EXE="./test16"
+elif [ -f "build/Release/test16" ]; then
+    EXE="build/Release/test16"
+fi
+
+if [ -z "$EXE" ]; then
+    echo -e "${RED}❌ ERROR: Executable 'test16' not found in build/ or current directory${NC}"
     echo -e "${YELLOW}Please build project first: mkdir build && cd build && cmake .. && make${NC}"
+    # List build directory for debugging
+    ls -R build
     exit 1
 fi
+
+echo -e "${GREEN}✅ Found executable: $EXE${NC}"
 
 # Create output dir
 mkdir -p "$OUTPUT_DIR"

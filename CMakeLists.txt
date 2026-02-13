@@ -72,3 +72,11 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/BenchmarkTest2.cpp")
     add_executable(BenchmarkTest2 src/test/BenchmarkTest2.cpp)
     target_link_libraries(BenchmarkTest2 PRIVATE alns_lib)
 endif()
+
+# -------------------------------------------------------------
+# 7. Tạo file thực thi Pareto Demo (Demo Executable)
+# -------------------------------------------------------------
+if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/ParetoDemo.cpp")
+    add_executable(ParetoDemo src/test/ParetoDemo.cpp)
+    target_link_libraries(ParetoDemo PRIVATE alns_lib)
+endif()

@@ -4,9 +4,11 @@
 # Purpose: Automate 3 baselines for Driver Equity experiments on Linux (Colab/Kaggle)
 # =============================================================================
 
+# ⚙️ CONFIGURATION - Sửa đường dẫn data ở đây
+DATA_DIR="data/solomon"  # Thay đổi thành: data/test1, data/test2, v.v.
+
 BUILD_DIR="build"
 OUTPUT_DIR="results/fairness_experiments"
-DATA_DIR="data/solomon"
 
 # Colors
 GREEN='\033[0;32m'
@@ -77,6 +79,9 @@ for SCENARIO_NAME in "${!scenarios[@]}"; do
         echo -e "\n[${CURRENT_RUN}/${TOTAL_RUNS}] Running: $INSTANCE_NAME with $MODE"
         
         OUTPUT_SUBDIR="$SCENARIO_DIR/$INSTANCE_NAME"
+        
+        # Debug: In ra command đầy đủ
+        echo -e "${YELLOW}   [CMD] $EXE --instance \"$INSTANCE_PATH\" --mode \"$MODE\" --output \"$OUTPUT_SUBDIR\"${NC}"
         
         # Run solver
         $EXE --instance "$INSTANCE_PATH" --mode "$MODE" --output "$OUTPUT_SUBDIR"

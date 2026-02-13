@@ -23,17 +23,18 @@ echo -e "${CYAN}========================================${NC}"
 
 # Check executable
 EXE=""
-if [ -f "build/test16" ]; then
-    EXE="build/test16"
-elif [ -f "test16" ]; then
-    EXE="./test16"
-elif [ -f "build/Release/test16" ]; then
-    EXE="build/Release/test16"
+if [ -f "build/TestALNS" ]; then
+    EXE="build/TestALNS"
+elif [ -f "TestALNS" ]; then
+    EXE="./TestALNS"
+elif [ -f "build/test16" ]; then
+    echo -e "${RED}⚠️ WARNING: Found 'test16' but we need 'TestALNS' for experiments!${NC}"
+    EXE="build/test16" # Fallback but likely wrong
 fi
 
 if [ -z "$EXE" ]; then
-    echo -e "${RED}❌ ERROR: Executable 'test16' not found in build/ or current directory${NC}"
-    echo -e "${YELLOW}Please build project first: mkdir build && cd build && cmake .. && make${NC}"
+    echo -e "${RED}❌ ERROR: Executable 'TestALNS' not found in build/ or current directory${NC}"
+    echo -e "${YELLOW}Please build project first: mkdir build && cd build && cmake .. && make TestALNS${NC}"
     # List build directory for debugging
     ls -R build
     exit 1

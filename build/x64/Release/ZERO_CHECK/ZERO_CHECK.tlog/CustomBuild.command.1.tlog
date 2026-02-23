@@ -1,0 +1,10 @@
+^D:\WORK\SLSCM-LAB\24092025\TEST15 - COPY\BUILD\CMAKEFILES\810F0CC657C7ABA9CF1B607921556CD2\GENERATE.STAMP.RULE
+setlocal
+"D:\Program Files\CMake\bin\cmake.exe" "-SD:/Work/SLSCM-LaB/24092025/test15 - Copy" "-BD:/Work/SLSCM-LaB/24092025/test15 - Copy/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "D:/Work/SLSCM-LaB/24092025/test15 - Copy/build/test15.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

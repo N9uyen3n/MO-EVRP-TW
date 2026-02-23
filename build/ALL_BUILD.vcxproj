@@ -1,0 +1,205 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ResolveNugetPackages>false</ResolveNugetPackages>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{5F7636F9-51B7-38ED-94A2-DEE97907E13C}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>ALL_BUILD</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Work\SLSCM-LaB\24092025\test15 - Copy\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/Work/SLSCM-LaB/24092025/test15 - Copy/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"D:\Program Files\CMake\bin\cmake.exe" "-SD:/Work/SLSCM-LaB/24092025/test15 - Copy" "-BD:/Work/SLSCM-LaB/24092025/test15 - Copy/build" --check-stamp-file "D:/Work/SLSCM-LaB/24092025/test15 - Copy/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCXXInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeLanguageInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeRCInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCXXLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCommonLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeCXXCompiler.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeRCCompiler.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/Work/SLSCM-LaB/24092025/test15 - Copy/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"D:\Program Files\CMake\bin\cmake.exe" "-SD:/Work/SLSCM-LaB/24092025/test15 - Copy" "-BD:/Work/SLSCM-LaB/24092025/test15 - Copy/build" --check-stamp-file "D:/Work/SLSCM-LaB/24092025/test15 - Copy/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCXXInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeLanguageInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeRCInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCXXLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCommonLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeCXXCompiler.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeRCCompiler.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/Work/SLSCM-LaB/24092025/test15 - Copy/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"D:\Program Files\CMake\bin\cmake.exe" "-SD:/Work/SLSCM-LaB/24092025/test15 - Copy" "-BD:/Work/SLSCM-LaB/24092025/test15 - Copy/build" --check-stamp-file "D:/Work/SLSCM-LaB/24092025/test15 - Copy/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCXXInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeLanguageInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeRCInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCXXLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCommonLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeCXXCompiler.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeRCCompiler.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/Work/SLSCM-LaB/24092025/test15 - Copy/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"D:\Program Files\CMake\bin\cmake.exe" "-SD:/Work/SLSCM-LaB/24092025/test15 - Copy" "-BD:/Work/SLSCM-LaB/24092025/test15 - Copy/build" --check-stamp-file "D:/Work/SLSCM-LaB/24092025/test15 - Copy/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCXXInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeLanguageInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeRCInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCXXLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCommonLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeCXXCompiler.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeRCCompiler.cmake;D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\4.1.2\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\ZERO_CHECK.vcxproj">
+      <Project>{E3E5C858-E211-37EB-B786-C8D9C968E31F}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\BenchmarkTest2.vcxproj">
+      <Project>{36B0B21C-5F68-3A1F-B82F-28FCE79E671E}</Project>
+      <Name>BenchmarkTest2</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\RunALNS.vcxproj">
+      <Project>{A082313E-BC72-376C-863B-4A0A586F87A6}</Project>
+      <Name>RunALNS</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\TestALNS.vcxproj">
+      <Project>{C627A413-83F2-37B1-8674-463D49101B71}</Project>
+      <Name>TestALNS</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\TuningApp.vcxproj">
+      <Project>{546C56DF-05E6-3BC4-B413-B5273D71EF3C}</Project>
+      <Name>TuningApp</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\alns_lib.vcxproj">
+      <Project>{3CFC8A23-5515-32E0-92F8-CACE352E9BB5}</Project>
+      <Name>alns_lib</Name>
+    </ProjectReference>
+    <ProjectReference Include="D:\Work\SLSCM-LaB\24092025\test15 - Copy\build\test15.vcxproj">
+      <Project>{38374B4E-FDBD-3DE3-AC52-2DB75BF615D0}</Project>
+      <Name>test15</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,1167 @@
+# Scientific Report: A Multi-Objective Adaptive Large Neighborhood Search for the Electric Vehicle Routing Problem with Time Windows (EVRPTW)
+
+## Abstract
+
+This document provides a detailed description of a sophisticated solver for the Electric Vehicle Routing Problem with Time Windows (EVRPTW). The problem is modeled as a multi-objective optimization task with a hierarchical objective function: primarily to minimize the number of vehicles used, and secondarily to minimize the total travel distance. The implemented solution is based on the Adaptive Large Neighborhood Search (ALNS) metaheuristic, enhanced with a Pareto archive for handling non-dominated solutions, a Simulated Annealing-based acceptance criterion, and an integrated local search module for intensification. This framework is designed to efficiently explore the solution space and find a set of high-quality, non-dominated solutions.
+
+---
+
+## 1. Problem Definition
+
+The Electric Vehicle Routing Problem with Time Windows (EVRPTW) is an extension of the classical Vehicle Routing Problem (VRP). It involves designing a set of optimal routes for a fleet of electric vehicles (EVs) to serve a group of customers, subject to various real-world constraints.
+
+- A central depot serves as the starting and ending point for all vehicle routes.
+- Each customer has a specific demand and a time window within which service must begin.
+- The electric vehicles have a limited carrying capacity and a finite battery range.
+- A set of charging stations are available, which can be visited by vehicles to recharge their batteries. These stations also have their own operational time windows.
+
+The primary goal is to find a feasible set of routes that serves all customers while respecting all constraints and optimizing the given objectives.
+
+### 1.1. Objectives
+
+The problem is treated as a **hierarchical multi-objective optimization problem**. The objectives are prioritized as follows:
+
+1.  **Primary Objective:** Minimize the total number of vehicles used. `(Minimize |K|)`
+2.  **Secondary Objective:** Minimize the total travel distance of all routes. `(Minimize Σ TotalDistance_k)`
+
+A solution A is considered to dominate solution B if it is better in at least one objective without being worse in any other, following the hierarchical order (i.e., fewer vehicles is always better, regardless of distance).
+
+---
+
+## 2. Mathematical Formulation
+
+### 2.1. Sets and Indices
+
+-   `D = {0}`: The set containing the central depot.
+-   `C = {1, ..., N}`: The set of customers.
+-   `S = {N+1, ..., N+M}`: The set of charging stations.
+-   `V = D ∪ C ∪ S`: The set of all nodes.
+-   `V' = C ∪ S`: The set of all possible visit locations (customers and stations).
+-   `K`: The set of available homogeneous electric vehicles.
+-   `i, j`: Indices for nodes, `i, j ∈ V`.
+-   `k`: Index for a vehicle, `k ∈ K`.
+
+### 2.2. Parameters
+
+-   `d_ij`: Distance between node `i` and node `j`.
+-   `t_ij`: Travel time between node `i` and node `j`.
+-   `q_i`: Demand of customer `i` (`q_i = 0` for `i ∈ D ∪ S`).
+-   `[e_i, l_i]`: Time window for node `i`, where `e_i` is the ready time and `l_i` is the due date.
+-   `s_i`: Service time required at customer `i` (`s_i = 0` for `i ∈ D ∪ S`).
+-   `C_k`: Maximum cargo capacity of vehicle `k`.
+-   `Q_k`: Maximum battery capacity of vehicle `k`.
+-   `h`: Energy consumption rate (energy units per unit of distance).
+-   `g_j`: Charging rate at station `j ∈ S`.
+-   `M`: A large positive number.
+
+### 2.3. Decision Variables
+
+-   `x_ijk`: A binary variable, equal to 1 if vehicle `k` travels directly from node `i` to node `j`, and 0 otherwise.
+-   `A_ik`: Arrival time of vehicle `k` at node `i`.
+-   `L_ik`: Remaining cargo load of vehicle `k` upon arrival at node `i`.
+-   `B_ik`: Remaining battery level of vehicle `k` upon arrival at node `i`.
+-   `c_jk`: Amount of energy charged to vehicle `k` at station `j`.
+-   `u_k`: A binary variable, equal to 1 if vehicle `k` is used, and 0 otherwise.
+
+### 2.4. Objective Function
+
+Minimize `(Z_1, Z_2)` where:
+`Z_1 = Σ_{k ∈ K} u_k`
+`Z_2 = Σ_{i ∈ V} Σ_{j ∈ V} Σ_{k ∈ K} d_ij * x_ijk`
+
+### 2.5. Constraints
+
+1.  **Vehicle Usage:**
+    `u_k >= Σ_{j ∈ V'} x_{0jk}` for all `k ∈ K`
+
+2.  **Flow and Visit Constraints:**
+    `Σ_{k ∈ K} Σ_{i ∈ V} x_{ijk} = 1` for all `j ∈ C` (Each customer is visited exactly once).
+    `Σ_{i ∈ V} x_{ijk} - Σ_{i ∈ V} x_{jik} = 0` for all `j ∈ V', k ∈ K` (Flow conservation).
+    `Σ_{j ∈ V'} x_{0jk} <= 1` for all `k ∈ K` (Each vehicle leaves the depot at most once).
+    `Σ_{i ∈ V'} x_{i0k} <= 1` for all `k ∈ K` (Each vehicle returns to the depot at most once).
+
+3.  **Time Window Constraints:**
+    `A_ik + t_ij - M(1 - x_ijk) <= A_jk` for all `i, j ∈ V, k ∈ K`.
+    `A_ik' = max(A_ik, e_i)` (Service/charging starts after arrival and ready time).
+    `A_ik' + s_i + t_ij - M(1 - x_{ijk}) <= A_{jk}` for `i ∈ C, j ∈ V, k ∈ K`.
+    `A_ik' + (c_ik * g_i) + t_ij - M(1 - x_{ijk}) <= A_{jk}` for `i ∈ S, j ∈ V, k ∈ K`.
+    `e_i <= A_ik <= l_i` for all `i ∈ V, k ∈ K`.
+
+4.  **Capacity Constraints:**
+    `L_jk >= L_ik - q_j` if `x_ijk = 1` for `j ∈ C, k ∈ K`.
+    `0 <= L_ik <= C_k` for all `i ∈ V, k ∈ K`.
+
+5.  **Energy Constraints:**
+    `B_jk = B_ik - (h * d_ij)` if `x_ijk = 1` for `j ∈ C ∪ D, k ∈ K`.
+    `B_jk = B_ik - (h * d_ij) + c_jk` if `x_ijk = 1` for `j ∈ S, k ∈ K`.
+    `0 <= B_ik <= Q_k` for all `i ∈ V, k ∈ K`.
+    `c_jk <= Q_k - (B_ik - h * d_ij)` if `x_ijk = 1` for `j ∈ S, k ∈ K`.
+
+---
+
+## 3. Solution Methodology: Adaptive Large Neighborhood Search (ALNS)
+
+The problem is solved using a sophisticated ALNS metaheuristic tailored for multi-objective optimization.
+
+### 3.1. Overall Framework
+
+The ALNS algorithm starts with an initial solution and iteratively tries to improve it. In each iteration, a portion of the current solution is "destroyed" (i.e., a set of customers are removed from their routes) and then "repaired" (i.e., the removed customers are re-inserted into the solution). The choice of destroy and repair methods is guided by an adaptive weight adjustment mechanism.
+
+**Pseudo-code for ALNS Main Loop:**
+
+```
+Algorithm ALNSSolver.solve():
+  Input: Instance, ALNSConfig config
+  Output: ParetoArchive (set of non-dominated solutions)
+
+  s_current = generateInitialSolution()
+  archive.tryAdd(s_current)
+  currentTemperature = config.startTemperature
+  iterationsWithoutImprovement = 0
+  previousHV = 0.0
+  hvStagnationCount = 0
+
+  For iteration = 1 to config.maxIterations:
+    s_new = s_current.copy()
+
+    // 1. Destroy Phase
+    n_to_remove = calculateNodesToRemove()
+    destroy_op_idx = destroyPool.select(randomEngine)
+    destroy_op = destroyPool.operators[destroy_op_idx]
+    unserved_custs = destroy_op.execute(s_new, n_to_remove, randomEngine)
+    destroyPool.usages[destroy_op_idx]++
+
+    // 2. Repair Phase
+    repair_op_idx = repairPool.select(randomEngine)
+    repair_op = repairPool.operators[repair_op_idx]
+    repair_op.execute(s_new, unserved_custs, randomEngine)
+    repairPool.usages[repair_op_idx]++
+
+    s_new.evaluateRoutes() // Re-evaluate feasibility and objectives
+
+    If s_new is not feasible:
+      destroyPool.scores[destroy_op_idx] += config.scoreIdentical
+      repairPool.scores[repair_op_idx] += config.scoreIdentical
+      Continue to next iteration
+
+    // 3. Local Search Phase (Optional)
+    If config.useLocalSearch and random() < config.localSearchIntensity:
+      localSearch.run(s_new) // Apply local search to s_new
+
+    // 4. Acceptance Criterion
+    If s_new.dominates(s_current):
+      s_current = s_new
+      destroyPool.scores[destroy_op_idx] += config.scoreDominating
+      repairPool.scores[repair_op_idx] += config.scoreDominating
+      iterationsWithoutImprovement = 0
+    Else:
+      AddResult add_res = archive.tryAdd(s_new) // Add to Pareto archive
+      If add_res == DOMINATING or add_res == NON_DOMINATED:
+        destroyPool.scores[destroy_op_idx] += config.scoreNonDominated
+        repairPool.scores[repair_op_idx] += config.scoreNonDominated
+        iterationsWithoutImprovement = 0 // Reset on Pareto Front improvement
+      Else: // s_new is dominated by s_current or archive, use Simulated Annealing
+        delta_objectives = calculateWeightedObjectiveDifference(s_new, s_current) // e.g., vehicle penalty + distance difference
+        If exp(-delta_objectives / currentTemperature) > random():
+          s_current = s_new
+          destroyPool.scores[destroy_op_idx] += config.scoreDominated
+          repairPool.scores[repair_op_idx] += config.scoreDominated
+        Else:
+          destroyPool.scores[destroy_op_idx] += config.scoreIdentical
+          repairPool.scores[repair_op_idx] += config.scoreIdentical
+
+    // 5. Update Temperature
+    iterationsWithoutImprovement++
+    currentTemperature *= config.coolingRate
+    currentTemperature = max(currentTemperature, config.minTemperature)
+
+    // 6. Perturbation Mechanism (if stagnation)
+    If iterationsWithoutImprovement > threshold_1:
+      Apply mild perturbation (e.g., reheat temperature)
+    If iterationsWithoutImprovement > threshold_2:
+      Apply strong perturbation (e.g., jump to archive solution, increase destroy intensity)
+
+    // 7. Update Operator Weights & Check Hypervolume Convergence
+    If iteration % config.segmentIterations == 0:
+      destroyPool.updateWeights(config.decayParameter)
+      repairPool.updateWeights(config.decayParameter)
+      destroyPool.resetScores()
+      repairPool.resetScores()
+      
+      // Hypervolume (HV) based Early Stopping
+      currentHV = archive.computeHypervolume(refVehicles, refDistance)
+      If (currentHV - previousHV) / previousHV < config.hvImprovementThreshold:
+        hvStagnationCount++
+      Else:
+        hvStagnationCount = 0
+      previousHV = currentHV
+
+      If hvStagnationCount >= config.hvStagnationLimit:
+        Break loop // Converged based on Hypervolume plateau
+
+  Return archive.getFront()
+```
+
+### 3.2. Initial Solution
+
+A high-quality initial solution is generated using a problem-specific constructive heuristic. The heuristic adapts its strategy based on the instance type:
+-   **For R and RC instances (randomly distributed customers):** Customers are sorted by the tightness of their time windows to prioritize those with less scheduling flexibility.
+-   **For C instances (clustered customers):** A Clarke-Wright Savings-based approach is used to group nearby customers.
+The heuristic then greedily inserts customers into routes, performing look-ahead checks for time, capacity, and energy feasibility, including potential charging stops.
+
+**Pseudo-code for Initial Solution Generation (`generateInitialSolution()`):**
+
+```
+Algorithm generateInitialSolution(Instance instance):
+  Input: Problem Instance
+  Output: Initial Solution (Solution object)
+
+  sol = new Solution(instance)
+  unservedCustomers = list of all customers
+  stationLookup = map of station IDs to Station objects
+  depotNode = instance.getNodeById(0)
+  maxTime = depotNode.getDueDate()
+
+  // 1. Smart Sorting of Unserved Customers
+  If instanceType is 'R' or 'RC':
+    Sort unservedCustomers by Time Window Width (tightest first)
+  Else (instanceType is 'C'):
+    Calculate Clarke-Wright Savings for all customer pairs
+    Sort savings in descending order
+    Construct initial routes by merging customer pairs with highest savings
+    Add remaining unserved customers to the sorted list
+
+  // 2. Main Construction Loop (Greedy Insertion)
+  While unservedCustomers is not empty and not cannotServeMore:
+    Create new Vehicle and new Route (currentRoute)
+    currNodeId = depotId
+    currTime = depotReadyTime
+    currBatt = vehicleMaxBattery
+    currLoad = vehicleCapacity
+    customerAddedInThisRoute = false
+    servedInThisRoute = empty list
+
+    While not routeFinished:
+      bestCustId = -1
+      bestScore = infinity
+
+      For each custId in unservedCustomers:
+        // Check feasibility (capacity, battery, time window)
+        If current load + demand > vehicleCapacity: continue
+        If current battery < energy to reach cust: continue
+        arrivalTime = currTime + travelTime(currNodeId, custId)
+        If arrivalTime > cust.dueDate: continue
+
+        // Look-ahead check: Ensure return to depot or reachable station
+        If not canReturnToDepotOrStation(currNodeId, custId, currTime, currBatt, maxTime): continue
+
+        // Calculate score (e.g., 70% distance, 30% urgency)
+        score = calculateInsertionScore(currNodeId, custId, currTime, maxTime)
+        If score < bestScore:
+          bestScore = score
+          bestCustId = custId
+
+      If bestCustId != -1:
+        Add bestCustId to currentRoute
+        Update currNodeId, currTime, currBatt, currLoad
+        Remove bestCustId from unservedCustomers
+        Add bestCustId to servedInThisRoute
+        customerAddedInThisRoute = true
+      Else: // No customer can be served
+        If canChargeAtNearestStation(currNodeId, currTime, currBatt, maxTime):
+          Add nearest station to currentRoute
+          Update currNodeId, currTime, currBatt, currLoad (after charging)
+        Else:
+          routeFinished = true
+
+    If customerAddedInThisRoute:
+      currentRoute.evaluate()
+      If currentRoute.isFeasible():
+        sol.addRoute(currentRoute)
+        consecutiveFailures = 0
+      Else: // Route became infeasible, rollback
+        Return customers in servedInThisRoute to unservedCustomers
+        consecutiveFailures++
+        If servedInThisRoute.size() <= 1 or consecutiveFailures >= maxConsecutiveFailures:
+          cannotServeMore = true
+    Else:
+      cannotServeMore = true
+
+  // 3. Fallback for remaining unserved customers (individual routes, station-assisted)
+  If unservedCustomers is not empty:
+    For each custId in unservedCustomers:
+      Try to create a single route for custId
+      If not feasible, try inserting 1 or 2 stations (D -> S1 -> C -> S2 -> D)
+      If still not feasible, mark as truly unserved
+
+  sol.evaluateRoutes()
+  Return sol
+```
+
+### 3.3. Neighborhood Operators
+
+A rich set of destroy and repair operators are implemented to ensure a diverse search.
+
+#### 3.3.1. Destroy Operators
+
+Destroy operators remove a certain number of customers from the current solution, creating an incomplete solution that needs to be repaired. The number of customers to remove (`n_to_remove`) is dynamically determined based on the total number of customers and a perturbation boost.
+
+**Pseudo-code for `calculateNodesToRemove()`:**
+
+```
+Function calculateNodesToRemove(totalCustomers, minRemoval, maxRemoval, perturbationBoost):
+  min_num = totalCustomers * minRemoval
+  max_num = totalCustomers * maxRemoval * perturbationBoost
+  Return random integer between min_num and max_num
+```
+
+Here are the implemented destroy operators:
+
+-   **UnifiedCostDestroy:**
+    *   **Description:** This operator removes customers based on a unified cost metric that considers various factors such as distance, time window violations, and energy consumption. It aims to remove customers that are "expensive" or "problematic" to serve, thereby creating opportunities for better routing. The operator can be configured with different cost components.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm UnifiedCostDestroy.execute(Solution s, int n_to_remove, RandomEngine rng):
+          unserved_customers = empty list
+          candidate_customers = list of all customers in s
+          
+          For each customer c in candidate_customers:
+            Calculate cost_c based on its route's properties (distance, time, energy, etc.)
+            Store (cost_c, c.id) pairs
+
+          Sort customers by cost_c in descending order
+
+          For i = 1 to n_to_remove:
+            Select customer c_remove with highest cost (or probabilistically from top)
+            Remove c_remove from its route in s
+            Add c_remove.id to unserved_customers
+
+          Return unserved_customers
+        ```
+
+-   **ShawDestroy (Relatedness Removal):**
+    *   **Description:** This operator removes customers that are "related" to a randomly chosen seed customer. Relatedness is typically defined by factors such as geographical proximity, similar time windows, and shared routes. By removing related customers, the operator creates a "hole" in the solution that encourages the repair operator to find alternative groupings.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm ShawDestroy.execute(Solution s, int n_to_remove, RandomEngine rng):
+          unserved_customers = empty list
+          
+          Select a random customer c_seed from s
+          Remove c_seed from its route in s
+          Add c_seed.id to unserved_customers
+
+          While unserved_customers.size() < n_to_remove:
+            Select a random customer c_current from unserved_customers
+            
+            candidate_customers = list of all customers still in s
+            For each customer c_other in candidate_customers:
+              Calculate relatedness(c_current, c_other) // Based on distance, time window, route
+            
+            Sort candidate_customers by relatedness to c_current in descending order
+            
+            Select customer c_remove from top related candidates (or probabilistically)
+            Remove c_remove from its route in s
+            Add c_remove.id to unserved_customers
+
+          Return unserved_customers
+        ```
+
+-   **InefficientRouteRemoval:**
+    *   **Description:** This operator targets entire routes that are considered inefficient. An inefficient route might be one with very few customers, a very long distance for the number of customers served, or a high proportion of waiting/charging time. Removing such a route forces the ALNS to re-evaluate if its customers can be served more efficiently by existing or new routes.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm InefficientRouteRemoval.execute(Solution s, int n_to_remove, RandomEngine rng):
+          unserved_customers = empty list
+          
+          candidate_routes = list of all routes in s
+          For each route r in candidate_routes:
+            Calculate inefficiency_score(r) // e.g., distance_per_customer, idle_time_ratio
+            Store (inefficiency_score, r.id) pairs
+
+          Sort routes by inefficiency_score in descending order
+
+          Select route r_remove with highest inefficiency score (or probabilistically)
+          For each customer c in r_remove:
+            Add c.id to unserved_customers
+          Remove r_remove from s
+
+          // If n_to_remove is larger than customers in r_remove,
+          // additional customers might be removed by another destroy operator
+          // or this operator might only remove one route.
+          // For simplicity, assume it removes one route and its customers.
+
+          Return unserved_customers
+        ```
+
+-   **RouteMergingDestroy:**
+    *   **Description:** This operator aims to facilitate vehicle reduction. It selects two routes and removes all customers from the *shorter* of the two routes (or both, if the goal is to merge them into a single new route). The idea is that if these customers can be re-inserted into the remaining routes (or a single merged route), it could lead to a reduction in the total number of vehicles.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm RouteMergingDestroy.execute(Solution s, int n_to_remove, RandomEngine rng):
+          unserved_customers = empty list
+          
+          Select two random routes r1, r2 from s
+          
+          If r1.numCustomers() < r2.numCustomers():
+            route_to_empty = r1
+          Else:
+            route_to_empty = r2
+          
+          For each customer c in route_to_empty:
+            Add c.id to unserved_customers
+          Remove all customers from route_to_empty in s (leaving an empty route or removing it)
+
+          Return unserved_customers
+        ```
+
+-   **TargetedStationRemoval:**
+    *   **Description:** This operator specifically targets charging stations within routes. It removes a certain number of charging stations, forcing the repair operator to either find alternative charging strategies (e.g., different stations, partial charging) or to re-route customers to avoid the need for charging at that point. This helps explore solutions with fewer or different charging stops.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm TargetedStationRemoval.execute(Solution s, int n_to_remove, RandomEngine rng):
+          unserved_customers = empty list // This operator primarily removes stations, not customers
+          
+          candidate_stations_in_routes = list of all station nodes in all routes in s
+          
+          For i = 1 to n_to_remove (or until no more stations to remove):
+            Select a random station s_remove from candidate_stations_in_routes
+            Remove s_remove from its route in s
+            // Note: Customers are not removed by this operator, only stations.
+            // The solution might become infeasible due to energy, which repair will fix.
+
+          Return unserved_customers // Will be empty or contain customers if combined with other logic
+        ```
+
+#### 3.3.2. Repair Operators
+
+Repair operators take the incomplete solution generated by a destroy operator and re-insert the unserved customers, aiming to create a new feasible solution.
+
+-   **AdaptiveInsertion:**
+    *   **Description:** This operator inserts unserved customers into the best available position in any route. The "best" position is determined by a cost function that adapts based on the current search phase or solution characteristics. It might prioritize minimizing distance, minimizing time window violations, or a combination.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm AdaptiveInsertion.execute(Solution s, List unserved_customers, RandomEngine rng):
+          While unserved_customers is not empty:
+            best_customer = null
+            best_route = null
+            best_position = -1
+            min_insertion_cost = infinity
+
+            For each customer c in unserved_customers:
+              For each route r in s:
+                For each possible insertion position p in r:
+                  insertion_cost = calculateAdaptiveCost(c, r, p) // Cost function adapts
+                  If insertion_cost < min_insertion_cost:
+                    min_insertion_cost = insertion_cost
+                    best_customer = c
+                    best_route = r
+                    best_position = p
+            
+            If best_customer is found:
+              Insert best_customer into best_route at best_position
+              Remove best_customer from unserved_customers
+            Else:
+              // Cannot insert any remaining customer, break
+              Break
+
+          Return s
+        ```
+
+-   **RegretKRepair:**
+    *   **Description:** This operator uses a regret-based heuristic. For each unserved customer, it calculates the cost of inserting it into its *k* best positions. The customer with the highest "regret" (i.e., the largest difference between its best insertion cost and its second-best insertion cost) is chosen first. This strategy aims to insert customers that are "hardest to place" early, preventing them from becoming uninsertable later.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm RegretKRepair.execute(Solution s, List unserved_customers, RandomEngine rng, int K):
+          While unserved_customers is not empty:
+            best_customer_to_insert = null
+            max_regret = -infinity
+            
+            For each customer c in unserved_customers:
+              insertion_costs = list of (cost, route, position) for all possible insertions of c
+              Sort insertion_costs by cost ascending
+              
+              If insertion_costs.size() < K:
+                regret = insertion_costs[0].cost // If less than K options, regret is just best cost
+              Else:
+                regret = insertion_costs[K-1].cost - insertion_costs[0].cost // Difference between K-th best and best
+              
+              If regret > max_regret:
+                max_regret = regret
+                best_customer_to_insert = c
+            
+            If best_customer_to_insert is found:
+              (best_cost, best_route, best_position) = best_insertion_for(best_customer_to_insert)
+              Insert best_customer_to_insert into best_route at best_position
+              Remove best_customer_to_insert from unserved_customers
+            Else:
+              Break // Cannot insert any remaining customer
+
+          Return s
+        ```
+
+-   **SmartStationRepair:**
+    *   **Description:** This operator is specifically designed to handle energy-related infeasibilities. If a route becomes infeasible due to battery depletion after a destroy operation, this repair operator intelligently inserts charging stations into the route to restore feasibility. It prioritizes stations that are geographically close and can effectively bridge energy gaps.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm SmartStationRepair.execute(Solution s, List unserved_customers, RandomEngine rng):
+          // First, try to insert unserved_customers using a basic greedy approach
+          // (similar to AdaptiveInsertion but focused on feasibility)
+          // ...
+
+          // Then, for any routes that are still infeasible (e.g., energy violation):
+          For each route r in s:
+            If not r.isFeasible():
+              While not r.isFeasible() and can_add_station:
+                Find best position p in r to insert a station s_charge to fix energy violation
+                If such p and s_charge exist:
+                  r.addNode(s_charge, p)
+                  r.evaluate()
+                Else:
+                  Break // Cannot fix with station insertion
+
+          Return s
+        ```
+
+-   **SmartTimeAwareStationRepair:**
+    *   **Description:** An enhanced version of `SmartStationRepair` that is more sensitive to time window constraints. When inserting charging stations, it not only considers energy feasibility but also ensures that the insertion does not create new time window violations or exacerbate existing ones. It might prefer stations that have wider time windows or are located such that they minimize waiting time.
+    *   **Pseudo-code (`execute` method):}
+        ```
+        Algorithm SmartTimeAwareStationRepair.execute(Solution s, List unserved_customers, RandomEngine rng):
+          // Similar to SmartStationRepair, but with time-awareness in station selection/placement
+          // ...
+
+          For each route r in s:
+            If not r.isFeasible():
+              While not r.isFeasible() and can_add_station:
+                Find best position p in r to insert a station s_charge
+                Consider:
+                  1. Energy gap closure
+                  2. Minimal time window violation (for s_charge and subsequent nodes)
+                  3. Minimal additional travel time
+                If such p and s_charge exist:
+                  r.addNode(s_charge, p)
+                  r.evaluate()
+                Else:
+                  Break
+
+          Return s
+        ```
+
+-   **GreedyEnergyInsertion:**
+    *   **Description:** This operator prioritizes insertions that minimize energy-related costs or maximize battery efficiency. When placing an unserved customer, it evaluates insertion positions not just by distance or time, but also by how they affect the vehicle's battery level and the need for future charging. It might prefer positions that allow the vehicle to reach a charging station more easily or avoid unnecessary detours for charging.
+    *   **Pseudo-code (`execute` method):**
+        ```
+        Algorithm GreedyEnergyInsertion.execute(Solution s, List unserved_customers, RandomEngine rng):
+          While unserved_customers is not empty:
+            best_customer = null
+            best_route = null
+            best_position = -1
+            min_energy_cost = infinity // Or max_energy_benefit
+
+            For each customer c in unserved_customers:
+              For each route r in s:
+                For each possible insertion position p in r:
+                  energy_cost = calculateEnergyInsertionCost(c, r, p) // Focus on battery, charging
+                  If energy_cost < min_energy_cost:
+                    min_energy_cost = energy_cost
+                    best_customer = c
+                    best_route = r
+                    best_position = p
+            
+            If best_customer is found:
+              Insert best_customer into best_route at best_position
+              Remove best_customer from unserved_customers
+            Else:
+              Break
+
+          Return s
+        ```
+
+### 3.4. Adaptive Weight Adjustment
+
+The algorithm dynamically adjusts the selection probability (weights) of each operator. After a segment of iterations, the weights are updated based on the performance of the operators. Operators that produce better solutions (dominating, non-dominated) are rewarded with higher scores, increasing their chance of being selected in the future. This is controlled by a `decayParameter`.
+
+**Pseudo-code for Operator Weight Update:**
+
+```
+Algorithm OperatorPool.updateWeights(decayParameter):
+  For each operator op_i in operators:
+    avgScore_i = (op_i.usages > 0) ? (op_i.scores / op_i.usages) : 0.0
+    op_i.weights = op_i.weights * decayParameter + (1.0 - decayParameter) * avgScore_i
+    op_i.weights = max(0.1, op_i.weights) // Ensure minimum weight for exploration
+
+Algorithm OperatorPool.select(randomEngine):
+  totalWeight = sum of all operator weights
+  r = random_real(0.0, totalWeight)
+  currentSum = 0.0
+  For i = 0 to operators.size() - 1:
+    currentSum += operators[i].weights
+    If r <= currentSum:
+      Return i
+  Return operators.size() - 1 // Fallback
+```
+
+### 3.5. Acceptance Criterion & Multi-Objective Handling
+
+A new solution `s_new` is compared to the current solution `s_current` using a multi-layered approach:
+
+1.  **Dominance:** If `s_new` dominates `s_current`, `s_current` is replaced by `s_new`.
+2.  **Pareto Archive (Hierarchical MO-ALNS):** If `s_new` is not dominated by the solutions in a `ParetoArchive`, it is added to the archive. The archive acts as a progressive freeze mechanism:
+    -   **Cross-Bucket Pruning:** Solutions are stored in "buckets" representing their vehicle count. When a new solution with a *lower* vehicle count (e.g., 11 vehicles) is successfully added to the archive, the algorithm **instantly purges** all buckets containing solutions with *more* vehicles (e.g., 12, 13, 14 vehicles).
+    -   **State-of-the-Art Architecture:** By deleting higher-vehicle buckets entirely, the Pareto Archive effectively enforces a strict *Hierarchical Objective (Vehicles → Distance/HV)*. This restricts the ALNS and Scatter Search metaheuristics from generating or caching solutions with an unnecessarily high number of vehicles, vastly accelerating convergence and preventing the "pollution" of the Pareto Front.
+3.  **Simulated Annealing (SA):** If `s_new` is dominated by `s_current`, it can still be accepted based on a probability `exp(-delta / T)`, where `delta` is the degradation in the objective function and `T` is the current "temperature". The temperature decreases over time, making it less likely to accept worse solutions as the search progresses. This allows the algorithm to escape local optima.
+
+### 3.5.1 Early Stopping (Hypervolume Convergence)
+
+To avoid unnecessary iterations when the Pareto Front has plateaued, the ALNS utilizes a **Hypervolume-based early stopping mechanism**:
+- At the end of each segment (e.g., 100 iterations), the 2D Hypervolume of the current Pareto Archive is calculated using `TotalVehicles` and `TotalDistance` as the primary objectives.
+- A reference point is dynamically computed based on the maximum (worst) values currently in the archive to ensure scale independence.
+- The relative improvement in Hypervolume compared to the previous segment is evaluated.
+- If the improvement falls below a predefined threshold (`hvImprovementThreshold`, typically 0.1%) for a consecutive number of segments (`hvStagnationLimit`, typically 5), the algorithm assumes the Pareto Front has converged and terminates early.
+- This approach is scientifically rigorous for multi-objective optimization, replacing simplistic single-objective stagnation checks.
+
+### 3.6. Local Search Module
+
+The ALNS framework integrates a powerful local search module to intensify the search and find local optima. The local search operates in phases, focusing on different aspects of the solution (distance, charging, vehicle reduction). It employs a "First Improvement" strategy, applying the first improving move found to quickly escape plateaus.
+
+**Key Features and Optimizations:**
+
+-   **Tiered Filtering:** A multi-level feasibility checking system is used to quickly prune unpromising moves:
+    -   **Tier 3 (`Route::canPossiblyInsert`):** A bounding check that quickly verifies if a move is *potentially* feasible regarding capacity, time windows, and energy, without full re-evaluation. This is used as a pre-filter for many operators.
+        ```
+        Function Route.canPossiblyInsert(nodeIdToInsert, position, nodeIdToRemove):
+          // Quick checks for load, battery, and time window at insertion point
+          If nodeToInsert.demand > availableLoad: Return false
+          If remainingBattery < energyToReachNode: Return false
+          If arrivalTime > nodeToInsert.dueDate: Return false
+          Return true
+        ```
+    -   **Tier 2 (`Route::fastForwardCheck`):** A faster, approximate check for insertion costs. This simulates the impact of an insertion on a route's feasibility and cost without performing a full re-evaluation.
+    -   **Tier 1 (`Route::checkInsertionCost`):** An exact check that simulates the move by creating a temporary route, fully evaluating it, and returning the precise delta in objectives and feasibility.
+-   **Static Move Descriptor (SMD):** A single `MoveDescriptor` object is reused across all search operations to avoid repeated memory allocations, improving performance.
+-   **Search Context Cache:** Centroids of routes and neighbor lists are cached and updated only when the solution changes significantly, reducing redundant calculations.
+    ```
+    Function LocalSearch.updateSearchContext(solution):
+      If searchContext.isValid: Return
+      searchContext.centroids = computeAllCentroids(solution)
+      searchContext.neighborLists = computeNeighborLists(searchContext.centroids, distanceThreshold)
+      searchContext.isValid = true
+    ```
+-   **Granular Neighborhoods:** The search for inter-route moves (e.g., swaps) is restricted to routes that are geographically close, using a `distanceThreshold` derived from the average distance between customers.
+-   **K-Nearest Neighbors (KNN) Cache:** For insertion operations, candidate positions are prioritized near the K-nearest neighbors of the customer being inserted, further focusing the search.
+    ```
+    Function LocalSearch.findBestInsertionPositions_KNN(route, nodeId, topK):
+      neighbors = knnCache[nodeId]
+      candidatePositions = empty set
+      For each node in route:
+        If node is in neighbors:
+          Add positions before and after node to candidatePositions
+      If candidatePositions is empty:
+        Fallback to findBestInsertionPositions_TimeAware(route, nodeId, topK)
+      Else:
+        Evaluate costs for candidatePositions
+        Return topK positions
+    ```
+-   **Adaptive Sizing:** Parameters like `maxNodesToCheck` (for relocate) and `maxSwapAttempts` (for swap) dynamically adjust based on recent search success, allowing for intensification (smaller neighborhoods) or diversification (larger neighborhoods).
+
+**Pseudo-code for Local Search Main Loop (`run()`):**
+
+```
+Algorithm LocalSearch.run(Solution solution):
+  Input: Solution to improve
+  Output: Improved Solution (modified in-place)
+
+  maxIter = 50
+  noImprovementCount = 0
+
+  For iter = 1 to maxIter:
+    improvedThisIteration = false
+    updateSearchContext(solution) // Recompute centroids, neighbor lists if solution changed
+
+    // 1. Distance Optimization Phase
+    If runDistanceOptimization(solution):
+      improvedThisIteration = true
+      searchContext.invalidate()
+
+    // 2. Charging Optimization Phase (less frequent)
+    If iter % 2 == 0 and runChargingOptimization(solution):
+      improvedThisIteration = true
+      searchContext.invalidate()
+
+    // 3. Vehicle Reduction Phase (more aggressive, or if no improvement)
+    If (iter % 3 == 0 or not improvedThisIteration) and solution.numRoutes() > 1:
+      If runVehicleReduction(solution):
+        improvedThisIteration = true
+        noImprovementCount = 0 // Reset on vehicle reduction
+        searchContext.invalidate()
+
+    If improvedThisIteration:
+      solution.evaluateRoutes() // Re-evaluate after changes
+      noImprovementCount = 0
+      // Intensification: Shrink neighborhood size
+      maxNodesToCheck = max(MIN_NODES_TO_CHECK, maxNodesToCheck - 1)
+      maxSwapAttempts = max(MIN_SWAP_ATTEMPTS, maxSwapAttempts - 1)
+    Else:
+      noImprovementCount++
+      // Diversification: Expand neighborhood size
+      maxNodesToCheck = min(MAX_NODES_TO_CHECK, maxNodesToCheck + 1)
+      maxSwapAttempts = min(MAX_SWAP_ATTEMPTS, maxSwapAttempts + 1)
+      If noImprovementCount > 2: // Early termination if stagnated
+        Break
+
+  Return solution (modified)
+```
+
+#### 3.6.1. Local Search Operators (Distance Optimization)
+
+These operators focus on improving the total travel distance of the solution. They typically use a "First Improvement" strategy, applying the first feasible move that reduces the objective.
+
+-   **Relocate (1-Opt):**
+    *   **Description:** This operator moves a single customer from its current position in a route to another position. It can be applied within the same route (intra-route relocate) or between two different routes (inter-route relocate). It's a fundamental local search move.
+    *   **Pseudo-code (`searchRelocate`):**
+        ```
+        Algorithm searchRelocate(solution, outBestMove, weights, searchContext):
+          For each route r1 in solution:
+            For each customer node_i at position i in r1 (excluding depots):
+              // Tiered Filtering: Rank nodes by potential removal savings
+              rankedNodes = rankNodesByRemovalSavings(r1)
+              For k = 0 to min(maxNodesToCheck, rankedNodes.size()) - 1:
+                i = rankedNodes[k].position
+                nodeId = r1.getNodeAt(i)
+                If nodeId is not a customer: continue
+
+                For each route r2 in searchContext.neighborLists[r1.idx]: // Granular Neighborhood
+                  For each possible insertion position j in r2:
+                    If r1 == r2 and (j == i or j == i+1): continue // Avoid trivial moves
+
+                    // Tiered Filtering: Tier 3 (canPossiblyInsert) + Delta Evaluation
+                    tempMove = createMoveDescriptor(RELOCATE, r1.idx, i, r2.idx, j)
+                    preEval = evaluateRelocateDelta(solution, tempMove) // Uses Tier 3 + approx. delta
+                    If not preEval.isFeasible or preEval.distanceDelta >= -EPSILON: continue
+
+                    // Full Evaluation (Tier 1)
+                    activeMove = tempMove
+                    evaluateMove(solution, activeMove, weights) // Copies routes, fully evaluates
+
+                    If activeMove.eval.isFeasible and activeMove.eval.objectiveDelta < -EPSILON:
+                      applyMove(solution, activeMove) // First Improvement
+                      Return true
+                    Else If not activeMove.eval.isFeasible and preEval.distanceDelta < -5.0:
+                      // Energy Boost: If move was good for distance but failed feasibility (energy)
+                      If tryRelocateWithEnergyBoost(r1, i, r2, j, maxExtraTimeAllowed):
+                        Return true // Boosted move applied
+
+          Return false // No improving move found
+        ```
+
+-   **2-Opt:**
+    *   **Description:** This operator is applied to a single route (intra-route). It selects two non-adjacent edges in a route, removes them, and reconnects the remaining segments in a different order. This effectively reverses a segment of the route, often used to eliminate "crossing" paths and reduce total distance.
+    *   **Pseudo-code (`searchTwoOpt`):**
+        ```
+        Algorithm searchTwoOpt(solution, outBestMove, weights):
+          For each route r in solution:
+            nodes = r.getNodes()
+            If nodes.size() < 4: continue // Need at least D-C1-C2-D
+
+            For i = 1 to nodes.size() - 3: // First edge (nodes[i-1] -> nodes[i])
+              For j = i + 1 to nodes.size() - 2: // Second edge (nodes[j] -> nodes[j+1])
+                // Quick check: Estimate distance savings
+                oldDist = dist(nodes[i-1], nodes[i]) + dist(nodes[j], nodes[j+1])
+                newDist = dist(nodes[i-1], nodes[j]) + dist(nodes[i], nodes[j+1])
+                If newDist >= oldDist - EPSILON: continue // No potential savings
+
+                tempMove = createMoveDescriptor(INTRA_TWO_OPT, r.idx, i, r.idx, j)
+                activeMove = tempMove
+                evaluateMove(solution, activeMove, weights) // Copies route, fully evaluates
+
+                If activeMove.eval.isFeasible and activeMove.eval.objectiveDelta < -EPSILON:
+                  applyMove(solution, activeMove) // First Improvement
+                  Return true
+
+          Return false
+        ```
+
+-   **Swap:**
+    *   **Description:** This operator exchanges the positions of two customers. It can be applied within the same route (intra-route swap) or between two different routes (inter-route swap). It's effective for reordering customers and balancing loads/times between routes.
+    *   **Pseudo-code (`searchSwap`):**
+        ```
+        Algorithm searchSwap(solution, outBestMove, weights, searchContext):
+          // Intra-route Swap
+          For each route r in solution:
+            nodes = r.getNodes()
+            If nodes.size() < 4: continue
+            For i = 1 to nodes.size() - 2:
+              If nodes[i] is not a customer: continue
+              For j = i + 1 to nodes.size() - 1:
+                If nodes[j] is not a customer: continue
+                // Tiered Filtering: Tier 3 (canPossiblyInsert) for both nodes
+                If not r.canPossiblyInsert(nodes[j], i, nodes[i]) or \
+                   not r.canPossiblyInsert(nodes[i], j, nodes[j]): continue
+
+                tempMove = createMoveDescriptor(INTRA_SWAP, r.idx, i, r.idx, j)
+                activeMove = tempMove
+                evaluateMove(solution, activeMove, weights)
+                If activeMove.eval.isFeasible and activeMove.eval.objectiveDelta < -EPSILON:
+                  applyMove(solution, activeMove) // First Improvement
+                  Return true
+
+          // Inter-route Swap
+          For each route r1 in solution:
+            For each route r2 in searchContext.neighborLists[r1.idx]: // Granular Neighborhood
+              If r1 == r2: continue
+              For k1 = 0 to min(maxSwapAttempts, r1.customers.size()) - 1: // Adaptive Sizing
+                i = r1.rankedCustomers[k1].position // Use ranked customers for efficiency
+                nodeId1 = r1.getNodeAt(i)
+                If nodeId1 is not a customer: continue
+
+                For k2 = 0 to min(maxSwapAttempts, r2.customers.size()) - 1: // Adaptive Sizing
+                  j = r2.rankedCustomers[k2].position
+                  nodeId2 = r2.getNodeAt(j)
+                  If nodeId2 is not a customer: continue
+
+                  // Granular Neighborhood (Node-level): Only swap if customers are close
+                  If dist(nodeId1, nodeId2) >= searchContext.distanceThreshold: continue
+
+                  // Tiered Filtering: Tier 3 (canPossiblyInsert) for both nodes
+                  If not r1.canPossiblyInsert(nodeId2, i, nodeId1) or \
+                     not r2.canPossiblyInsert(nodeId1, j, nodeId2): continue
+
+                  tempMove = createMoveDescriptor(INTER_SWAP, r1.idx, i, r2.idx, j)
+                  activeMove = tempMove
+                  evaluateMove(solution, activeMove, weights)
+                  If activeMove.eval.isFeasible and activeMove.eval.objectiveDelta < -EPSILON:
+                    applyMove(solution, activeMove) // First Improvement
+                    Return true
+
+          Return false
+        ```
+
+-   **Or-Opt (Segment Relocation):**
+    *   **Description:** This operator moves a contiguous segment of 1, 2, or 3 customers from one position to another. Similar to relocate, it can be intra-route or inter-route. It's a generalization of the relocate operator, allowing for larger structural changes.
+    *   **Pseudo-code (`searchOrOpt` for segment length 2):**
+        ```
+        Algorithm searchOrOpt(solution, outBestMove, weights):
+          SEGMENT_LENGTH = 2
+          For each route r1 in solution:
+            If r1.size() < 2 + SEGMENT_LENGTH: continue
+
+            For i = 1 to r1.size() - 1 - SEGMENT_LENGTH: // Start of segment
+              If segment at i is not all customers: continue // Optimization
+
+              firstNodeIdInSegment = r1.getNodeAt(i)
+
+              For each route r2 in solution:
+                // KNN: Find candidate positions in r2 based on firstNodeIdInSegment
+                candidatePositions = findBestInsertionPositions_KNN(r2, firstNodeIdInSegment, 3)
+
+                For each position j in candidatePositions:
+                  If r1 == r2 and (j >= i and j <= i + SEGMENT_LENGTH): continue // Avoid trivial
+
+                  tempMove = createMoveDescriptor(OR_OPT, r1.idx, i, r2.idx, j, SEGMENT_LENGTH)
+                  activeMove = tempMove
+                  evaluateMove(solution, activeMove, weights)
+
+                  If activeMove.eval.isFeasible and activeMove.eval.objectiveDelta < -EPSILON:
+                    applyMove(solution, activeMove) // First Improvement
+                    Return true
+
+          Return false
+        ```
+
+#### 3.6.2. Local Search Operators (Charging Optimization)
+
+These operators focus on improving the efficiency and feasibility related to vehicle charging.
+
+-   **Station Removal:**
+    *   **Description:** This operator identifies and removes redundant charging stations from routes. A station is redundant if its removal does not lead to infeasibility and potentially reduces the total travel distance (by removing a detour). This includes strategies like removing stations that provide minimal charge, are too close to depots, or are part of consecutive station visits.
+    *   **Pseudo-code (`removeRedundantStations`):**
+        ```
+        Algorithm removeRedundantStations(route):
+          removalCount = 0
+          While true: // Loop until no more stations can be removed
+            route.evaluate()
+            If not route.isFeasible(): Break
+
+            stationRemovedThisPass = false
+            For i = route.nodes.size() - 2 down to 1: // Iterate backwards
+              nodeId = route.getNodeAt(i)
+              If nodeId is not a station: continue
+
+              // Check if removing this station keeps route feasible
+              // (Requires simulating removal and re-evaluating route)
+              tempRoute = route.copy()
+              tempRoute.removeNode(i)
+              tempRoute.evaluate()
+
+              If tempRoute.isFeasible() and tempRoute.totalDistance < route.totalDistance:
+                route = tempRoute // Apply removal
+                removalCount++
+                stationRemovedThisPass = true
+                Break // Restart loop for this route
+
+            If not stationRemovedThisPass: Break // No more stations removed in this pass
+
+          Return removalCount
+        ```
+
+-   **Reposition Stations:**
+    *   **Description:** This operator attempts to replace an existing charging station in a route with a different, potentially more optimal, station. It considers alternative stations that might offer a shorter detour or better fit the time windows of adjacent nodes.
+    *   **Pseudo-code (`repositionStations`):
+        ```
+        Algorithm repositionStations(solution):
+          For each route r in solution:
+            For i = 1 to r.nodes.size() - 2:
+              currentStationId = r.getNodeAt(i)
+              If currentStationId is not a station: continue
+
+              prevNodeId = r.getNodeAt(i-1)
+              nextNodeId = r.getNodeAt(i+1)
+              currentDetour = dist(prevNodeId, currentStationId) + dist(currentStationId, nextNodeId)
+
+              bestStationId = -1
+              minDetour = currentDetour
+
+              For each altStationId in all_available_stations:
+                If altStationId == currentStationId: continue
+                altDetour = dist(prevNodeId, altStationId) + dist(altStationId, nextNodeId)
+
+                If altDetour < minDetour - EPSILON: // Potential improvement
+                  // Check time window feasibility for altStationId
+                  arrivalTime = r.states[i-1].departureTime + time(prevNodeId, altStationId)
+                  If arrivalTime <= altStation.dueDate:
+                    minDetour = altDetour
+                    bestStationId = altStationId
+
+              If bestStationId != -1:
+                tempRoute = r.copy()
+                tempRoute.removeNode(i)
+                tempRoute.addNode(bestStationId, i)
+                tempRoute.evaluate()
+
+                If tempRoute.isFeasible() and tempRoute.totalDistance < r.totalDistance:
+                  r = tempRoute // Apply change
+                  Return true // First Improvement
+
+          Return false
+        ```
+
+-   **Station Swap:**
+    *   **Description:** This operator aims to replace a suboptimal station in a route with a centroid-optimal alternative from the available station pool. It calculates the centroid (center of mass of customers) for a route and tries to swap existing stations with other stations that are geographically closer to the route's centroid, potentially leading to more efficient routes. This helps overcome the "Nearest Station Trap" where routes might be locked to a locally optimal but globally suboptimal station.
+    *   **Pseudo-code (`searchStationSwap`):
+        ```
+        Algorithm searchStationSwap(solution):
+          For each route r in solution:
+            r.evaluate()
+            If not r.isFeasible(): continue
+
+            routeCentroid = computeCentroid(r)
+
+            For i = 1 to r.nodes.size() - 2:
+              currentStationId = r.getNodeAt(i)
+              If currentStationId is not a station: continue
+
+              currentStationNode = instance.getNodeById(currentStationId)
+              currentCentroidDist = euclideanDist(currentStationNode.coords, routeCentroid.coords)
+
+              bestReplacementId = -1
+              bestImprovement = 0.0
+
+              For each candidateStationId in all_available_stations:
+                If candidateStationId == currentStationId: continue
+                candidateStationNode = instance.getNodeById(candidateStationId)
+                candidateCentroidDist = euclideanDist(candidateStationNode.coords, routeCentroid.coords)
+
+                If candidateCentroidDist >= currentCentroidDist - EPSILON: continue // Only consider closer stations
+
+                tempRoute = r.copy()
+                tempRoute.removeNode(i)
+                tempRoute.addNode(candidateStationId, i)
+                tempRoute.evaluate()
+
+                If tempRoute.isFeasible():
+                  distImprovement = r.totalDistance - tempRoute.totalDistance
+                  If distImprovement > bestImprovement:
+                    bestImprovement = distImprovement
+                    bestReplacementId = candidateStationId
+
+              If bestReplacementId != -1 and bestImprovement > EPSILON:
+                r.removeNode(i)
+                r.addNode(bestReplacementId, i)
+                r.evaluate()
+                Return true // First Improvement
+
+          Return false
+        ```
+
+-   **Optimize Charging Amounts:**
+    *   **Description:** This operator focuses on refining charging decisions. While the `Route::evaluate()` function inherently calculates the minimum required charge, this operator actively seeks to remove stations that provide negligible charge, are strategically redundant (e.g., very close to the depot or other stations), or whose removal improves the route's total distance without causing infeasibility.
+    *   **Pseudo-code (`optimizeChargingAmounts`):
+        ```
+        Algorithm optimizeChargingAmounts(solution):
+          For each route r in solution:
+            // Strategy 1: Remove stations at depot position or with same coordinates as depot
+            For each station_pos in r.stations:
+              If station_pos == 1 or station_node.coords == depot.coords:
+                tempRoute = r.copy()
+                tempRoute.removeNode(station_pos)
+                tempRoute.evaluate()
+                If tempRoute.isFeasible():
+                  r = tempRoute
+                  Return true
+
+            // Strategy 2: Remove stations with very low charge amount
+            For each station_pos in r.stations:
+              If r.states[station_pos].chargeAmount < MIN_CHARGE_THRESHOLD:
+                tempRoute = r.copy()
+                tempRoute.removeNode(station_pos)
+                tempRoute.evaluate()
+                If tempRoute.isFeasible() and tempRoute.totalDistance < r.totalDistance:
+                  r = tempRoute
+                  Return true
+
+            // Strategy 3: Remove consecutive stations (keep only one)
+            For each pair of adjacent stations (s1_pos, s2_pos) in r:
+              tempRoute = r.copy()
+              tempRoute.removeNode(s1_pos) // Try removing s1
+              tempRoute.evaluate()
+              If tempRoute.isFeasible() and tempRoute.totalDistance < r.totalDistance:
+                r = tempRoute
+                Return true
+              // Else, try removing s2
+              tempRoute = r.copy()
+              tempRoute.removeNode(s2_pos)
+              tempRoute.evaluate()
+              If tempRoute.isFeasible() and tempRoute.totalDistance < r.totalDistance:
+                r = tempRoute
+                Return true
+
+          Return false
+        ```
+
+-   **Energy Boost Relocate:**
+    *   **Description:** This is a specialized move that attempts to salvage a `Relocate` operation that would otherwise be infeasible due to energy constraints. If moving a customer to a new route/position makes that route energy-infeasible, this operator tries to insert a charging station *before* the relocated customer in the new route to restore feasibility, provided the time cost of charging is within an acceptable limit.
+    *   **Pseudo-code (`tryRelocateWithEnergyBoost`):
+        ```
+        Algorithm tryRelocateWithEnergyBoost(routeFrom, fromNodeIdx, routeTo, insertPos, maxExtraTimeAllowed):
+          backupFrom = routeFrom.copy()
+          backupTo = routeTo.copy()
+
+          nodeId = routeFrom.getNodeAt(fromNodeIdx)
+          routeFrom.removeNode(fromNodeIdx)
+          routeTo.addNode(nodeId, insertPos)
+
+          routeTo.evaluate()
+          routeFrom.evaluate()
+
+          If routeTo.isFeasible() and routeFrom.isFeasible(): Return true // Move succeeded without boost
+
+          If not routeTo.isFeasible():
+            routeTo = backupTo // Rollback customer insertion
+            stationId = findNearestStation(nodeId)
+            If stationId != -1:
+              tempRoute = routeTo.copy()
+              tempRoute.addNode(stationId, insertPos) // Insert station
+              tempRoute.addNode(nodeId, insertPos + 1) // Then customer
+              tempRoute.evaluate()
+
+              If tempRoute.isFeasible():
+                timeDiff = tempRoute.totalTime - backupTo.totalTime
+                If timeDiff <= maxExtraTimeAllowed:
+                  routeTo = tempRoute // Apply boosted move
+                  routeFrom.evaluate()
+                  Return routeFrom.isFeasible() // Check if source route is still feasible
+
+          routeFrom = backupFrom // Full rollback on failure
+          routeTo = backupTo
+          Return false
+        ```
+
+#### 3.6.3. Local Search Operators (Vehicle Reduction)
+
+These operators are designed to reduce the number of vehicles used, which is the primary objective.
+
+-   **Smart Multi-Route Merge:**
+    *   **Description:** This operator attempts to merge customers from two "small" or "close" routes into a single route (or two new, more efficient routes). It selects candidate routes based on their size and geographical proximity (centroids). The customers from the selected routes are pooled, and a greedy insertion heuristic is used to reconstruct new routes, with station assistance if needed to maintain feasibility.
+    *   **Pseudo-code (`runSmartMultiRouteMerge`):
+        ```
+        Algorithm runSmartMultiRouteMerge(solution):
+          Find best pair of routes (r1_idx, r2_idx) to merge:
+            Prioritize routes with small total customer count and close centroids.
+
+          If no suitable pair found: Return false
+
+          customer_pool = customers from r1 and r2
+          oldTotalDist = r1.totalDistance + r2.totalDistance
+
+          newRoutes = [new Route(vehicleType), new Route(vehicleType)] // Can result in 1 or 2 routes
+
+          // Seed selection: Add first few customers to newRoutes
+          // Greedy assignment loop:
+          While customer_pool is not empty:
+            Find best insertion for a customer from customer_pool into newRoutes
+            If customer can be inserted:
+              Insert customer, remove from pool
+            Else: // Cannot insert customer
+              // Try Station Assisted Insertion for the current customer
+              If station_assisted_insertion_successful:
+                Continue
+              Else:
+                construction_failed = true; Break
+
+          If construction_failed: Return false
+
+          // Finalize and apply:
+          Evaluate newRoutes
+          If newRoutes are feasible and (finalRoutes.size() < 2 or (finalRoutes.size() == 2 and newTotalDist < oldTotalDist * 0.99)):
+            Remove r1 and r2 from solution
+            Add finalRoutes to solution
+            Return true
+
+          Return false
+        ```
+
+-   **Eliminate Smallest Route:**
+    *   **Description:** This is an aggressive vehicle reduction strategy. It identifies the route with the fewest customers and attempts to eliminate it by re-inserting all its customers into the remaining routes of the solution. If all customers can be successfully re-inserted (potentially with station assistance), the vehicle count is reduced.
+    *   **Pseudo-code (`tryEliminateSmallestRoute`):
+        ```
+        Algorithm tryEliminateSmallestRoute(solution):
+          If solution.numRoutes() < 2: Return false
+
+          Find smallestRoute (by customer count)
+          If smallestRoute not found or too large: Return false
+
+          customersToMove = customers from smallestRoute
+          newRoutes = solution.copy_without(smallestRoute)
+
+          // Try to insert all customersToMove into newRoutes
+          failedCustomers = empty list
+          For each custId in customersToMove:
+            Find best insertion position for custId in newRoutes
+            If insertion successful:
+              Insert custId
+            Else:
+              Add custId to failedCustomers
+
+          If failedCustomers is empty:
+            Apply newRoutes to solution
+            Return true
+
+          // Fallback: Try station-assisted insertion for failedCustomers
+          If failedCustomers is not empty and failedCustomers.size() <= MAX_FAILED_CUSTOMERS:
+            For each custId in failedCustomers:
+              Try to insert custId with a station (D->S->C->D or D->C->S->D) into newRoutes
+              If successful: Remove custId from failedCustomers
+
+            If failedCustomers is empty:
+              Apply newRoutes to solution
+              Return true
+
+          Return false
+        ```
+
+### 3.7. Perturbation
+
+To escape deep local optima during periods of stagnation, several perturbation mechanisms are used:
+-   **Reheating:** The Simulated Annealing temperature is increased.
+-   **Archive Jump:** The algorithm can jump to a random solution from the Pareto archive for diversification.
+-   **Increased Destruction Intensity:** The `maxRemoval` parameter for destroy operators is boosted, leading to larger perturbations.

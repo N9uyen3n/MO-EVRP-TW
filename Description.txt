@@ -1,0 +1,61 @@
+================================================================================
+          MÔ HÌNH BÀI TOÁN VÀ THUẬT TOÁN MO-ALNS (EVRPTW)
+================================================================================
+
+1. MÔ HÌNH BÀI TOÁN: EVRPTW (Electric Vehicle Routing Problem with Time Windows)
+--------------------------------------------------------------------------------
+Bài toán định tuyến xe điện với các khung thời gian và đa mục tiêu (Multi-Objective).
+
+* Mục tiêu tối ưu (Được tối ưu đồng thời bằng Pareto Front):
+  1. Giảm thiểu số lượng xe (Minimize Total Vehicles) - Mục tiêu quan trọng nhất.
+  2. Giảm thiểu tổng quãng đường (Minimize Total Distance).
+  3. Cân bằng khối lượng công việc giữa các xe (Minimize Workload Variance - tính bằng hệ số Gini).
+  4. Giảm thiểu thời gian hoạt động lớn nhất của một tuyến (Minimize Max Time).
+
+* Các ràng buộc chính (Constraints):
+  - Sức chứa (Capacity): Tổng hàng hóa giao của một xe không vượt quá sức chứa tối đa.
+  - Khung thời gian (Time Windows): Mỗi khách hàng có khung [ReadyTime, DueDate]. Xe đến sớm phải chờ, đến muộn là vi phạm.
+  - Năng lượng (Battery/Energy): Xe bị tiêu hao pin theo quãng đường/thời gian. Dung lượng pin không được phép giảm dưới 0.
+  - Trạm sạc (Recharging Stations): Xe có thể ghé trạm sạc để nạp đầy/nạp một phần pin (tùy thiết lập). Trạm sạc có thể được ghé thăm nhiều lần.
+
+
+2. THUẬT TOÁN: MO-ALNS (Multi-Objective Adaptive Large Neighborhood Search)
+--------------------------------------------------------------------------------
+Thuật toán tìm kiếm lân cận lớn thích nghi cho đa mục tiêu, kết hợp cùng Local Search (Tìm kiếm cục bộ).
+
+A. CẤU TRÚC META-HEURISTIC CỐT LÕI:
+  - Lựa chọn toán tử (Operator Selection): Thuật toán duy trì một danh sách các toán tử Phá hủy (Destroy) và Sửa chữa (Repair). Mỗi toán tử có một trọng số (weight). Trọng số này được cập nhật thích nghi (Adaptive) dựa trên độ hiệu quả của toán tử trong việc tìm ra nghiệm tốt hơn (Roulette Wheel Selection).
+  - Tiêu chuẩn chấp nhận (Acceptance Criterion): Sử dụng Simulated Annealing (Luyện kim) để cho phép chấp nhận các nghiệm tồi tệ hơn ở giai đoạn đầu (giúp thoát khỏi tối ưu cục bộ), và từ chối khắt khe hơn khi thuật toán dần hội tụ (nhiệt độ giảm).
+  - Pareto Archive: Lưu trữ tập hợp các nghiệm không bị thống trị (non-dominated solutions). Một giải pháp được đánh giá điểm thưởng cao nếu nó đóng góp vào tập Pareto Front này.
+
+B. CÁC TOÁN TỬ PHÁ HỦY (DESTROY OPERATORS):
+   Dùng để rút một lượng node khách hàng ra khỏi các tuyến đường hiện tại (đưa vào bank/unassigned list).
+  - Random Removal: Rút khách hàng ngẫu nhiên (tạo sự đa dạng).
+  - Worst Distance Removal: Rút các khách hàng làm tăng chi phí quãng đường nhiều nhất.
+  - Worst Time Removal: Rút các khách hàng làm tăng chi phí thời gian chờ/thời gian trễ nhiều nhất.
+  - Shaw (Relatedness) Removal: Rút các khách hàng có sự tương đồng cao (gần nhau về khoảng cách, thời gian, nhu cầu) để tạo ra khoảng trống lớn dễ tối ưu.
+  - Unified Cost Destroy: Toán tử phá hủy tổng hợp dựa trên chi phí (được gom từ các logic xóa trạm dư thừa).
+
+C. CÁC TOÁN TỬ SỬA CHỮA (REPAIR OPERATORS):
+   Dùng để chèn lại các khách hàng bị rút (trong bank) vào lại các tuyến theo cách tối ưu nhất.
+  - Greedy Distance Insertion: Chèn tham lam ưu tiên vị trí làm tăng ít khoảng cách nhất.
+  - Greedy Energy Insertion: Chèn tham lam tính toán kỹ cả mức độ tiêu hao năng lượng và trạm sạc.
+  - Regret-K Repair: Nhìn xa hơn bằng cách đánh giá mức độ "hối tiếc" (sự chênh lệch giữa vị trí chèn tốt nhất và tốt thứ 2, 3...) để ưu tiên chèn những khách hàng khó tính trước.
+  - Adaptive Insertion: Lựa chọn linh hoạt giữa nhiều tiêu chí chèn.
+
+D. TÌM KIẾM CỤC BỘ (LOCAL SEARCH) - QUAN TRỌNG:
+   Sau khi một nghiệm được tạo ra, Local Search sẽ rà soát lại toàn bộ nghiệm để làm mịn (tối ưu sâu hơn).
+  - Các phép dịch chuyển cơ bản (Moves):
+    + Relocate: Dời 1 khách hàng từ tuyến này sang tuyến khác hoặc vị trí khác.
+    + Swap: Hoán đổi 2 khách hàng giữa 2 tuyến.
+    + 2-Opt: Đảo ngược các đoạn đường trong cùng 1 tuyến hoặc chéo giữa 2 tuyến.
+  - Các Nâng Cấp Tối Ưu Mới Nhất (Performance Upgrades):
+    + Smart Multi-Route Merge: Tìm các tuyến đường ngắn và cố gắng gộp chúng vào các tuyến khác để rớt số lượng xe (dùng trong việc cố gắng ép số xe xuống cực tiểu).
+    + Tiered Filtering (Lọc theo tầng): Kiểm tra nhanh bằng `Route::getTotalDemand()` trước khi tiến hành tính mô phỏng tốn kém (`evaluateMove`). Giúp giảm thiểu từ 50-70% tính toán thừa.
+    + First Improvement: Thay vì duyệt hết cả tập lân cận (Best Improvement), Local Search sẽ chốt ngay nước đi đầu tiên tạo ra lợi ích, giúp thuật toán chạy nhanh hơn để gọi liên tục.
+    + Static Move Descriptors: Lưu trữ cấu hình nước đi thành đối tượng tĩnh, tránh overhead cấp phát bộ nhớ liên tục trong vòng lặp.
+
+================================================================================
+TÓM LẠI:
+  Hệ thống chạy dựa trên quá trình: Giải pháp hiện tại -> Bị phá hủy một phần -> Sắp xếp lại (Sửa chữa) -> Dùng Local Search dọn dẹp và tối ưu sâu -> Quyết định có chấp nhận giải pháp hay không (SA) -> Cập nhật điểm thưởng cho các toán tử -> Lặp lại hàng chục ngàn lần. Tập kết quả trả về là mặt phẳng Pareto chứa các kịch bản cân bằng tốt nhất giữa Số Xe, Quãng Đường và Cân Bằng Công Việc.
+================================================================================

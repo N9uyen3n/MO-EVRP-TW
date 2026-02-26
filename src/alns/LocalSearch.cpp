@@ -1166,9 +1166,9 @@ bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
     }
   }
 
-  if (smallestIdx == -1 || minCustomers > 30)
-    return false; // Increased from 15 to 30 for more aggressive elimination on
-                  // dense 100-customer instances
+  if (smallestIdx == -1 || minCustomers > 15)
+    return false; 
+                  
 
   // std::cout << "[EliminateRoute] Trying to eliminate Route " <<
   // routes[smallestIdx].getId()

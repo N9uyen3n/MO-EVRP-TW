@@ -118,12 +118,11 @@ ALNSSolver::ALNSSolver(std::shared_ptr<Instance> instance, ALNSConfig config,
   addRepairOperator(std::make_shared<RegretKRepair>(instance, config.regretK,
                                                     config.noiseParameter),
                     1.0);
-  addRepairOperator(std::make_shared<SmartStationRepair>(instance), 1.5);
+  addRepairOperator(std::make_shared<SmartStationRepair>(instance), 2.0);
   addRepairOperator(std::make_shared<SmartTimeAwareStationRepair>(instance),
                     1.5);
-  addRepairOperator(std::make_shared<GreedyEnergyInsertion>(instance), 1.0);
-  addRepairOperator(std::make_shared<ParetoFocusRepair>(instance), 1.5); //
-  // ⭐ Kích hoạt để tối ưu đa mục tiêu
+  addRepairOperator(std::make_shared<GreedyEnergyInsertion>(instance), 2.0);
+  addRepairOperator(std::make_shared<ParetoFocusRepair>(instance), 1.5);
 }
 
 ALNSSolver::~ALNSSolver() = default;
@@ -197,6 +196,25 @@ std::vector<Solution> ALNSSolver::solve() {
 
   std::uniform_real_distribution<> dis(0.0, 1.0);
 
+  // MOEA/D-style weight vectors: declared at outer scope so both the SA
+  // acceptance block AND the segment-boundary archive jump can access them.
+  struct WeightVector {
+    double dist, gini, time;
+  };
+  static const std::vector<WeightVector> weightVectors = {
+      {1.00, 0.00, 0.00}, // pure distance
+      {0.00, 1.00, 0.00}, // pure gini
+      {0.00, 0.00, 1.00}, // pure maxtime
+      {0.50, 0.50, 0.00}, // dist + gini
+      {0.50, 0.00, 0.50}, // dist + maxtime
+      {0.00, 0.50, 0.50}, // gini + maxtime
+      {0.60, 0.25, 0.15}, // dist-heavy
+      {0.60, 0.15, 0.25}, // dist-heavy (flipped)
+      {0.20, 0.55, 0.25}, // gini-heavy
+      {0.20, 0.25, 0.55}, // maxtime-heavy
+      {0.33, 0.33, 0.34}, // balanced
+  };
+
   for (int i = 0; i < config.maxIterations; ++i) {
     Solution &s_new = solutionPool.acquire();
     s_new = this->s_current;
@@ -250,52 +268,67 @@ std::vector<Solution> ALNSSolver::solve() {
         std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count();
 
     std::string result = "Rejected";
-    bool improved = false; // [FIX Bug 1] Track whether this iteration improved
+    bool improved = false; // Track whether this iteration improved
+
     if (s_new.dominates(s_current)) {
+      // Dominating: update current, score, add to archive
+      archive.tryAdd(s_new);
       s_current = s_new;
       destroyPool.scores[destroy_op_idx] += config.scoreDominating;
       repairPool.scores[repair_op_idx] += config.scoreDominating;
       improved = true;
       result = "Dominating";
     } else {
+      // Non-dominating: try archive first, then apply SA
       AddResult add_res = archive.tryAdd(s_new);
       if (add_res == AddResult::DOMINATING ||
           add_res == AddResult::NON_DOMINATED) {
         destroyPool.scores[destroy_op_idx] += config.scoreNonDominated;
         repairPool.scores[repair_op_idx] += config.scoreNonDominated;
+        improved = true;
         result = "Non-Dominated";
-        improved = true;   // Archive improved!
-        s_current = s_new; // [FIX Bug 2] Ensure the search moves to the newly
-                           // discovered Pareto front
-      } else {
-        // [FIX Issue 4+5] Weighted scalarization considering all objectives
-        // Vehicle difference is heavily penalized but proportional to distance
-        // scale
-        double distScale = std::max(1.0, s_current.getTotalDistance());
+        // Do NOT force s_current = s_new. Let SA decide independently.
+      }
 
-        // Randomize weights to promote diverse search directions along the
-        // Pareto front
-        std::uniform_real_distribution<> wDist(0.0, 1.0);
-        double wDistWeight = 0.5 + wDist(randomEngine);        // [0.5, 1.5]
-        double wGiniWeight = 0.05 + wDist(randomEngine) * 0.1; // [0.05, 0.15]
-        double wTimeWeight = 0.5 + wDist(randomEngine);        // [0.5, 1.5]
+      // weightVectors defined at outer scope (before for loop).
+      // Cycle through them based on the current segment.
+      int wIdx =
+          (i / std::max(1, config.segmentIterations)) % weightVectors.size();
+      const auto &w = weightVectors[wIdx];
 
-        double delta_objectives =
-            distScale *
-                (s_new.getTotalVehicles() - s_current.getTotalVehicles()) +
-            wDistWeight *
-                (s_new.getTotalDistance() - s_current.getTotalDistance()) +
-            distScale * wGiniWeight *
-                (s_new.getWorkloadGini() - s_current.getWorkloadGini()) +
-            wTimeWeight * (s_new.getMaxTime() - s_current.getMaxTime());
+      // Dynamic scaling to align dimensions.
+      // Cap scales to prevent explosion when an objective is near zero.
+      double baseDist = std::max(1.0, s_current.getTotalDistance());
+      double giniScale = std::min(
+          500.0, baseDist / std::max(0.01, s_current.getWorkloadGini()));
+      double timeScale =
+          std::min(10.0, baseDist / std::max(1.0, s_current.getMaxTime()));
 
-        if (std::exp(-delta_objectives / currentTemperature) >
-            dis(randomEngine)) {
-          s_current = s_new;
+      // veh_penalty: strong but not absolute — 3x baseDist lets SA occasionally
+      // accept one extra vehicle during exploration (instead of 1000 hard
+      // floor).
+      double veh_penalty = std::max(500.0, baseDist * 3.0);
+
+      double delta_objectives =
+          veh_penalty *
+              (s_new.getTotalVehicles() - s_current.getTotalVehicles()) +
+          w.dist * (s_new.getTotalDistance() - s_current.getTotalDistance()) +
+          w.gini * giniScale *
+              (s_new.getWorkloadGini() - s_current.getWorkloadGini()) +
+          w.time * timeScale * (s_new.getMaxTime() - s_current.getMaxTime());
+
+      if (std::exp(-delta_objectives / currentTemperature) >
+          dis(randomEngine)) {
+        s_current = s_new;
+        if (result == "Rejected") {
           destroyPool.scores[destroy_op_idx] += config.scoreDominated;
           repairPool.scores[repair_op_idx] += config.scoreDominated;
           result = "Accepted (SA)";
         } else {
+          result += " & Accepted (SA)";
+        }
+      } else {
+        if (result == "Rejected") {
           destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
           repairPool.scores[repair_op_idx] += config.scoreIdentical;
         }
@@ -325,7 +358,7 @@ std::vector<Solution> ALNSSolver::solve() {
     // Phase 1: Mild perturbation (reheating only) at 500 iterations
     if (iterationsWithoutImprovement > 0 &&
         iterationsWithoutImprovement % 500 == 0 &&
-        iterationsWithoutImprovement < 1000) {
+        iterationsWithoutImprovement < 2000) {
       currentTemperature =
           std::min(currentTemperature * 1.5, config.startTemperature * 0.7);
     }
@@ -350,15 +383,53 @@ std::vector<Solution> ALNSSolver::solve() {
 
     // Phase 3: Very strong perturbation at 2000+ iterations - increase destroy
     // intensity
-    if (iterationsWithoutImprovement > 2000) {
+    if (iterationsWithoutImprovement > 4000) {
       perturbationBoost_ = 1.5; // Destroy 50% more nodes
-    } else if (iterationsWithoutImprovement > 1000) {
+    } else if (iterationsWithoutImprovement > 2000) {
       perturbationBoost_ = 1.25; // Destroy 25% more nodes
     } else {
       perturbationBoost_ = 1.0;
     }
 
     if ((i + 1) % config.segmentIterations == 0) {
+      // Segment boundary: jump s_current to the archive solution that best fits
+      // the NEXT weight vector, ensuring SA starts each segment coherently.
+      int nextWIdx = ((i + 1) / std::max(1, config.segmentIterations)) %
+                     weightVectors.size();
+      const auto &nextW = weightVectors[nextWIdx];
+
+      auto &front = archive.getFront();
+      if (front.size() > 1) {
+        double minDist = front[0].getTotalDistance(), maxDist = minDist;
+        double minGini = front[0].getWorkloadGini(), maxGini = minGini;
+        double minTime = front[0].getMaxTime(), maxTime = minTime;
+        for (const auto &sol : front) {
+          minDist = std::min(minDist, sol.getTotalDistance());
+          maxDist = std::max(maxDist, sol.getTotalDistance());
+          minGini = std::min(minGini, sol.getWorkloadGini());
+          maxGini = std::max(maxGini, sol.getWorkloadGini());
+          minTime = std::min(minTime, sol.getMaxTime());
+          maxTime = std::max(maxTime, sol.getMaxTime());
+        }
+        double distR = std::max(1e-6, maxDist - minDist);
+        double giniR = std::max(1e-6, maxGini - minGini);
+        double timeR = std::max(1e-6, maxTime - minTime);
+
+        double bestScalar = std::numeric_limits<double>::max();
+        const Solution *bestSol = nullptr;
+        for (const auto &sol : front) {
+          double scalar =
+              nextW.dist * (sol.getTotalDistance() - minDist) / distR +
+              nextW.gini * (sol.getWorkloadGini() - minGini) / giniR +
+              nextW.time * (sol.getMaxTime() - minTime) / timeR;
+          if (scalar < bestScalar) {
+            bestScalar = scalar;
+            bestSol = &sol;
+          }
+        }
+        if (bestSol)
+          s_current = *bestSol;
+      }
       auto now_progress = std::chrono::high_resolution_clock::now();
       long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                               now_progress - startTime)
@@ -545,7 +616,7 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
     if (s_new.dominates(s_imp)) {
       s_imp = s_new;
     } else {
-      double veh_penalty = 100000.0;
+      double veh_penalty = 10000;
       double delta =
           veh_penalty * (s_new.getTotalVehicles() - s_imp.getTotalVehicles()) +
           (s_new.getTotalDistance() - s_imp.getTotalDistance());

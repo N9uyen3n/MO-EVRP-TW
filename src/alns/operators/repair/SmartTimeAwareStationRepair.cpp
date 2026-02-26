@@ -70,14 +70,11 @@ SmartTimeAwareStationRepair::findBestInsertion(int customerId,
 
     for (size_t pos = 1; pos < nodes.size(); ++pos) {
       // --- Phase 1: Try WITHOUT station ---
-      if (tryInsertWithoutStation(route, customerId, pos, static_cast<int>(r),
-                                  best)) {
-        // Found a good no-station insertion; keep looking for better
-        continue;
-      }
+      tryInsertWithoutStation(route, customerId, pos, static_cast<int>(r), best);
 
-      // --- Phase 2: Try WITH station (only if Phase 1 failed or scored low)
-      // ---
+      // --- Phase 2: Try WITH station ---
+      // Always also try station-assisted insertion, as it may find better
+      // insertion points (e.g., "Free Charge" opportunities) even if Phase 1 succeeded.
       tryInsertWithStation(route, customerId, pos, static_cast<int>(r), best);
     }
   }
@@ -130,18 +127,57 @@ void SmartTimeAwareStationRepair::tryInsertWithStation(
   double departFromPrev = states[pos - 1].departureTime;
   double battAtPrev = states[pos - 1].remainingBattery;
 
-  // Calculate travel to customer
+  // Calculate travel to customer (Without station BEFORE)
   double distPrevToCust = instance->getDistance(prevNodeId, customerId);
   double timePrevToCust = instance->getTime(prevNodeId, customerId);
   double energyPrevToCust =
       distPrevToCust * route.getVehicle()->getEnergyConsumptionRate();
 
-  double battAtCust = battAtPrev - energyPrevToCust;
-  if (battAtCust < -1e-9) {
-    // Can't even reach customer from prev node, skip
-    return;
+  double battAtCustDirect = battAtPrev - energyPrevToCust;
+
+  // If we can't reach the customer directly from prevNode, we MUST place a station BEFORE the customer.
+  if (battAtCustDirect < -1e-9) {
+      // --- Phase 2a: Station BEFORE Customer ---
+      auto prevNodeBase = instance->getNodeById(prevNodeId);
+      auto custNodeBase = instance->getNodeById(customerId);
+      double midX_before = (prevNodeBase->getX() + custNodeBase->getX()) / 2.0;
+      double midY_before = (prevNodeBase->getY() + custNodeBase->getY()) / 2.0;
+
+      std::vector<int> candidateStations = findKNearestStations(midX_before, midY_before, 3);
+      for (int stationId : candidateStations) {
+          if (stationId == prevNodeId) continue;
+          auto stNode = instance->getNodeById(stationId);
+          if (stNode->getType() != NodeType::STATION) continue;
+
+          // Compute reachability to station
+          double distPrevToStation = instance->getDistance(prevNodeId, stationId);
+          double energyPrevToStation = distPrevToStation * route.getVehicle()->getEnergyConsumptionRate();
+          double battAtStation = battAtPrev - energyPrevToStation;
+
+          // Deep-copy verify: the only correct way to ensure feasibility
+          // for the Station BEFORE Customer case
+          Route testRoute = route;
+          testRoute.addNode(customerId, pos);   // customer first
+          testRoute.addNode(stationId, pos);    // station pushes customer to pos+1
+          testRoute.evaluate();
+          if (!testRoute.isFeasible()) continue;
+
+          double actualCost = testRoute.getTotalDistance() - route.getTotalDistance();
+          if (actualCost < best.costIncrease) {
+              best.customerId = customerId;
+              best.routeIndex = routeIndex;
+              best.position = static_cast<int>(pos);
+              best.costIncrease = actualCost;
+              best.requiresStation = true;
+              best.stationId = stationId;
+              best.stationPosition = static_cast<int>(pos); // Station BEFORE customer
+          }
+      }
+      // Cannot reach customer directly. Do NOT fall through to Phase 2b.
+      return;
   }
 
+  // --- Proceed with direct reachability logic (battAtCustDirect >= 0) ---
   auto custNode =
       std::dynamic_pointer_cast<Customer>(instance->getNodeById(customerId));
   if (!custNode)
@@ -157,7 +193,7 @@ void SmartTimeAwareStationRepair::tryInsertWithStation(
   double energyCustToNext =
       distCustToNext * route.getVehicle()->getEnergyConsumptionRate();
 
-  double battAtNextAfterCust = battAtCust - energyCustToNext;
+  double battAtNextAfterCust = battAtCustDirect - energyCustToNext;
 
   // Check: does inserting customer cause energy infeasibility for the rest?
   // minReq[pos] tells us minimum battery needed at the CURRENT nextNode
@@ -165,13 +201,20 @@ void SmartTimeAwareStationRepair::tryInsertWithStation(
   double minReqAtNext = (pos < minReq.size()) ? minReq[pos] : 0.0;
 
   if (battAtNextAfterCust >= minReqAtNext - 1e-9) {
-    // No energy problem — direct insertion might work, but
-    // tryInsertWithoutStation already handled that case. If we're here, the
-    // issue is time/capacity, not energy.
-    return;
+    // Energy is sufficient to reach next node without station.
+    // Only try station if there is a "Free Charge" opportunity:
+    // i.e., we would arrive at nextNode before its time window opens anyway.
+    double directArrAtNext = departFromCust + instance->getTime(customerId, nextNodeId);
+    auto nextNode = instance->getNodeById(nextNodeId);
+    double slack = std::max(0.0, nextNode->getReadyTime() - directArrAtNext);
+    if (slack < 1e-6) {
+      return; // No energy problem AND no free charge opportunity. Skip.
+    }
+    // slack > 0 means we can absorb a station stop "for free" → fall through to Phase 2b.
   }
 
-  // Energy is insufficient. Try adding a station after customer.
+  // --- Phase 2b: Station AFTER Customer ---
+  // Energy is insufficient to reach next node OR we want to find a Free Charge opportunity.
   // Find KNN stations near the midpoint of edge (customer -> nextNode)
   auto custNodeBase = instance->getNodeById(customerId);
   auto nextNodeBase = instance->getNodeById(nextNodeId);
@@ -190,7 +233,7 @@ void SmartTimeAwareStationRepair::tryInsertWithStation(
       continue;
 
     StationMoveResult res =
-        evaluateStationMove(route, stationId, pos, battAtCust, departFromCust);
+        evaluateStationMove(route, stationId, pos, battAtCustDirect, departFromCust, customerId);
 
     if (res.isValid) {
       double score = calculateStationScore(res);
@@ -219,8 +262,8 @@ void SmartTimeAwareStationRepair::tryInsertWithStation(
 SmartTimeAwareStationRepair::StationMoveResult
 SmartTimeAwareStationRepair::evaluateStationMove(const Route &routeWithCust,
                                                  int stationId, size_t uPos,
-                                                 double battAtU,
-                                                 double departU) {
+                                                 double battAtU, double departU,
+                                                 int customerId) {
 
   StationMoveResult res;
   res.stationId = stationId;
@@ -243,84 +286,24 @@ SmartTimeAwareStationRepair::evaluateStationMove(const Route &routeWithCust,
       routeWithCust.getVehicle()->getEnergyConsumptionRate();
   double batteryCap = routeWithCust.getVehicle()->getBatteryCapacity();
 
-  // 1. Distance calculations
-  // Route with customer already hypothetically inserted:
-  //   ... u (customerId at uPos) -> nextNode (at uPos) ...
-  // With station:
-  //   ... u -> Station -> nextNode ...
-  // But we're computing FROM customer to station to next.
-  // The customerId is NOT in the route yet, so we use the IDs directly.
-  // 'uPos' means: we're considering inserting customer BEFORE nodes[uPos].
-  // After customer insertion: ... customer(uPos), nextNode(uPos+1) ...
-  // After station insertion:  ... customer(uPos), station(uPos+1),
-  // nextNode(uPos+2) ...
 
-  // For delta calculation, we need:
-  // - Distance: customer -> station -> nextNode  vs  customer -> nextNode
-  // (direct) We don't have customerId here, but we have battAtU and departU
-  // which assume customer is already inserted. So we treat the "customer" as a
-  // virtual node. The distances are computed using the instance's distance
-  // matrix.
+  // Note: prevNodeId was formerly used for approximations but is no longer needed
+  // after fixing to use customerId directly for all distance/time calculations.
 
-  // We don't have the customerId directly, but we can infer the edge:
-  // The edge is from the last operation: customer -> nextNodeId
-  // Actually we DO need customerId... Let me use the prev node approach:
-  // prevNodeId is at uPos-1, and nextNodeId is at uPos.
-  // The customer goes between them. After customer insertion:
-  //   prevNode -> customer -> nextNode
-  // With station after customer:
-  //   prevNode -> customer -> station -> nextNode
-
-  // Since we have battAtU (battery after reaching customer) and departU
-  // (departure from customer), we compute: customer -> station -> nextNode But
-  // we don't have customerId... We have to get it from the calling context.
-
-  // WORKAROUND: We compute station detour relative to direct
-  // customer->nextNode. The caller passes battAtU which is battery AT customer,
-  // departU = departure FROM customer. We need dist(customer, station) and
-  // dist(station, nextNode). Since we don't have customerId, we use prevNode as
-  // proxy (or accept the limitation).
-
-  // Actually, let me re-check: the 'uPos' in the ORIGINAL route is the position
-  // where customer WOULD be inserted. So nodes[uPos-1] = prevNode, nodes[uPos]
-  // = nextNode. The customer goes at uPos, pushing nextNode to uPos+1. I need
-  // customerId but the caller already has it! Let me rethink...
-
-  // The caller `tryInsertWithStation` already computed:
-  //   distCustToNext, battAtCust, departFromCust
-  // So `battAtU` = battery remaining at customer, `departU` = departure from
-  // customer. The station goes BETWEEN customer and nextNode. dist(customer,
-  // station) = ? We don't have customerId here.
-
-  // FIX: use prevNode to get "before" node's distance to station.
-  // prevNode -> Station: we can compute this.
-  // But the route configuration is: prevNode -> Customer -> Station -> NextNode
-  // We need customer -> station distance.
-  // Since customer IS already set to be at the position, and prevNode is before
-  // it, we can get customerId from context. Let me add it as parameter.
-
-  // ACTUALLY: The design from user calculates this in tryInsertWithStation
-  // directly. Let me simplify: just do the Deep Copy approach for station moves
-  // but with fast pre-filtering.
-
-  // SIMPLIFIED APPROACH: Pre-filter using detour distance heuristic, then
-  // verify with Deep Copy.
-  int prevNodeId = (uPos > 0) ? nodes[uPos - 1] : nodes[0];
-
-  double distPrevToStation = instance->getDistance(prevNodeId, stationId);
+  double distCustToStation = instance->getDistance(customerId, stationId);
   double distStationToNext = instance->getDistance(stationId, nextNodeId);
-  double distPrevToNext = instance->getDistance(prevNodeId, nextNodeId);
+  double distCustToNext = instance->getDistance(customerId, nextNodeId);
 
-  res.detourDist = distPrevToStation + distStationToNext - distPrevToNext;
-  res.detourTime = instance->getTime(prevNodeId, stationId) +
+  res.detourDist = distCustToStation + distStationToNext - distCustToNext;
+  res.detourTime = instance->getTime(customerId, stationId) +
                    instance->getTime(stationId, nextNodeId) -
-                   instance->getTime(prevNodeId, nextNodeId);
+                   instance->getTime(customerId, nextNodeId);
 
   // 2. Energy calculation (O(1) Delta)
-  double energyToStation = distPrevToStation * consumptionRate;
+  double energyToStation = distCustToStation * consumptionRate;
   double energyStationToNext = distStationToNext * consumptionRate;
 
-  // Battery at station (from prev, not from customer — simplified)
+  // Battery at station (from customer)
   double battAtStation = battAtU - energyToStation;
   if (battAtStation < -1e-9)
     return res; // Can't reach station
@@ -348,13 +331,8 @@ SmartTimeAwareStationRepair::evaluateStationMove(const Route &routeWithCust,
       res.energyNeeded * chargingRate; // chargingRate = minutes per unit energy
 
   // 4. Time window check at nextNode
-  double arrAtStation = departU + instance->getTime(prevNodeId, stationId) -
-                        instance->getTime(prevNodeId, nextNodeId) +
-                        instance->getTime(prevNodeId, stationId);
-  // Simplified: arrival at station = departFromCustomer +
-  // time(customer->station) But we don't have customer->station time directly.
-  // Use heuristic: arrAtStation ≈ departU + detourTime / 2
-  arrAtStation = departU + res.detourTime * 0.5;
+  // Arrival at station correctly computed from customer departure
+  double arrAtStation = departU + instance->getTime(customerId, stationId);
 
   // Check station time window
   if (arrAtStation > stationNode->getDueDate())
@@ -369,10 +347,8 @@ SmartTimeAwareStationRepair::evaluateStationMove(const Route &routeWithCust,
 
   // 5. Free Charge detection
   // Direct arrival at next (without station): departU + time(customer->next)
-  // We approximate: direct = departU + time(prevNode->nextNode) - already
-  // traveled to prev Simplified: if detour time is covered by wait time at
-  // next, it's free
-  double directArrAtNext = departU + instance->getTime(prevNodeId, nextNodeId);
+  // Check if detour time is covered by wait time at next
+  double directArrAtNext = departU + instance->getTime(customerId, nextNodeId);
   double slackDirect =
       std::max(0.0, nextNode->getReadyTime() - directArrAtNext);
 

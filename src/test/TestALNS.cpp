@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/c104C10.txt";
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/c208C15.txt";
-    instancePath = "../data/solomon/c101_21.txt";
+    // instancePath = "../data/solomon/c101_21.txt";
     // instancePath = "../data/solomon/c102_21.txt";
     // instancePath = "../data/solomon/r107_21.txt";
     // instancePath = "../data/solomon/r105_21.txt";
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/c104_21.txt";
     // instancePath = "../data/solomon/r109_21.txt";
     // instancePath = "../data/solomon/c103C15.txt";
-    // instancePath = "../data/solomon/c102_21.txt";
+    instancePath = "../data/solomon/c102_21.txt";
     // instancePath = "../data/solomon/c201_21.txt";
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/r201_21.txt";
@@ -84,7 +84,8 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/rc204C15.txt";
     // instancePath = "../data/solomon/r105C15.txt";
     // instancePath = "../data/solomon/r202_21.txt";
-    // instancePath = "../data/solomon/rc202_21.txt";
+    // instancePath = "../data/solomon/r202C15.txt";
+    // // instancePath = "../data/solomon/rc202_21.txt";
     // instancePath = "../data/solomon/rc103_21.txt";
 
     // instancePath = "../data/solomon/rc202C15.txt";
@@ -116,7 +117,7 @@ int main(int argc, char *argv[]) {
     config.segmentIterations = 100;
     config.hvImprovementThreshold =
         0.0005;                    // ε = 0.05% (sensitive to small gains)
-    config.hvStagnationLimit = 20; //
+    config.hvStagnationLimit = 25; //
 
     // --- Adaptive Weights ---
     config.decayParameter = 0.85;
@@ -135,9 +136,9 @@ int main(int argc, char *argv[]) {
     config.noiseParameter = 0.5;
 
     // --- Local Search & Scatter Search ---
-    config.useLocalSearch = true;
+    config.useLocalSearch = false;
     config.useScatterSearch = false;
-    config.localSearchIntensity = 25; // Increased from 20
+    config.localSearchIntensity =15; // Increased from 20
 
     // --- Scatter Search Params ---
     config.scatterSearchConfig.maxScatterIters = 5;
@@ -165,7 +166,7 @@ int main(int argc, char *argv[]) {
     std::string baseName = pathObj.stem().string();
 
     // Tạo đường dẫn thư mục output: logs/<TênFile>/<CustomRunName> (nếu có)
-    std::string outputDir = "logs/" + baseName;
+    std::string outputDir = "logs_testLS/" + baseName;
     std::string runName = baseName;
 
     if (!customRunName.empty()) {

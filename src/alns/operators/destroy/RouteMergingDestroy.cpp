@@ -50,7 +50,7 @@ bool RouteMergingDestroy::canPotentiallyMerge(const Route& route1, const Route& 
     // Check 1: Capacity constraint (RELAXED for dense instance repacking)
     
     double totalDemand = getTotalDemand(route1) + getTotalDemand(route2);
-    if (totalDemand > instance->getVehicleCapacity() * 1.2) {
+    if (totalDemand > instance->getVehicleCapacity() * 1.05) {
         return false;
     }
     

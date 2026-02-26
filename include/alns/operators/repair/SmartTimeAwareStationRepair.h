@@ -11,7 +11,6 @@
 #include <random>
 #include <vector>
 
-
 namespace alns {
 
 /**
@@ -74,7 +73,8 @@ private:
 
   StationMoveResult evaluateStationMove(const Route &routeWithCust,
                                         int stationId, size_t uPos,
-                                        double battAtU, double departU);
+                                        double battAtU, double departU,
+                                        int customerId);
 
   double calculateStationScore(const StationMoveResult &res);
 

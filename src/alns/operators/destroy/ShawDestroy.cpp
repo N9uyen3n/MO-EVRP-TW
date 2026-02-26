@@ -36,11 +36,15 @@ std::vector<int> ShawDestroy::execute(Solution& solution, int nodesToRemove, std
 
     // 2. Sinh trọng số ngẫu nhiên (AUTO TUNING)
     std::uniform_real_distribution<double> distW(0.1, 1.0);
-    double w_dist = distW(rng);
-    double w_time = distW(rng);
+    double w_dist   = distW(rng);
+    double w_time   = distW(rng);
     double w_demand = distW(rng);
-    double w_route = distW(rng) * 0.5; // Trọng số route thường thấp hơn
-    double w_station = distW(rng) * 1.5 + 0.5;  // ⭐ ENHANCED: Range [0.65, 2.0] for stronger cluster separation
+    double w_route  = distW(rng) * 0.5;
+    double w_station = distW(rng) * 1.5 + 0.5;
+
+    double totalW = w_dist + w_time + w_demand + w_route + w_station;
+    w_dist /= totalW; w_time /= totalW; w_demand /= totalW;
+    w_route /= totalW; w_station /= totalW;
 
     // 3. Chọn ngẫu nhiên 1 khách hàng hạt giống (Seed)
     std::uniform_int_distribution<int> distIdx(0, allCustomers.size() - 1);

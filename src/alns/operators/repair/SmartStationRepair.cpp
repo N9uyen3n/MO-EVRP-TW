@@ -31,8 +31,15 @@ void SmartStationRepair::execute(Solution& solution, const std::vector<int>& uns
                 auto result = route.checkInsertionCost(customerId, i);
                 
                 if (result.isFeasible) {
-                    if (result.deltaDistance < bestInsertion.costIncrease) {
-                        bestInsertion = {customerId, static_cast<int>(r), static_cast<int>(i), result.deltaDistance};
+                    // Energy Slack tiebreaker: prefer positions with higher slack
+                    double adjustedCost = result.deltaDistance;
+                    auto slack = route.getEnergySlack();
+                    if (i > 0 && i - 1 < slack.size()) {
+                        double slackBonus = slack[i - 1] * 0.01; // Small bonus for high-slack positions
+                        adjustedCost -= slackBonus;
+                    }
+                    if (adjustedCost < bestInsertion.costIncrease) {
+                        bestInsertion = {customerId, static_cast<int>(r), static_cast<int>(i), adjustedCost};
                     }
                 } else {
                     // --- Strategy B: Station-Assisted Insertion ---

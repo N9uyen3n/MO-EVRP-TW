@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/c104_21.txt";
     // instancePath = "../data/solomon/r109_21.txt";
     // instancePath = "../data/solomon/c103C15.txt";
-    instancePath = "../data/solomon/c102_21.txt";
+    // instancePath = "../data/solomon/c102_21.txt";
     // instancePath = "../data/solomon/c201_21.txt";
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/r201_21.txt";
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/rc103C15.txt";
     // instancePath = "../data/solomon/rc204C15.txt";
     // instancePath = "../data/solomon/r105C15.txt";
-    // instancePath = "../data/solomon/r202_21.txt";
+    instancePath = "../data/solomon/r202_21.txt";
     // instancePath = "../data/solomon/r202C15.txt";
     // // instancePath = "../data/solomon/rc202_21.txt";
     // instancePath = "../data/solomon/rc103_21.txt";
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
     config.noiseParameter = 0.5;
 
     // --- Local Search & Scatter Search ---
-    config.useLocalSearch = false;
+    config.useLocalSearch = true;
     config.useScatterSearch = false;
     config.localSearchIntensity =15; // Increased from 20
 

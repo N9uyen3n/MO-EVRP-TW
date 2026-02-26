@@ -82,6 +82,14 @@ public:
   InsertionResult fastForwardCheck(int nodeId, size_t position) const;
   bool quickCapacityCheck(double demand) const;
 
+  // --- Energy Analysis Methods ---
+  // Returns energy slack (remaining - minRequired) at each node. High = flexible, Low = tight.
+  std::vector<double> getEnergySlack() const;
+  // Returns (position, slack) pairs for nodes with slack < thresholdRatio * batteryCapacity
+  std::vector<std::pair<int, double>> getBottleneckNodes(double thresholdRatio = 0.15) const;
+  // Returns indices of redundant stations (low charge or bypassable)
+  std::vector<int> getRedundantStations() const;
+
   // Backward Pass minimum battery requirement getter
   const std::vector<double> &getMinBatteryReq() const;
 

@@ -106,47 +106,46 @@ double TargetedStationRemoval::calculateStationScore(const Route &route,
   const auto &states = route.getStates();
 
   // Safety checks
-  if (nodeIdx >= nodes.size() || nodeIdx >= states.size())
+  if (nodeIdx >= (int)nodes.size() || nodeIdx >= (int)states.size())
     return 0.0;
 
+  // --- DATA-DRIVEN: Check if station is in redundant list ---
+  auto redundantList = route.getRedundantStations();
+  bool isRedundant = false;
+  for (int idx : redundantList) {
+    if (idx == nodeIdx) {
+      isRedundant = true;
+      break;
+    }
+  }
+
+  if (isRedundant) {
+    score += 200.0; // Massive boost: primary removal candidate
+  }
+
+  // --- TIEBREAKER: Keep old scoring for ordering among candidates ---
+
+  // 1. Low Usage
   double chargeAmount = states[nodeIdx].chargeAmount;
   double capacity = route.getVehicle()->getBatteryCapacity();
-
-  // 1. Low Usage (Primary reason)
-  // If charge amount is very low relative to capacity (< 15%)
-  // This means the station stop was barely worth the time
   if (chargeAmount < 0.15 * capacity) {
-    // Linearly increasing score as charge drops to 0
-    // Max 50 points if charge is 0
     score += 50.0 * (1.0 - chargeAmount / std::max(1.0, 0.15 * capacity));
   }
 
-  // 2. Detour Penalty (Secondary reason)
-  // Estimate detour caused by this station
+  // 2. Detour Penalty
   int prevNodeId = nodes[nodeIdx - 1];
   int nextNodeId = nodes[nodeIdx + 1];
   int stationId = nodes[nodeIdx];
-
   double distWithStation = instance->getDistance(prevNodeId, stationId) +
                            instance->getDistance(stationId, nextNodeId);
   double distDirect = instance->getDistance(prevNodeId, nextNodeId);
-
   double detour = distWithStation - distDirect;
-
-  // Normalize detour? Just use raw distance as penalty
-  // Assuming max detour is usually < 100 units.
   score += detour * 1.0;
 
-  // 3. Proximity / Redundancy
-  // If station is at node index 1 (right after depot) -> mostly useless unless
-  // strict constraints
+  // 3. Proximity / Redundancy (positional heuristics)
   if (nodeIdx == 1) {
     score += 100.0;
   }
-
-  // If immediately following another station
-  // (Route logic usually prevents consecutive identical stations, but distinct
-  // stations can happen)
   auto prevNode = instance->getNodeById(prevNodeId);
   if (prevNode->getType() == NodeType::STATION) {
     score += 100.0;

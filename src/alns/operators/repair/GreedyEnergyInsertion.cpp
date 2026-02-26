@@ -148,6 +148,16 @@ void GreedyEnergyInsertion::execute(Solution &solution,
                             + 0.5 * chargingTimeCost // Secondary: time cost
                             + stationPenalty; // Tertiary: station penalty
 
+        // 4. Bottleneck penalty (proportional to energy tightness at insertion point)
+        auto slack = routes[candidate.routeIdx].getEnergySlack();
+        if (candidate.position > 0 && candidate.position - 1 < slack.size()) {
+            double batteryCapacity = routes[candidate.routeIdx].getVehicle()->getBatteryCapacity();
+            double threshold = 0.15 * batteryCapacity;
+            double localSlack = slack[candidate.position - 1];
+            double bottleneckPenalty = std::max(0.0, threshold - localSlack) / std::max(threshold, 1e-9);
+            energyCost += 5.0 * bottleneckPenalty; // Weight: moderate influence
+        }
+
         if (energyCost < minExactCost) {
           minExactCost = energyCost;
           bestRouteIdx = candidate.routeIdx;

@@ -43,10 +43,14 @@ void ParetoFocusRepair::execute(Solution& solution, const std::vector<int>& unse
     double meanRouteDuration = 0.0;
     if (focusObj == 2 && !routes.empty()) {
         double totalDuration = 0;
+        int activeRoutes = 0;
         for(const auto& route : routes) {
-            totalDuration += route.getTotalTime();
+            if (!route.getCustomers().empty()) {
+                totalDuration += route.getTotalTime();
+                activeRoutes++;
+            }
         }
-        meanRouteDuration = totalDuration / routes.size();
+        meanRouteDuration = activeRoutes > 0 ? totalDuration / activeRoutes : 0.0;
     }
 
     for (int customerId : customers) {
@@ -122,10 +126,9 @@ void ParetoFocusRepair::execute(Solution& solution, const std::vector<int>& unse
                 if (focusObj == 0) { // Distance
                     currentExactCost = exactResult.deltaDistance;
                 } else if (focusObj == 1) { // Time
-                    currentExactCost = exactResult.deltaWaitTime + exactResult.deltaDistance;
+                    currentExactCost = exactResult.deltaTime;
                 } else { // Workload
-                    double estimatedDeltaTime = exactResult.deltaWaitTime + exactResult.deltaDistance + customerNode->getServiceTime();
-                    double newRouteTime = routes[candidate.routeIdx].getTotalTime() + estimatedDeltaTime;
+                    double newRouteTime = routes[candidate.routeIdx].getTotalTime() + exactResult.deltaTime;
                     currentExactCost = std::abs(newRouteTime - meanRouteDuration);
                 }
 

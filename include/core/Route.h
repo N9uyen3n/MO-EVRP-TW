@@ -36,6 +36,7 @@ struct EvaluationResult {
 struct InsertionResult {
   bool isFeasible = false;
   double deltaDistance = 0.0;
+  double deltaTime = 0.0;
   double deltaChargeAmount = 0.0;
   double deltaWaitTime = 0.0;
   double deltaEnergyConsumption = 0.0;

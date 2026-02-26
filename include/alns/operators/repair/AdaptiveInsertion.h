@@ -11,12 +11,9 @@ namespace alns {
 /**
  * @brief Adaptive Insertion Operator
  * 
- * Consolidates multiple greedy insertion strategies (Distance, Time, Random/Mixed).
- * Randomly selects a weighting strategy at each execution to diversify search.
- * Strategies:
- * - DISTANCE_FOCUSED: Minimizes distance increase.
- * - TIME_FOCUSED: Minimizes time/waiting increase.
- * - BALANCED: Weighted sum of Distance and Time.
+ * Consolidates multiple greedy insertion strategies (Distance, Workload, MaxTime).
+ * Mode selection is biased by the current weight vector from ALNSSolver,
+ * ensuring coordination between operator behavior and solver objectives.
  */
 class AdaptiveInsertion : public IRepairOperator {
 public:
@@ -26,8 +23,16 @@ public:
 
     void execute(Solution& solution, const std::vector<int>& unservedCustomers, std::mt19937& rng) override;
 
+    // --- Weight Hint Interface (Fix 2) ---
+    struct WeightHint {
+        double dist = 0.33, gini = 0.33, time = 0.34;
+    };
+
+    void setWeightHint(double dist, double gini, double time);
+
 private:
     std::shared_ptr<Instance> instance;
+    WeightHint weightHint_;
 
     enum class Mode {
         DISTANCE_FOCUSED,
@@ -39,7 +44,7 @@ private:
         int customerId = -1;
         int routeIndex = -1;
         int position = -1;
-        double cost = std::numeric_limits<double>::infinity();
+        double costIncrease = std::numeric_limits<double>::infinity();
     };
 
     double calculateCost(const InsertionResult& result, Mode mode, const Route& route, double meanRouteDuration, double maxRouteDuration, int customerId) const;

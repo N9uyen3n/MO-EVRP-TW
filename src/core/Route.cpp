@@ -346,6 +346,8 @@ InsertionResult Route::checkInsertionCost(int nodeId, size_t position) const {
   res.isFeasible = true;
   evaluate();
   res.deltaDistance = simTotalDistance - evalResult.totalDistance;
+  double simTotalTime = simStates[n - 1].arrivalTime - simStates[0].departureTime;
+  res.deltaTime = simTotalTime - evalResult.totalTime;
   res.deltaChargeAmount = simTotalChargeAmount - evalResult.totalChargeAmount;
   res.deltaWaitTime = simTotalWaitTime - evalResult.totalWaitTime;
   res.deltaEnergyConsumption =

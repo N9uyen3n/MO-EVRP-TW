@@ -114,15 +114,15 @@ ALNSSolver::ALNSSolver(std::shared_ptr<Instance> instance, ALNSConfig config,
   addDestroyOperator(std::make_shared<RouteMergingDestroy>(instance), 1.5);
   addDestroyOperator(std::make_shared<TargetedStationRemoval>(instance), 2.0);
 
-  // addRepairOperator(std::make_shared<AdaptiveInsertion>(instance), 2.0);
+  addRepairOperator(std::make_shared<AdaptiveInsertion>(instance), 2.0);
   addRepairOperator(std::make_shared<RegretKRepair>(instance, config.regretK,
                                                     config.noiseParameter),
                     1.0);
   addRepairOperator(std::make_shared<SmartStationRepair>(instance), 2.0);
   addRepairOperator(std::make_shared<SmartTimeAwareStationRepair>(instance),
                     1.5);
-  addRepairOperator(std::make_shared<GreedyEnergyInsertion>(instance), 2.0);
-  addRepairOperator(std::make_shared<ParetoFocusRepair>(instance), 1.5);
+  // addRepairOperator(std::make_shared<GreedyEnergyInsertion>(instance), 2.0);
+  // addRepairOperator(std::make_shared<ParetoFocusRepair>(instance), 1.5);
 }
 
 ALNSSolver::~ALNSSolver() = default;
@@ -219,6 +219,11 @@ std::vector<Solution> ALNSSolver::solve() {
     Solution &s_new = solutionPool.acquire();
     s_new = this->s_current;
 
+    // Compute current weight vector early (needed for repair hint + SA)
+    int wIdx =
+        (i / std::max(1, config.segmentIterations)) % weightVectors.size();
+    const auto &w = weightVectors[wIdx];
+
     t1 = now(); // Start Destroy
 
     int n_to_remove = calculateNodesToRemove();
@@ -236,6 +241,11 @@ std::vector<Solution> ALNSSolver::solve() {
     int repair_op_idx = repairPool.select(randomEngine);
     auto repair_op = std::static_pointer_cast<IRepairOperator>(
         repairPool.operators[repair_op_idx]);
+    // Wire weight hint if operator is AdaptiveInsertion (Fix 2)
+    if (auto adaptive =
+            std::dynamic_pointer_cast<AdaptiveInsertion>(repair_op)) {
+      adaptive->setWeightHint(w.dist, w.gini, w.time);
+    }
     repair_op->execute(s_new, unserved_custs, randomEngine);
     repairPool.usages[repair_op_idx]++;
 
@@ -290,11 +300,7 @@ std::vector<Solution> ALNSSolver::solve() {
         // Do NOT force s_current = s_new. Let SA decide independently.
       }
 
-      // weightVectors defined at outer scope (before for loop).
-      // Cycle through them based on the current segment.
-      int wIdx =
-          (i / std::max(1, config.segmentIterations)) % weightVectors.size();
-      const auto &w = weightVectors[wIdx];
+      // weightVectors: wIdx and w already computed at top of loop iteration.
 
       // Dynamic scaling to align dimensions.
       // Cap scales to prevent explosion when an objective is near zero.
@@ -595,6 +601,10 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
     int r_idx = repairPool.select(randomEngine);
     auto r_op =
         std::static_pointer_cast<IRepairOperator>(repairPool.operators[r_idx]);
+    // Wire weight hint for AdaptiveInsertion in mini-loop too
+    if (auto adaptive = std::dynamic_pointer_cast<AdaptiveInsertion>(r_op)) {
+      adaptive->setWeightHint(0.33, 0.33, 0.34); // Balanced in mini-loop
+    }
     r_op->execute(s_new, unserved, randomEngine);
 
     s_new.evaluateRoutes();

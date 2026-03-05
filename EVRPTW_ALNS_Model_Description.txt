@@ -1,0 +1,369 @@
+# Scientific Report: A Multi-Objective Adaptive Large Neighborhood Search for the Electric Vehicle Routing Problem with Time Windows (EVRPTW)
+
+## Abstract
+
+This document provides a detailed description of a sophisticated solver for the Electric Vehicle Routing Problem with Time Windows (EVRPTW). The problem is modeled as a multi-objective optimization task with a hierarchical objective function designed to primarily minimize the number of vehicles, secondarily minimize total travel distance, and finally improve solution quality by balancing workload and minimizing the maximum route time. The implemented solution is based on the Adaptive Large Neighborhood Search (ALNS) metaheuristic, enhanced with a sophisticated Pareto archive, a Simulated Annealing-based acceptance criterion, and a powerful, multi-phase local search module for intensification. The framework also includes advanced features like Hypervolume-based convergence tracking and an optional Scatter Search phase for deep exploration.
+
+---
+
+## 1. Problem Definition
+
+The Electric Vehicle Routing Problem with Time Windows (EVRPTW) is an extension of the classical Vehicle Routing Problem (VRP). It involves designing a set of optimal routes for a fleet of electric vehicles (EVs) to serve a group of customers, subject to various real-world constraints.
+
+- A central depot serves as the starting and ending point for all vehicle routes.
+- Each customer has a specific demand and a time window within which service must begin.
+- The electric vehicles have a limited carrying capacity and a finite battery range.
+- A set of charging stations are available, which can be visited by vehicles to recharge their batteries. These stations also have their own operational time windows.
+
+The primary goal is to find a feasible set of routes that serves all customers while respecting all constraints and optimizing the given objectives.
+
+### 1.1. Objectives
+
+The problem is treated as a **hierarchical multi-objective optimization problem**. The objectives are prioritized as follows:
+
+1.  **Primary Objective:** Minimize the total number of vehicles used. `(Minimize |K|)`
+2.  **Secondary Objective:** Minimize the total travel distance of all routes. `(Minimize Σ TotalDistance_k)`
+3.  **Tertiary Objective (1):** Minimize the workload imbalance between routes, measured by the Gini Coefficient of active route times. A lower Gini coefficient (closer to 0) indicates a more balanced workload. `(Minimize Gini(ActiveTime_k))`
+4.  **Tertiary Objective (2):** Minimize the completion time of the longest route (makespan). `(Minimize Max(TotalTime_k))`
+
+A solution A is considered to dominate solution B if it is better in at least one objective without being worse in any other, following the strict hierarchical order. For example, a solution with fewer vehicles is always better, regardless of other objective values.
+
+---
+
+## 2. Mathematical Formulation
+
+*(This section remains unchanged as the mathematical model is standard. The novelty lies in the solution methodology.)*
+
+### 2.1. Sets and Indices
+- `D = {0}`: The set containing the central depot.
+- `C = {1, ..., N}`: The set of customers.
+- `S = {N+1, ..., N+M}`: The set of charging stations.
+- `V = D ∪ C ∪ S`: The set of all nodes.
+- `V' = C ∪ S`: The set of all possible visit locations.
+- `K`: The set of available homogeneous electric vehicles.
+
+### 2.2. Parameters
+- `d_ij`: Distance between node `i` and node `j`.
+- `t_ij`: Travel time between node `i` and node `j`.
+- `q_i`: Demand of customer `i`.
+- `[e_i, l_i]`: Time window for node `i`.
+- `s_i`: Service time required at customer `i`.
+- `C_k`: Maximum cargo capacity of vehicle `k`.
+- `Q_k`: Maximum battery capacity of vehicle `k`.
+- `h`: Energy consumption rate.
+- `g_j`: Charging rate at station `j`.
+
+### 2.3. Decision Variables
+- `x_ijk`: Binary, 1 if vehicle `k` travels from `i` to `j`.
+- `A_ik`: Arrival time of vehicle `k` at node `i`.
+- `L_ik`: Remaining cargo load of vehicle `k` at node `i`.
+- `B_ik`: Remaining battery level of vehicle `k` at node `i`.
+- `c_jk`: Amount of energy charged to vehicle `k` at station `j`.
+- `u_k`: Binary, 1 if vehicle `k` is used.
+
+### 2.4. Objective Function
+Minimize `(Z_1, Z_2, Z_3, Z_4)` where:
+`Z_1 = Σ_{k ∈ K} u_k`
+`Z_2 = Σ_{i,j,k} d_ij * x_ijk`
+`Z_3 = GiniCoefficient({ActiveTime_k | k ∈ K, u_k=1})`
+`Z_4 = Max_{k ∈ K} (CompletionTime_k)`
+
+### 2.5. Constraints
+*(Standard VRP, TW, Capacity, and Energy constraints apply.)*
+
+---
+
+## 3. Solution Methodology: Adaptive Large Neighborhood Search (ALNS)
+
+The problem is solved using a sophisticated ALNS metaheuristic tailored for hierarchical multi-objective optimization.
+
+### 3.1. Overall Framework
+
+The ALNS algorithm starts with an initial solution and iteratively tries to improve it. In each iteration, a portion of the current solution is "destroyed" and then "repaired". The choice of destroy and repair methods is guided by an adaptive weight adjustment mechanism that rewards operators for finding high-quality solutions.
+
+**Pseudo-code for ALNS Main Loop:**
+
+```
+Algorithm ALNSSolver.solve():
+  Input: Instance, ALNSConfig config
+  Output: ParetoArchive (set of non-dominated solutions)
+
+  s_current = generateInitialSolution()
+  archive.tryAdd(s_current)
+  currentTemperature = config.startTemperature
+  iterationsWithoutImprovement = 0
+  perturbationBoost = 1.0
+  
+  // HV-based convergence state
+  previousHV = 0.0
+  hvStagnationCount = 0
+  lastMinVehicles = s_current.getTotalVehicles()
+
+  For iteration = 1 to config.maxIterations:
+    s_new = s_current.copy() // Uses SolutionPool for efficiency
+
+    // 1. Destroy Phase
+    n_to_remove = calculateNodesToRemove(perturbationBoost)
+    destroy_op = destroyPool.select(rng)
+    unserved_custs = destroy_op.execute(s_new, n_to_remove, rng)
+    
+    // 2. Repair Phase
+    repair_op = repairPool.select(rng)
+    repair_op.execute(s_new, unserved_custs, rng)
+    
+    s_new.evaluateRoutes() // Re-evaluate feasibility and all objectives
+
+    If s_new is not feasible:
+      Assign score for failure and continue
+
+    // 3. Local Search Phase (Intensification)
+    If config.useLocalSearch and random() < config.localSearchIntensity:
+      localSearch.run(s_new) // Apply 3-phase local search
+
+    // 4. Acceptance Criterion
+    improved = false
+    If s_new.dominates(s_current):
+      s_current = s_new
+      Assign score for finding a new best solution
+      improved = true
+    Else:
+      add_res = archive.tryAdd(s_new) // Add to Pareto archive
+      If add_res is DOMINATING or NON_DOMINATED:
+        s_current = s_new // Move search to new Pareto-optimal region
+        Assign score for improving the archive
+        improved = true
+      Else: // s_new is dominated, use Simulated Annealing
+        delta = calculateWeightedObjectiveDifference(s_new, s_current)
+        If exp(-delta / currentTemperature) > random():
+          s_current = s_new
+          Assign score for accepted dominated solution
+        Else:
+          Assign score for rejected solution
+
+    // 5. Stagnation & Perturbation
+    If improved:
+      iterationsWithoutImprovement = 0
+    Else:
+      iterationsWithoutImprovement++
+    
+    If iterationsWithoutImprovement > 2000:
+      perturbationBoost = 1.5 // Increase destroy intensity
+    Else If iterationsWithoutImprovement > 1000:
+      perturbationBoost = 1.25
+      currentTemperature = config.startTemperature * 0.8 // Reheating
+      If random() < 0.2: s_current = archive.getRandomSolution(rng) // Jump
+    Else:
+      perturbationBoost = 1.0
+
+    // 6. Update Temperature
+    currentTemperature *= config.coolingRate
+
+    // 7. Update Operator Weights & Check Hypervolume Convergence
+    If iteration % config.segmentIterations == 0:
+      destroyPool.updateWeights(config.decayParameter)
+      repairPool.updateWeights(config.decayParameter)
+      
+      If checkHypervolumeConvergence(archive, lastMinVehicles, hvStagnationCount, previousHV):
+        Break loop // Converged
+
+  // 8. Optional: Scatter Search Intensification
+  If config.useScatterSearch:
+    scatterSearch.run(archive, *this)
+
+  Return archive.getFront()
+```
+
+### 3.2. Initial Solution
+
+A high-quality initial solution is generated using a problem-specific constructive heuristic. The heuristic adapts its strategy based on the instance type to improve the quality of the starting point.
+
+-   **For R and RC instances (randomly distributed customers):** Customers are sorted by the tightness of their time windows (due date - ready time). This prioritizes customers with less scheduling flexibility.
+-   **For C instances (clustered customers):** A Clarke-Wright Savings-based approach is used to pre-sort customers, naturally grouping geographically close customers.
+
+The heuristic then greedily inserts customers from the sorted list into routes, performing look-ahead checks for feasibility. A fallback mechanism creates individual routes (with station assistance if needed) for any remaining unserved customers.
+
+**Pseudo-code for Initial Solution Generation:**
+```
+Algorithm generateInitialSolution(Instance instance):
+  Input: Problem Instance
+  Output: Initial Solution (Solution object)
+
+  sol = new Solution(instance)
+  unservedCustomers = list of all customers
+
+  // 1. Smart Sorting of Unserved Customers
+  If instanceType is 'R' or 'RC':
+    Sort unservedCustomers by Time Window Width (tightest first)
+  Else (instanceType is 'C'):
+    Sort unservedCustomers using Clarke-Wright Savings logic
+
+  // 2. Main Construction Loop (Greedy Insertion)
+  While unservedCustomers is not empty and not cannotServeMore:
+    Create new Vehicle and new Route (currentRoute)
+    
+    While not routeFinished:
+      bestCustId = -1
+      bestScore = infinity
+
+      For each custId in unservedCustomers:
+        // Check feasibility (capacity, battery, time window)
+        If not feasible: continue
+
+        // Look-ahead check: Ensure return to depot or reachable station
+        If not canReturnToDepotOrStation(...): continue
+
+        // Calculate score (e.g., 70% distance, 30% urgency)
+        score = calculateInsertionScore(...)
+        If score < bestScore:
+          bestScore = score
+          bestCustId = custId
+
+      If bestCustId != -1:
+        Add bestCustId to currentRoute and update state
+        Remove bestCustId from unservedCustomers
+      Else: // No customer can be served
+        If canChargeAtNearestStation(...):
+          Add nearest station to currentRoute and update state
+        Else:
+          routeFinished = true
+
+    If route is valid:
+      sol.addRoute(currentRoute)
+    Else: // Rollback if route became infeasible
+      Return customers to unservedCustomers list
+
+  // 3. Fallback for remaining unserved customers (individual routes)
+  If unservedCustomers is not empty:
+    For each custId in unservedCustomers:
+      Try to create a single route (D -> C -> D)
+      If not feasible, try with station assistance (D -> S -> C -> D)
+
+  sol.evaluateRoutes()
+  Return sol
+```
+
+### 3.3. Neighborhood Operators
+
+A rich set of destroy and repair operators are implemented to ensure a diverse search.
+
+#### 3.3.1. Destroy Operators
+
+-   **UnifiedCostDestroy:** Removes customers based on a unified cost metric (distance, time, energy, or workload balance).
+-   **ShawDestroy (Relatedness):** Removes customers that are "related" (proximity, time window similarity, demand difference) to a seed customer.
+-   **InefficientRouteRemoval:** Removes all customers from an entire route deemed inefficient (few customers, high wait time, etc.).
+-   **RouteMergingDestroy:** Selects two geographically close routes and removes all their customers to encourage merging.
+-   **TargetedStationRemoval:** Removes inefficient charging stations to force the repair phase to find a better charging strategy.
+
+#### 3.3.2. Repair Operators
+
+-   **Regret-K Repair:** Prioritizes inserting "hard-to-place" customers (those with the largest difference between their best and second-best insertion costs).
+-   **AdaptiveInsertion:** A greedy operator that randomly focuses on minimizing distance, balancing workload, or minimizing makespan.
+-   **GreedyEnergyInsertion:** A greedy operator that prioritizes insertions based on an energy-focused cost function.
+-   **ParetoFocusRepair:** Similar to `AdaptiveInsertion`, but strictly focuses on one objective to explore the extremes of the Pareto front.
+-   **SmartStationRepair:** Intelligently searches for the best station to add to a route to enable an otherwise infeasible customer insertion.
+-   **SmartTimeAwareStationRepair:** An advanced version using O(1) delta calculations and KNN station searches to find the best station insertion, including "Free Charge" opportunities.
+
+### 3.4. Adaptive Weight Adjustment
+
+The algorithm dynamically adjusts the selection probability (weights) of each operator. After a segment of iterations, the weights are updated based on the scores operators received. Operators that produce better solutions are rewarded with higher scores, increasing their chance of being selected in the future.
+
+### 3.5. Acceptance Criterion & Multi-Objective Handling
+
+A new solution `s_new` is compared to the current solution `s_current` using a multi-layered approach:
+
+1.  **Dominance:** If `s_new` dominates `s_current` according to the hierarchical objectives, `s_current` is replaced by `s_new`.
+2.  **Pareto Archive:** The `ParetoArchive` stores all non-dominated solutions found so far.
+    -   **Bucketing:** Solutions are stored in "buckets" based on their vehicle count.
+    -   **Hierarchical Pruning:** When a new solution with `V` vehicles is added, the archive **instantly and permanently deletes all buckets containing solutions with more than `V` vehicles**. This strictly enforces the primary objective.
+    -   **Crowding Distance:** If a bucket exceeds its maximum size, it is pruned by removing the solution in the most "crowded" region of the objective space (based on NSGA-II's crowding distance metric).
+3.  **Simulated Annealing (SA):** If `s_new` is dominated by `s_current`, it can still be accepted based on a probability `exp(-delta / T)`, where `delta` is the degradation in a weighted-sum of the objectives and `T` is the current "temperature". This allows the algorithm to escape local optima.
+
+#### 3.5.1. Early Stopping (Hypervolume Convergence)
+
+To avoid unnecessary iterations, the ALNS uses a **Hypervolume-based early stopping mechanism**:
+- At the end of each segment, the 3D Hypervolume of the current Pareto Archive is calculated (using Distance, Gini, and MaxTime for the lowest vehicle count found).
+- If the relative improvement in Hypervolume falls below a threshold (`hvImprovementThreshold`) for a consecutive number of segments (`hvStagnationLimit`), the algorithm assumes the Pareto Front has converged and terminates early.
+
+---
+
+## 3.6. Local Search Module (Updated)
+
+The ALNS integrates a powerful, three-phase local search module to intensify the search. It employs a "First Improvement" strategy, applying the first improving move found to accelerate the search process.
+
+### 3.6.1. Key Performance Optimizations
+
+-   **Tiered Filtering:** A multi-level check system to quickly prune unpromising moves before performing expensive, full evaluations.
+    -   **Tier 3 (Bounding Check):** `Route::canPossiblyInsert` provides a fast, O(1) check on fundamental constraints (capacity, initial energy, time window start). It's used as a primary filter in `searchRelocate` and `searchSwap`.
+    -   **Tier 2 (Delta Evaluation):** `evaluateRelocateDelta` calculates the change in distance for a move without copying the entire route object. It acts as a cheap, secondary filter.
+    -   **Tier 1 (Full Evaluation):** `evaluateMove` performs a complete, but costly, evaluation by simulating the move on copied routes. This is only called if cheaper filters pass.
+
+-   **Granular & KNN-based Neighborhoods:** The search space for inter-route moves is drastically reduced.
+    -   **Granular Neighborhoods:** The `SearchContext` caches route centroids. Inter-route operators (like `Swap`, `Relocate`) only consider pairs of routes that are geographically close, based on a pre-calculated `distanceThreshold`.
+    -   **K-Nearest Neighbors (KNN) Cache:** The `k` nearest neighbors for each customer are pre-calculated. `searchRelocate` and `searchSwap` use this cache to focus only on the most promising insertion positions or swap candidates, avoiding a full scan.
+
+-   **Static Move Descriptor (SMD):** A single `MoveDescriptor` object (`activeMove`) is reused across all search operations within the `LocalSearch` class to avoid repeated memory allocations and deallocations in the tight inner loops.
+
+-   **Adaptive Neighborhood Sizing:** The size of the neighborhoods explored by operators (e.g., `maxNodesToCheck_`, `maxSwapAttempts_`) is dynamically adjusted. It shrinks on success to intensify the search and expands on failure to diversify.
+
+### 3.6.2. Local Search Phases & Operators
+
+The local search is structured into three distinct phases, executed in a loop.
+
+1.  **Phase 1: Distance Optimization (VND):** A Variable Neighborhood Descent that cycles through operators, restarting from the beginning whenever an improvement is found.
+    -   **Relocate (1-Opt):** Moves a single customer to another position (intra- or inter-route).
+        ```
+        Algorithm searchRelocate(solution, context):
+          For each route r1 in solution:
+            For each customer node_i in r1 (ranked by removal savings):
+              // Granular Filter (Route-level)
+              For each route r2 in context.neighborLists[r1]:
+                // KNN Filter (Node-level)
+                For each candidate position j in findBestInsertionPositions_KNN(r2, node_i):
+                  // Tier 3 Filter
+                  If not r2.canPossiblyInsert(node_i, j): continue
+                  
+                  // Tier 2 Filter
+                  delta = evaluateRelocateDelta(node_i, j)
+                  If delta >= 0: continue
+                  
+                  // Tier 1: Full Evaluation
+                  evaluateMove(RELOCATE, node_i, j)
+                  If move is feasible and improves objective:
+                    applyMove(...) // First Improvement
+                    Return true
+                  Else If move failed due to energy:
+                    If tryRelocateWithEnergyBoost(...): // Specialized Heuristic
+                      Return true
+        ```
+    -   **Swap:** Exchanges the positions of two customers (intra- or inter-route). The search is similarly optimized with Granular, KNN, and Tiered filters.
+    -   **2-Opt (Intra-route):** Reverses a segment within a single route to untangle paths. A quick distance-saving check is performed before the full evaluation.
+    -   **Inter-2-Opt (Cross-route):** Exchanges the tails of two different routes. This powerful operator can significantly restructure the solution. It is filtered by route granularity.
+    -   **Or-Opt:** Moves a contiguous segment of 2-3 customers to another position.
+
+2.  **Phase 2: Charging Optimization:** A set of operators run periodically to improve energy efficiency.
+    -   `removeRedundantStations`: Removes stations that are unnecessary (e.g., provide negligible charge, or a bypass is feasible).
+    -   `repositionStations`: Tries to move a station to a better location by swapping it with a closer alternative from the instance's station list.
+    -   `searchStationSwap`: Replaces a station with a more "centroid-optimal" one, which is closer to the customer center-of-mass of the route.
+    -   `optimizeChargingAmounts`: This logic is embedded within the `Route::evaluate` function, which automatically calculates the minimum required charge at each station. The operator focuses on removing stations that become redundant after this optimization (e.g., zero charge).
+
+3.  **Phase 3: Vehicle Reduction:** Aggressive operators run periodically or when the search stagnates to reduce the fleet size.
+    -   `runSmartMultiRouteMerge`: Attempts to merge two small, nearby routes into one, or at least into two more efficient routes.
+    -   `tryEliminateSmallestRoute`: Attempts to remove the route with the fewest customers by re-inserting all its customers into other routes in the solution.
+
+### 3.6.3. Specialized Heuristics
+
+-   **Energy Boost Relocate:** If a `Relocate` move is highly beneficial for distance but fails the final evaluation due to an energy deficit, this helper function attempts to salvage the move by intelligently inserting a charging station into the target route to restore feasibility.
+
+### 3.7. Perturbation
+
+To escape deep local optima during periods of stagnation, several perturbation mechanisms are used:
+-   **Reheating:** The Simulated Annealing temperature is increased.
+-   **Archive Jump:** The current solution is replaced with a random solution from the Pareto archive.
+-   **Increased Destruction:** The number of customers to remove is temporarily increased.
+
+### 3.8. Scatter Search (Optional Intensification)
+
+The framework includes an optional `ScatterSearch` module that can be run after the main ALNS loop for further intensification.
+-   **Reference Set:** It builds a reference set of high-quality (Tier 1) and diverse (Tier 2, based on crowding distance) solutions from the final Pareto Archive.
+-   **Combination Method:** It uses **Path Relinking** to generate new solutions by gradually transforming one parent solution into another, exploring the path between them.
+-   **Improvement:** New solutions generated via Path Relinking are improved using a short run of the ALNS algorithm before being submitted to the Pareto Archive.

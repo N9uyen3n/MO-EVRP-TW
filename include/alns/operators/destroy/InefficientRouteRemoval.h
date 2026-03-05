@@ -17,5 +17,9 @@ public:
 private:
     std::shared_ptr<Instance> instance;
 
-    double calculateRouteScore(const Route& route) const;
+    // Updated signature with context parameters
+    double calculateRouteScore(const Route& route, 
+                               double avgCustomersPerRoute,
+                               double avgDistPerRoute,
+                               double avgWaitPerRoute) const;
 };

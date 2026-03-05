@@ -1,148 +1,167 @@
 #include "../../../../include/alns/operators/repair/ParetoFocusRepair.h"
-#include "../../../../include/core/Solution.h"
 #include "../../../../include/core/Instance.h"
+#include "../../../../include/core/Solution.h"
 #include "../../../../include/core/Vehicle.h"
 #include <algorithm>
-#include <limits>
 #include <iostream>
+#include <limits>
 #include <numeric>
+
 
 ParetoFocusRepair::ParetoFocusRepair(std::shared_ptr<Instance> inst)
     : instance(inst) {}
 
 std::string ParetoFocusRepair::getName() const {
-    return "Pareto Focus Repair";
+  return "Pareto Focus Repair (Vehicle Minimizing)";
 }
 
 // Helper function
 namespace {
-void createNewRouteForCustomer(Solution& solution, int customerId, std::shared_ptr<Instance> instance) {
-    int newRouteId = solution.getNumRoutes();
-    auto vehicle = std::make_shared<Vehicle>(
-        newRouteId,
-        instance->getVehicleCapacity(),
-        instance->getVehicleBattery(),
-        instance->getVehicleEnergyRate()
-    );
-    Route newRoute(newRouteId, vehicle, instance);
-    newRoute.addNode(customerId, 1);
-    newRoute.evaluate();
-    solution.addRoute(newRoute);
+void createNewRouteForCustomer(Solution &solution, int customerId,
+                               std::shared_ptr<Instance> instance) {
+  int newRouteId = solution.getNumRoutes();
+  auto vehicle = std::make_shared<Vehicle>(
+      newRouteId, instance->getVehicleCapacity(), instance->getVehicleBattery(),
+      instance->getVehicleEnergyRate());
+  Route newRoute(newRouteId, vehicle, instance);
+  newRoute.addNode(customerId, 1);
+  newRoute.evaluate();
+  solution.addRoute(newRoute);
 }
-}
+} // namespace
 
-void ParetoFocusRepair::execute(Solution& solution, const std::vector<int>& unservedCustomers, std::mt19937& rng) {
-    std::uniform_int_distribution<> distObj(0, 2);
-    int focusObj = distObj(rng);
+void ParetoFocusRepair::execute(Solution &solution,
+                                const std::vector<int> &unservedCustomers,
+                                std::mt19937 &rng) {
+  auto &routes = solution.getRoutes();
 
-    std::vector<int> customers = unservedCustomers;
-    std::shuffle(customers.begin(), customers.end(), rng);
+  // =====================================================================
+  // STEP 1: Sort customers theo TW tightest first
+  // Customers khó (TW tight) insert trước → tránh bị blocked sau
+  // =====================================================================
+  std::vector<int> customers = unservedCustomers;
+  std::sort(customers.begin(), customers.end(), [&](int a, int b) {
+    auto na = instance->getNodeById(a);
+    auto nb = instance->getNodeById(b);
+    double twA = na->getDueDate() - na->getReadyTime();
+    double twB = nb->getDueDate() - nb->getReadyTime();
+    if (std::abs(twA - twB) < 1e-6) {
+      return na->getDueDate() < nb->getDueDate();
+    }
+    return twA < twB; // Tightest first
+  });
 
-    auto& routes = solution.getRoutes();
+  // =====================================================================
+  // Helper: Calculate route time utilization (for Packing Strategy)
+  // =====================================================================
+  double timeHorizon = instance->getNodeById(0)->getDueDate();
+  if (timeHorizon < 1e-6)
+    timeHorizon = 230.0;
+  auto getRouteUtilization = [&](const Route &r) -> double {
+    if (r.getCustomers().empty())
+      return 0.0;
+    return r.getTotalTime() / timeHorizon;
+  };
 
-    double meanRouteDuration = 0.0;
-    if (focusObj == 2 && !routes.empty()) {
-        double totalDuration = 0;
-        for(const auto& route : routes) {
-            totalDuration += route.getTotalTime();
-        }
-        meanRouteDuration = totalDuration / routes.size();
+  for (int customerId : customers) {
+    auto customerNode = instance->getNodeById(customerId);
+    double demand =
+        std::static_pointer_cast<Customer>(customerNode)->getDemand();
+
+    // =================================================================
+    // STEP 3: Build candidates từ TẤT CẢ routes, sort theo packing score
+    // Packing score = ưu tiên route gần đầy + insertion cost thấp
+    // =================================================================
+    struct Candidate {
+      int routeIdx;
+      size_t position;
+      double packingScore; // Lower = better
+    };
+    std::vector<Candidate> candidates;
+
+    for (int r = 0; r < (int)routes.size(); ++r) {
+      if (!routes[r].quickCapacityCheck(demand))
+        continue;
+
+      const auto &nodes = routes[r].getNodes();
+      for (size_t pos = 1; pos < nodes.size(); ++pos) {
+        // Pre-check feasibility
+        if (!routes[r].canPossiblyInsert(customerId, pos))
+          continue;
+
+        auto res = routes[r].checkInsertionCost(customerId, pos);
+        if (!res.isFeasible)
+          continue;
+
+        // Packing score: penalize creating new time gaps,
+        // reward inserting into fuller routes
+        // utilBonus: càng đầy càng âm (tốt)
+        double utilBonus = -20.0 * getRouteUtilization(routes[r]);
+        double costPenalty = res.deltaDistance;
+        double packingScore = costPenalty + utilBonus;
+
+        candidates.push_back({r, pos, packingScore});
+      }
     }
 
-    for (int customerId : customers) {
-        auto customerNode = instance->getNodeById(customerId);
-        double customerDemand = std::static_pointer_cast<Customer>(customerNode)->getDemand();
-        
-        std::vector<int> feasibleRoutesIndices;
-        for (int r = 0; r < routes.size(); ++r) {
-            if (routes[r].quickCapacityCheck(customerDemand)) {
-                feasibleRoutesIndices.push_back(r);
-            }
-        }
-        
-        if (feasibleRoutesIndices.empty()) {
-            createNewRouteForCustomer(solution, customerId, instance);
-            continue;
-        }
+    // =================================================================
+    // STEP 4: Insert vào best candidate
+    // =================================================================
+    if (!candidates.empty()) {
+      auto best = std::min_element(candidates.begin(), candidates.end(),
+                                   [](const Candidate &a, const Candidate &b) {
+                                     return a.packingScore < b.packingScore;
+                                   });
+      routes[best->routeIdx].addNode(customerId, best->position);
+      routes[best->routeIdx].evaluate();
+    } else {
+      // =============================================================
+      // STEP 5: Fallback — thử thêm station vào route hiện tại
+      // trước khi tạo route mới
+      // =============================================================
+      bool insertedWithStation = false;
+      for (int r = 0; r < (int)routes.size(); ++r) {
+        if (!routes[r].quickCapacityCheck(demand))
+          continue;
 
-        struct Candidate {
-            int routeIdx;
-            size_t position;
-            double estimatedCost;
-            bool operator<(const Candidate& other) const {
-                return estimatedCost < other.estimatedCost;
-            }
-        };
-        
-        std::vector<Candidate> candidates;
-        
-        for (int r : feasibleRoutesIndices) {
-            for (size_t pos = 1; pos < routes[r].getNodes().size(); ++pos) {
-                if (!routes[r].canPossiblyInsert(customerId, pos)) {
-                    continue;
-                }
-                
-                auto fastResult = routes[r].fastForwardCheck(customerId, pos);
-                
-                if (fastResult.isFeasible) {
-                    double estimatedCost = 0.0;
-                    if (focusObj == 0) { // Distance
-                        estimatedCost = fastResult.deltaDistance;
-                    } else { // Time or Workload - use distance as proxy
-                        estimatedCost = fastResult.deltaDistance;
-                    }
-                    candidates.push_back({r, pos, estimatedCost});
-                }
-            }
-        }
-        
-        if (candidates.empty()) {
-            createNewRouteForCustomer(solution, customerId, instance);
-            continue;
-        }
-        
-        std::sort(candidates.begin(), candidates.end());
-        
-        const int MAX_VERIFY = 3;
-        bool inserted = false;
-        double minExactCost = std::numeric_limits<double>::max();
-        int bestRouteIdx = -1;
-        size_t bestPos = -1;
+        // Tìm nearest station từ customer để hỗ trợ
+        int nearStation = instance->getNearestStationId(customerId);
+        if (nearStation == -1)
+          continue;
 
-        for (int i = 0; i < std::min(MAX_VERIFY, (int)candidates.size()); ++i) {
-            auto& candidate = candidates[i];
-            
-            auto exactResult = routes[candidate.routeIdx].checkInsertionCost(
-                customerId, 
-                candidate.position
-            );
-            
-            if (exactResult.isFeasible) {
-                double currentExactCost = 0.0;
-                if (focusObj == 0) { // Distance
-                    currentExactCost = exactResult.deltaDistance;
-                } else if (focusObj == 1) { // Time
-                    currentExactCost = exactResult.deltaWaitTime + exactResult.deltaDistance;
-                } else { // Workload
-                    double estimatedDeltaTime = exactResult.deltaWaitTime + exactResult.deltaDistance + customerNode->getServiceTime();
-                    double newRouteTime = routes[candidate.routeIdx].getTotalTime() + estimatedDeltaTime;
-                    currentExactCost = std::abs(newRouteTime - meanRouteDuration);
-                }
+        // Thử station-assisted chèn trực tiếp [station, customer] hoặc
+        // [customer, station]
+        for (size_t pos = 1; pos < routes[r].getNodes().size(); ++pos) {
+          // Try [station, customer]
+          Route copy1 = routes[r];
+          copy1.addNode(nearStation, pos);
+          copy1.addNode(customerId, pos + 1);
+          copy1.evaluate();
+          if (copy1.isFeasible()) {
+            routes[r] = copy1;
+            insertedWithStation = true;
+            break;
+          }
 
-                if (currentExactCost < minExactCost) {
-                    minExactCost = currentExactCost;
-                    bestRouteIdx = candidate.routeIdx;
-                    bestPos = candidate.position;
-                    inserted = true;
-                }
-            }
+          // Try [customer, station]
+          Route copy2 = routes[r];
+          copy2.addNode(customerId, pos);
+          copy2.addNode(nearStation, pos + 1);
+          copy2.evaluate();
+          if (copy2.isFeasible()) {
+            routes[r] = copy2;
+            insertedWithStation = true;
+            break;
+          }
         }
-        
-        if (inserted) {
-            routes[bestRouteIdx].addNode(customerId, bestPos);
-            routes[bestRouteIdx].evaluate();
-        } else {
-            createNewRouteForCustomer(solution, customerId, instance);
-        }
+        if (insertedWithStation)
+          break;
+      }
+
+      if (!insertedWithStation) {
+        // Last resort: tạo route mới
+        createNewRouteForCustomer(solution, customerId, instance);
+      }
     }
+  }
 }

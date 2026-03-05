@@ -11,7 +11,7 @@ from pathlib import Path
 # Cấu hình
 BUILD_DIR = Path("cmake-build-release")
 EXE_NAME = "TestALNS.exe"
-TEST_INSTANCE = "data/solomon/c101C5.txt" # Đã sửa lại đường dẫn đúng
+TEST_INSTANCE = "..data/solomon/c101C5.txt" # Đã sửa lại đường dẫn đúng
 
 exe_path = BUILD_DIR / EXE_NAME
 

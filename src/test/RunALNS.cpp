@@ -62,51 +62,27 @@ int main(int argc, char *argv[]) {
     // Đường dẫn mặc định
     // instancePath = "../data/solomon/c101C5.txt";
     // instancePath = "../data/solomon/c101C10.txt";
-    // instancePath = "../data/solomon/rc202C15.txt";
+    // instancePath = "../data/solomon/rc204C15.txt";
     // instancePath = "../data/solomon/c103C5.txt";
     // instancePath = "../data/solomon/c104C10.txt";
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/c208C15.txt";
     // instancePath = "../data/solomon/c101_21.txt";
     // instancePath = "../data/solomon/c102_21.txt";
-    instancePath = "../data/solomon/r101_21.txt";
-    // instancePath = "../data/solomon/r102_21.txt";
     // instancePath = "../data/solomon/r107_21.txt";
-    // instancePath = "../data/solomon/r103_21.txt";
-
-    // instancePath = "../data/solomon/r104_21.txt";
     // instancePath = "../data/solomon/r105_21.txt";
-    // instancePath = "../data/solomon/rc101_21.txt";
     // instancePath = "../data/solomon/c106C15.txt";
     // instancePath = "../data/solomon/c104_21.txt";
-    // instancePath = "../data/solomon/c105_21.txt";
-
     // instancePath = "../data/solomon/r109_21.txt";
-    // instancePath = "../data/solomon/r108_21.txt";
     // instancePath = "../data/solomon/c103C15.txt";
-    // instancePath = "../data/solomon/c102_21.txt";
-    // instancePath = "../data/solomon/c103_21.txt";
-    // instancePath = "../data/solomon/c107_21.txt";
-    // instancePath = "../data/solomon/c108_21.txt";
+    instancePath = "../data/solomon/c102_21.txt";
     // instancePath = "../data/solomon/c201_21.txt";
-    // instancePath = "../data/solomon/c202_21.txt";
-    // instancePath = "../data/solomon/c203_21.txt";
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/r201_21.txt";
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/rc103C15.txt";
     // instancePath = "../data/solomon/rc204C15.txt";
     // instancePath = "../data/solomon/r105C15.txt";
-    // instancePath = "../data/solomon/r202_21.txt";
-    // instancePath = "../data/solomon/r202C15.txt";
-    // instancePath = "../data/solomon/rc202_21.txt";
-    // instancePath = "../data/solomon/rc103_21.txt";
-    // instancePath = "../data/solomon/rc203_21.txt";
-    // instancePath = "../data/solomon/rc204_21.txt";
-    // instancePath = "../data/solomon/rc205_21.txt";
-    // instancePath = "../data/solomon/rc206_21.txt";
-    // instancePath = "../data/solomon/rc207_21.txt";
-    // instancePath = "../data/solomon/rc208_21.txt";
 
     // instancePath = "../data/solomon/rc202C15.txt";
 
@@ -133,15 +109,15 @@ int main(int argc, char *argv[]) {
     alns::ALNSConfig config;
 
     // --- Tham số cơ bản ---
-    config.maxIterations = 25000;
-    config.segmentIterations = 200;
-    config.hvImprovementThreshold =
-        0.0005;                    // ε = 0.05% (sensitive to small gains)
-    config.hvStagnationLimit = 20; //
+    config.maxIterations = 30000;
+    config.segmentIterations = 100;
+    config.hvImprovementThreshold = 0.001; // ε = 0.1%
+    config.hvStagnationLimit = 5; // Dừng sau 5 segment không cải thiện HV
 
     // --- Adaptive Weights ---
     config.decayParameter = 0.85;
-    config.scoreDominating = 40.0;
+    config.scoreDominating =
+        40.0; // Increased from 40.0 - reward good operators more
     config.scoreNonDominated = 25.0; // Increased from 25.0
     config.scoreDominated = 10.0;    // Increased from 10.0
     config.scoreIdentical = 0.0;
@@ -149,16 +125,16 @@ int main(int argc, char *argv[]) {
     // --- Destroy Params ---
     config.minRemoval = 0.15;
     config.maxRemoval =
-        0.3; // Increased from 0.4 - destroy more for better exploration
+        0.5; // Increased from 0.4 - destroy more for better exploration
 
     // --- Repair Params ---
     config.regretK = 3;
-    config.noiseParameter = 0.4;
+    config.noiseParameter = 0.5;
 
     // --- Local Search & Scatter Search ---
     config.useLocalSearch = true;
-    config.useScatterSearch = false;
-    config.localSearchIntensity = 20; // Increased from 20
+    config.useScatterSearch = true;
+    config.localSearchIntensity = 25; // Increased from 20
 
     // --- Scatter Search Params ---
     config.scatterSearchConfig.maxScatterIters = 5;
@@ -167,7 +143,7 @@ int main(int argc, char *argv[]) {
     // --- Simulated Annealing ---
     config.startTemperature =
         200.0; // Increased from 200.0 - CRITICAL for exploration
-    config.coolingRate = 0.999; // Slower cooling from 0.995 - stay warm longer
+    config.coolingRate = 0.997; // Slower cooling from 0.995 - stay warm longer
     config.minTemperature =
         0.05; // Lower from 0.1 - allow smaller jumps at the end
 
@@ -186,7 +162,7 @@ int main(int argc, char *argv[]) {
     std::string baseName = pathObj.stem().string();
 
     // Tạo đường dẫn thư mục output: logs/<TênFile>/<CustomRunName> (nếu có)
-    std::string outputDir = "logs_testLS2/" + baseName;
+    std::string outputDir = "logs/" + baseName;
     std::string runName = baseName;
 
     if (!customRunName.empty()) {
@@ -229,70 +205,20 @@ int main(int argc, char *argv[]) {
               << "\n"; // Nhắc người dùng nơi lưu file
 
     if (!paretoFront.empty()) {
-      // Sort Pareto Front by distance ascending for consistent reporting
-      std::sort(paretoFront.begin(), paretoFront.end(),
-                [](const Solution &a, const Solution &b) {
-                  if (a.getTotalVehicles() != b.getTotalVehicles())
-                    return a.getTotalVehicles() < b.getTotalVehicles();
-                  return a.getTotalDistance() < b.getTotalDistance();
-                });
-
-      // === TABLE 1: Pareto Front Summary ===
-      std::cout
-          << "\n--- Pareto Front Summary (sorted by NV, then Distance) ---\n";
-      std::cout << std::fixed << std::setprecision(2);
-      std::cout << std::setw(4) << "#" << std::setw(6) << "NV" << std::setw(12)
-                << "Distance" << std::setw(10) << "Gini" << std::setw(12)
-                << "MaxTime" << std::setw(10) << "Feasible"
-                << "\n";
-      std::cout << std::string(54, '-') << "\n";
+      std::cout << "\n--- Best Solutions Found (Pareto Front) ---\n";
+      std::cout << std::fixed
+                << std::setprecision(2); // Set precision for cleaner output
       int idx = 1;
       for (const auto &sol : paretoFront) {
-        std::cout << std::setw(4) << idx++ << std::setw(6)
-                  << sol.getTotalVehicles() << std::setw(12)
-                  << sol.getTotalDistance() << std::setw(10)
-                  << std::setprecision(4) << sol.getWorkloadGini()
-                  << std::setw(12) << std::setprecision(2) << sol.getMaxTime()
-                  << std::setw(10) << (sol.isFeasible() ? "YES" : "NO") << "\n";
+        std::cout << "Solution #" << idx++ << ": "
+                  << "Veh=" << sol.getTotalVehicles()
+                  << ", Dist=" << sol.getTotalDistance()
+                  << ", Fairness=" << sol.getWorkloadGini()
+                  << ", MaxTime=" << sol.getMaxTime() << "\n";
       }
-      std::cout << std::string(54, '-') << "\n";
 
-      // === TABLE 2: Detailed Route Information for BEST Distance Solution ===
-      // std::cout
-      //     << "\n--- Best Distance Solution (Solution #1) - Route Details ---\n";
-      // const auto &bestSol = paretoFront[0];
-      // printSolutionSummary(bestSol);
-
-      // int routeIdx = 1;
-      // for (const auto &route : bestSol.getRoutes()) {
-      //   std::cout << route.toString();
-      //   routeIdx++;
-      // }
-
-      // === TABLE 3: Route Sequences for ALL Solutions (compact) ===
-      // std::cout << "\n--- Route Sequences (All Solutions) ---\n";
-      // idx = 1;
-      // for (const auto &sol : paretoFront) {
-      //   std::cout << "\nSolution #" << idx++
-      //             << " (NV=" << sol.getTotalVehicles()
-      //             << ", Dist=" << std::setprecision(2) <<
-      //             sol.getTotalDistance()
-      //             << ")\n";
-      //   routeIdx = 1;
-      //   for (const auto &route : sol.getRoutes()) {
-      //     std::cout << "  R" << routeIdx++ << ": ";
-      //     const auto &nodes = route.getNodes();
-      //     for (size_t i = 0; i < nodes.size(); ++i) {
-      //       std::cout << nodes[i];
-      //       if (i < nodes.size() - 1)
-      //         std::cout << "-";
-      //     }
-      //     std::cout << " (d=" << std::setprecision(1)
-      //               << route.getTotalDistance()
-      //               << ", t=" << route.getTotalTime() << ")\n";
-      //   }
-      // }
-
+      std::cout << "\n--- Details of Solution #1 ---\n";
+      printSolutionSummary(paretoFront[0]);
     } else {
       std::cout << "[WARNING] No feasible solution found!\n";
     }

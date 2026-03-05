@@ -1,92 +1,202 @@
 #include "../../../../include/alns/operators/destroy/InefficientRouteRemoval.h"
 #include "../../../../include/core/Customer.h"
 #include <algorithm>
-#include <numeric>
+#include <cmath>
 #include <iostream>
+#include <numeric>
 
-InefficientRouteRemoval::InefficientRouteRemoval(std::shared_ptr<Instance> instance)
+
+InefficientRouteRemoval::InefficientRouteRemoval(
+    std::shared_ptr<Instance> instance)
     : instance(instance) {}
 
 std::string InefficientRouteRemoval::getName() const {
-    return "Inefficient Route Removal";
+  return "Inefficient Route Removal";
 }
 
-double InefficientRouteRemoval::calculateRouteScore(const Route& route) const {
-    int numCustomers = 0;
-    int stationCount = 0;
-    const auto& nodes = route.getNodes();
+double InefficientRouteRemoval::calculateRouteScore(
+    const Route &route, double avgCustomersPerRoute, double avgDistPerRoute,
+    double avgWaitPerRoute) const {
 
-    for (int nodeId : nodes) {
-        auto type = instance->getNodeById(nodeId)->getType();
-        if (type == NodeType::CUSTOMER) {
-            numCustomers++;
-        } else if (type == NodeType::STATION) {
-            stationCount++;
-        }
-    }
+  int numCustomers = route.getCustomers().size();
+  if (numCustomers == 0)
+    return -1e9;
 
-    if (numCustomers == 0) return -1e9; // Empty route, don't remove unless necessary
+  double score = 0.0;
 
-    double score = 0.0;
+  // 1. RELATIVE SIZE: route nhỏ hơn average → dễ eliminate hơn
+  double relativeSize = (avgCustomersPerRoute - numCustomers) /
+                        std::max(1.0, avgCustomersPerRoute);
+  score += 25.0 * relativeSize;
 
-    // Weights for different inefficiency factors
-    // 1. FEWEST CUSTOMERS (Primary goal: eliminate small routes)
-    const double w_count = 10.0;
-    score += w_count * (1.0 / numCustomers);
+  // 2. RELATIVE EFFICIENCY: distance/customer so với average
+  double distPerCust = route.getTotalDistance() / numCustomers;
+  double relativeEff =
+      (distPerCust - avgDistPerRoute) / std::max(1.0, avgDistPerRoute);
+  score += 15.0 * relativeEff;
 
-    // 2. WAIT TIME (Secondary goal: eliminate routes with excessive waiting)
-    const double w_wait = 2.0;
-    double avgWait = route.getTotalWaitTime() / numCustomers;
-    score += w_wait * avgWait;
+  // 3. WAIT TIME: vẫn giữ nhưng relative
+  double avgWait = route.getTotalWaitTime() / numCustomers;
+  double relativeWait =
+      (avgWait - avgWaitPerRoute) / std::max(1.0, avgWaitPerRoute);
+  score += 10.0 * relativeWait;
 
-    // 3. DISTANCE EFFICIENCY (Tertiary: eliminate meandering routes)
-    const double w_dist = 0.5;
-    double distPerCust = route.getTotalDistance() / numCustomers;
-    score += w_dist * distPerCust;
+  // 4. BOTTLENECK: soft penalty -> Tăng penalty để trừng phạt route dễ nghẽn
+  auto bottlenecks = route.getBottleneckNodes(0.15);
+  double bottleneckRatio = (double)bottlenecks.size() / numCustomers;
+  score -= std::min(15.0, 25.0 * bottleneckRatio);
 
-    // 4. STATION OVERHEAD (Quaternary: eliminate routes with too many charges)
-    const double w_station = 5.0;
-    score += w_station * stationCount;
+  // 5. STATION OVERHEAD
+  int stationCount = 0;
+  for (int nodeId : route.getNodes())
+    if (instance->getNodeById(nodeId)->getType() == NodeType::STATION)
+      stationCount++;
+  score += 5.0 * ((double)stationCount / numCustomers);
 
-    return score;
+  // 6. RC2-AWARE: MERGABILITY (TW Coverage)
+  double twCoverage = 0.0;
+  double maxTW = instance->getNodeById(0)->getDueDate();
+  for (int custId : route.getCustomers()) {
+    auto cust = instance->getNodeById(custId);
+    double tw = cust->getDueDate() - cust->getReadyTime();
+    twCoverage += tw / std::max(1.0, maxTW);
+  }
+  double avgTWCoverage = twCoverage / numCustomers;
+  score += 20.0 * avgTWCoverage;
+
+  // 7. ⭐ NEW: ENERGY PORTABILITY
+  // Customers gần depot → dễ redistribute không cần thêm station
+  double avgEnergyDemand = 0.0;
+  double energyRate = instance->getVehicleEnergyRate();
+  for (int custId : route.getCustomers()) {
+    // Energy round trip from depot
+    double e =
+        (instance->getDistance(0, custId) + instance->getDistance(custId, 0)) *
+        energyRate;
+    avgEnergyDemand += e;
+  }
+  avgEnergyDemand /= numCustomers;
+
+  double batteryCap = instance->getVehicleBattery();
+  // Portability cao (gần 1) nếu demand thấp so với pin
+  double portability = 1.0 - (avgEnergyDemand / std::max(1.0, batteryCap));
+  portability = std::max(0.0, portability); // Clamp âm
+
+  // Tăng factor từ 15.0 lên 30.0 để prioritize diệt route tốn pin
+  score += 30.0 * portability;
+
+  return score;
 }
 
-std::vector<int> InefficientRouteRemoval::execute(Solution& solution, int /*nodesToRemove*/, std::mt19937& rng) {
-    std::vector<int> removedCustomers;
-    auto& routes = solution.getRoutes();
+std::vector<int> InefficientRouteRemoval::execute(Solution &solution,
+                                                  int nodesToRemove,
+                                                  std::mt19937 &rng) {
+  std::vector<int> removedCustomers;
+  auto &routes = solution.getRoutes();
 
-    if (routes.empty()) return removedCustomers;
-
-    // Calculate scores for all routes
-    std::vector<std::pair<int, double>> routeScores;
-    for (size_t i = 0; i < routes.size(); ++i) {
-        double score = calculateRouteScore(routes[i]);
-        routeScores.push_back({static_cast<int>(i), score});
-    }
-
-    // Sort by score descending (Higher score = More inefficient = Better candidate to remove)
-    std::sort(routeScores.begin(), routeScores.end(), [](const auto& a, const auto& b) {
-        return a.second > b.second;
-    });
-
-    // Randomized selection (Tournament or Roulette can be used, here we use simple top-k randomization)
-    // Select one of the top 3 worst routes
-    int k = std::min(3, static_cast<int>(routeScores.size()));
-    std::uniform_int_distribution<> dist(0, k - 1);
-    int selectedIdx = dist(rng);
-    
-    int routeToRemoveIdx = routeScores[selectedIdx].first;
-
-    // Collect customers from the removed route
-    const auto& nodes = routes[routeToRemoveIdx].getNodes();
-    for (int nodeId : nodes) {
-        if (instance->getNodeById(nodeId)->getType() == NodeType::CUSTOMER) {
-            removedCustomers.push_back(nodeId);
-        }
-    }
-
-    // Remove the route
-    solution.removeRoute(routeToRemoveIdx);
-
+  if (routes.empty())
     return removedCustomers;
+
+  // --- Calculate Context Statistics ---
+  int activeRoutes = 0;
+  int totalCustomers = 0;
+  double totalDistPerCust = 0.0;
+  double totalWaitPerCust = 0.0;
+
+  for (const auto &r : routes) {
+    if (!r.getCustomers().empty()) {
+      activeRoutes++;
+      int n = r.getCustomers().size();
+      totalCustomers += n;
+      totalDistPerCust += r.getTotalDistance() / n;
+      totalWaitPerCust += r.getTotalWaitTime() / n;
+    }
+  }
+
+  if (activeRoutes == 0)
+    return removedCustomers;
+
+  double avgCust = (double)totalCustomers / activeRoutes;
+  double avgDist = totalDistPerCust / activeRoutes;
+  double avgWait = totalWaitPerCust / activeRoutes;
+
+  // --- Calculate Scores ---
+  std::vector<std::pair<int, double>> routeScores;
+  for (size_t i = 0; i < routes.size(); ++i) {
+    if (routes[i].getCustomers().empty())
+      continue;
+    double score = calculateRouteScore(routes[i], avgCust, avgDist, avgWait);
+    routeScores.push_back({static_cast<int>(i), score});
+  }
+
+  if (routeScores.empty())
+    return removedCustomers;
+
+  // --- Determine Target Removal Count ---
+  int avgPerRoute = std::max(1, totalCustomers / activeRoutes);
+  int targetToRemove = std::max(1, nodesToRemove / avgPerRoute);
+  targetToRemove = std::min(targetToRemove, activeRoutes);
+
+  // --- Tournament Selection ---
+  std::vector<int> routesToRemove;
+  std::vector<bool> selected(routes.size(),
+                             false); // Use original route index size
+
+  const int TOURNAMENT_SIZE = 3;
+  std::uniform_int_distribution<int> randIdx(0, routeScores.size() - 1);
+
+  // ⭐ FIX BUG: Infinite Loop Guard
+  // Ensure we don't try to remove more routes than available candidates
+  while (static_cast<int>(routesToRemove.size()) < targetToRemove &&
+         static_cast<int>(routesToRemove.size()) <
+             static_cast<int>(routeScores.size())) {
+
+    int bestTournamentIdx = -1;
+    double bestTournamentScore = -1e18;
+
+    for (int t = 0; t < TOURNAMENT_SIZE; ++t) {
+      int candidateIdx = randIdx(rng);
+      int routeIdx = routeScores[candidateIdx].first;
+      double score = routeScores[candidateIdx].second;
+
+      if (!selected[routeIdx] && score > bestTournamentScore) {
+        bestTournamentScore = score;
+        bestTournamentIdx = routeIdx;
+      }
+    }
+
+    if (bestTournamentIdx != -1) {
+      selected[bestTournamentIdx] = true;
+      routesToRemove.push_back(bestTournamentIdx);
+    } else {
+      // Fallback: if tournament fails (e.g. all selected), pick first
+      // unselected
+      bool found = false;
+      for (const auto &p : routeScores) {
+        if (!selected[p.first]) {
+          selected[p.first] = true;
+          routesToRemove.push_back(p.first);
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+        break; // No more unselected routes available
+    }
+  }
+
+  // Remove chosen routes descending to avoid index shift
+  std::sort(routesToRemove.begin(), routesToRemove.end(), std::greater<int>());
+
+  for (int routeIdx : routesToRemove) {
+    const auto &nodes = routes[routeIdx].getNodes();
+    for (int nodeId : nodes) {
+      if (instance->getNodeById(nodeId)->getType() == NodeType::CUSTOMER) {
+        removedCustomers.push_back(nodeId);
+      }
+    }
+    solution.removeRoute(routeIdx);
+  }
+
+  return removedCustomers;
 }

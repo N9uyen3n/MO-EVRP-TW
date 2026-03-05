@@ -10,12 +10,11 @@
 #include "../core/Solution.h"
 #include "../core/Solver.h"
 
-
 // --- ALNS Components ---
 #include "IOperator.h"
 #include "LocalSearch.h"
-#include "ObjectiveEvaluator.h" // ⭐ NEW
 #include "ParetoArchive.h"
+#include "ScatterSearch.h"
 #include "SolutionPool.h"
 
 // [QUAN TRỌNG] Thêm bộ quản lý lịch sử cho các toán tử Learning
@@ -32,9 +31,8 @@ namespace alns {
  */
 struct ALNSConfig {
   // 1. Tham số Vòng lặp
-  int maxIterations = 2500;
+  int maxIterations = 25000;
   int segmentIterations = 100;
-  int maxIterationsWithoutImprovement = 1000;
 
   // 2. Tham số Thích ứng (Adaptive Weights)
   double decayParameter = 0.8;
@@ -60,20 +58,17 @@ struct ALNSConfig {
   double coolingRate = 0.995;
   double minTemperature = 0.5;
 
-  bool enableLogging = false; // Mặc định là tắt
+  // 7. HV-Based Convergence (Dừng sớm dựa trên Hypervolume)
+  double hvImprovementThreshold = 0.001; // ε = 0.1% cải thiện tối thiểu
+  int hvStagnationLimit = 5;             // Dừng sau N segment không cải thiện
 
-  // 7. Driver Equity / Fairness (NEW)
-  double fairnessWeightStart = 0.1;
-  double fairnessWeightEnd = 5.0;
-  double fairnessTransitionRatio =
-      0.3; // Transition starts after 30% iterations (tau)
+  // 8. Scatter Search Intensification
+  bool useScatterSearch = false;
+  ScatterSearch::Config
+      scatterSearchConfig; // Dùng mặc định của ScatterSearch::Config
 
-  enum FairnessMode {
-    COST_ONLY,        // w_F = 0
-    STATIC_FAIRNESS,  // w_F = 1.0 (fixed)
-    ADAPTIVE_FAIRNESS // w_F(t) adaptive
-  };
-  FairnessMode fairnessMode = ADAPTIVE_FAIRNESS;
+  bool enableLogging = false;  // Mặc định là tắt
+  unsigned int randomSeed = 0; // 0 means use random_device (time-based)
 };
 
 // Lớp con trợ giúp để quản lý các toán tử và trọng số
@@ -101,6 +96,9 @@ public:
   // Hàm chính kế thừa từ Solver
   std::vector<Solution> solve() override;
 
+  // Chạy ALNS ngắn để cải thiện một nghiệm cụ thể (dùng bởi ScatterSearch)
+  void improveSolution(Solution &sol, int maxIters);
+
   // Đăng ký toán tử
   void addDestroyOperator(std::shared_ptr<IDestroyOperator> op,
                           double initialWeight);
@@ -113,10 +111,9 @@ private:
 
   std::mt19937 randomEngine; // Bộ tạo số ngẫu nhiên chính
 
-  ParetoArchive archive;   // Kho lưu trữ đa mục tiêu
-  LocalSearch localSearch; // Bộ tìm kiếm cục bộ
-  SolutionPool solutionPool;
-  ObjectiveEvaluator objEvaluator_; // ⭐ NEW
+  ParetoArchive archive;     // Kho lưu trữ đa mục tiêu
+  LocalSearch localSearch;   // Bộ tìm kiếm cục bộ
+  SolutionPool solutionPool; // <-- THÊM VÀO
   // std::shared_ptr<HistoryManager> historyManager; // [MỚI] Bộ quản lý lịch sử
   // - Tạm thời vô hiệu hóa
 
@@ -125,6 +122,14 @@ private:
   double currentTemperature;
   double perturbationBoost_ =
       1.0; // Multiplier for destruction intensity during stagnation
+  std::string runName_; // Store instance name for type detection
+
+  // HV-Based Early Stopping state
+  double previousHV_ = 0.0;
+  int hvStagnationCount_ = 0;
+
+  // Scatter Search intensification
+  std::unique_ptr<ScatterSearch> scatterSearch_;
 
   // Logger
   std::unique_ptr<logging::ILogger> logger;
@@ -136,6 +141,14 @@ private:
   // Helper methods
   int calculateNodesToRemove();
   Solution generateInitialSolution();
+
+  // Multi-start construction helpers
+  Solution
+  constructSolutionFromOrder(const std::vector<int> &orderedCustomerIds);
+  std::vector<int> generateSweepOrder();
+  std::vector<int> generateNNOrder();
+  std::vector<int> generateEDFOrder();
+  std::vector<int> generateTightestTWOrder();
 };
 
 } // namespace alns

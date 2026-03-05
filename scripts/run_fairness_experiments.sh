@@ -5,7 +5,7 @@
 # =============================================================================
 
 # ⚙️ CONFIGURATION - Sửa đường dẫn data ở đây
-DATA_DIR="data/solomon"  # Thay đổi thành: data/test1, data/test2, v.v.
+DATA_DIR="../data/solomon"  # Thay đổi thành: data/test1, data/test2, v.v.
 
 BUILD_DIR="build"
 OUTPUT_DIR="results/fairness_experiments"

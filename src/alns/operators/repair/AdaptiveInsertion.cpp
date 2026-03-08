@@ -24,16 +24,18 @@ void AdaptiveInsertion::execute(Solution &solution,
 
   Mode mode;
   double distShare = weightHint_.dist;
-  if (distShare > 0.6) {
-    // 50% VEHICLE_PACKING, 50% DISTANCE_FOCUSED
-    mode = (r < 0.5) ? Mode::VEHICLE_PACKING : Mode::DISTANCE_FOCUSED;
+  if (r < 0.3) {
+    mode = Mode::VEHICLE_PACKING;
+  } else if (distShare > 0.6) {
+    mode = Mode::DISTANCE_FOCUSED;
   } else {
     double totalMO = weightHint_.gini + weightHint_.time;
     if (totalMO < 1e-9) {
       mode = Mode::DISTANCE_FOCUSED;
     } else {
+      double r2 = (r - 0.3) / 0.7; // Re-scale r to [0, 1)
       double giniShare = weightHint_.gini / totalMO;
-      mode = (r < giniShare) ? Mode::WORKLOAD_FOCUSED : Mode::MAXTIME_FOCUSED;
+      mode = (r2 < giniShare) ? Mode::WORKLOAD_FOCUSED : Mode::MAXTIME_FOCUSED;
     }
   }
 

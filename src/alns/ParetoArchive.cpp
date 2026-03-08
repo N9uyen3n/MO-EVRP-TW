@@ -339,31 +339,31 @@ double ParetoArchive::computeHypervolume() const {
 
   std::vector<Point3D> points;
   points.reserve(flat.size());
-  for (const auto &sol : flat) {
-    // Only compute HV for the current lowest vehicle level
-    if (sol.getTotalVehicles() > minVeh)
-      continue;
+  // for (const auto &sol : flat) {
+  //   // Only compute HV for the current lowest vehicle level
+  //   if (sol.getTotalVehicles() > minVeh)
+  //     continue;
+  //
+  //   double nD = (sol.getTotalDistance() - usedIdealDist) / rangeDist;
+  //   double nG = (sol.getWorkloadGini() - usedIdealGini) / rangeGini;
+  //   double nT = (sol.getMaxTime() - usedIdealTime) / rangeTime;
+  //
+  //   // Clamp to reference point (solutions worse than reference slack are
+  //   // discarded or clamped)
+  //   // if (nD < REF && nG < REF && nT < REF) {
+  //   //   points.push_back(
+  //   //       {std::max(0.0, nD), std::max(0.0, nG), std::max(0.0, nT)});
+  //   // } else {
+  //   //   std::cout << "[HV-Debug] Ignored point: nD=" << nD << " nG=" << nG << " nT=" << nT << "\n";
+  //   // }
+  // }
 
-    double nD = (sol.getTotalDistance() - usedIdealDist) / rangeDist;
-    double nG = (sol.getWorkloadGini() - usedIdealGini) / rangeGini;
-    double nT = (sol.getMaxTime() - usedIdealTime) / rangeTime;
-
-    // Clamp to reference point (solutions worse than reference slack are
-    // discarded or clamped)
-    if (nD < REF && nG < REF && nT < REF) {
-      points.push_back(
-          {std::max(0.0, nD), std::max(0.0, nG), std::max(0.0, nT)});
-    } else {
-      std::cout << "[HV-Debug] Ignored point: nD=" << nD << " nG=" << nG << " nT=" << nT << "\n";
-    }
-  }
-
-  if (points.empty()) {
-      std::cout << "[HV-Debug] POINTS IS EMPTY! Archive size: " << flat.size() << " | minVeh: " << minVeh << "\n";
-      std::cout << "[HV-Debug] refIdealDist: " << usedIdealDist << " refNadirDist: " << usedNadirDist << "\n";
-      std::cout << "[HV-Debug] refIdealTime: " << usedIdealTime << " refNadirTime: " << usedNadirTime << "\n";
-      return 0.0;
-  }
+  // if (points.empty()) {
+  //     std::cout << "[HV-Debug] POINTS IS EMPTY! Archive size: " << flat.size() << " | minVeh: " << minVeh << "\n";
+  //     std::cout << "[HV-Debug] refIdealDist: " << usedIdealDist << " refNadirDist: " << usedNadirDist << "\n";
+  //     std::cout << "[HV-Debug] refIdealTime: " << usedIdealTime << " refNadirTime: " << usedNadirTime << "\n";
+  //     return 0.0;
+  // }
 
   // Sort by MaxTime ascending (slicing axis)
   std::sort(

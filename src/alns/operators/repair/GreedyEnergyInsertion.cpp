@@ -118,16 +118,9 @@ void GreedyEnergyInsertion::execute(Solution &solution,
       return false;
     };
 
-    struct Candidate {
-      int routeIdx;
-      size_t position;
-      double estimatedCost; // For Energy, we use deltaDistance as a proxy
-      bool operator<(const Candidate &other) const {
-        return estimatedCost < other.estimatedCost;
-      }
-    };
-
-    std::vector<Candidate> candidates;
+    double minExactCost = std::numeric_limits<double>::max();
+    int bestRouteIdx = -1;
+    size_t bestPos = -1;
 
     for (int r : feasibleRoutesIndices) {
       const auto &nodes = routes[r].getNodes();
@@ -137,98 +130,55 @@ void GreedyEnergyInsertion::execute(Solution &solution,
           continue;
         }
 
-        auto fastResult = routes[r].fastForwardCheck(customerId, pos);
+        auto exactResult = routes[r].checkInsertionCost(customerId, pos);
 
-        if (fastResult.isFeasible) {
-          // NOTE: The true cost is deltaChargeAmount, but fastForwardCheck
-          // doesn't calculate it. We use deltaDistance as a proxy to find
-          // promising candidates. The final verification will use the true
-          // cost.
-          candidates.push_back({r, pos, fastResult.deltaDistance});
-        }
-      }
-    }
+        if (exactResult.isFeasible) {
+          auto slack = routes[r].getEnergySlack();
+          double energySlackAtPos = 0.0;
+          if (pos > 0 && pos - 1 < slack.size()) {
+            energySlackAtPos = slack[pos - 1];
+          }
 
-    if (candidates.empty()) {
-      bool insertedWithStation = false;
-      for (int r : feasibleRoutesIndices) {
-        if (tryStationAssisted(r)) {
-          insertedWithStation = true;
-          break;
-        }
-      }
-      if (!insertedWithStation) {
-        createNewRouteForCustomer(solution, customerId, instance);
-      }
-      continue;
-    }
+          double battCap = routes[r].getVehicle()->getBatteryCapacity();
 
-    std::sort(candidates.begin(), candidates.end());
+          // 1. Primary: energy consumed (always present)
+          double energyCost = exactResult.deltaEnergyConsumption;
 
-    // Dynamic MAX_VERIFY: check at least 3, at most 10, but scale with
-    // candidate pool size
-    int MAX_VERIFY = std::max(3, std::min(10, (int)(candidates.size() * 0.3)));
-    bool inserted = false;
+          // 2. Charging cost: penalty proportional to charge amount needed
+          // ⭐ Fix: scale chargingTimeCost by battCap để calibrate với energyCost
+          if (exactResult.deltaChargeAmount > 1e-6) {
+            // deltaChargeAmount in same units as energy → directly addable
+            energyCost += exactResult.deltaChargeAmount * 0.3;
+          }
 
-    // We need to find the best among the verified candidates, not just the
-    // first one.
-    double minExactCost = std::numeric_limits<double>::max();
-    int bestRouteIdx = -1;
-    size_t bestPos = -1;
+          // 3. Station penalty: only when energy consumption exceeds available slack
+          // ⭐ Fix: stationPenalty scaled by battCap (không hardcode 3.0)
+          bool likelyNeedsStation = (exactResult.deltaEnergyConsumption > energySlackAtPos * 0.8);
+          if (likelyNeedsStation) {
+            energyCost += battCap * 0.05; // ~5% of battery capacity as penalty
+          }
 
-    for (int i = 0; i < std::min(MAX_VERIFY, (int)candidates.size()); ++i) {
-      auto &candidate = candidates[i];
+          // 4. Bottleneck penalty: scaled by battCap for consistency
+          if (pos > 0 && pos - 1 < slack.size()) {
+            double threshold   = 0.15 * battCap;
+            double localSlack  = slack[pos - 1];
+            if (localSlack < threshold) {
+              // ⭐ Fix: normalize bottleneckPenalty → ∈ [0, 1], weight calibrated
+              double bottleneckPenalty = (threshold - localSlack) / std::max(threshold, 1e-9);
+              energyCost += battCap * 0.03 * bottleneckPenalty; // ~3% battCap max
+            }
+          }
 
-      auto exactResult = routes[candidate.routeIdx].checkInsertionCost(
-          customerId, candidate.position);
-
-      if (exactResult.isFeasible) {
-        auto slack = routes[candidate.routeIdx].getEnergySlack();
-        double energySlackAtPos = 0.0;
-        if (candidate.position > 0 && candidate.position - 1 < slack.size()) {
-          energySlackAtPos = slack[candidate.position - 1];
-        }
-
-        double battCap = routes[candidate.routeIdx].getVehicle()->getBatteryCapacity();
-
-        // 1. Primary: energy consumed (always present)
-        double energyCost = exactResult.deltaEnergyConsumption;
-
-        // 2. Charging cost: penalty proportional to charge amount needed
-        // ⭐ Fix: scale chargingTimeCost by battCap để calibrate với energyCost
-        if (exactResult.deltaChargeAmount > 1e-6) {
-          // deltaChargeAmount in same units as energy → directly addable
-          energyCost += exactResult.deltaChargeAmount * 0.3;
-        }
-
-        // 3. Station penalty: only when energy consumption exceeds available slack
-        // ⭐ Fix: stationPenalty scaled by battCap (không hardcode 3.0)
-        bool likelyNeedsStation = (exactResult.deltaEnergyConsumption > energySlackAtPos * 0.8);
-        if (likelyNeedsStation) {
-          energyCost += battCap * 0.05; // ~5% of battery capacity as penalty — scale-aware
-        }
-
-        // 4. Bottleneck penalty: scaled by battCap for consistency
-        if (candidate.position > 0 && candidate.position - 1 < slack.size()) {
-          double threshold   = 0.15 * battCap;
-          double localSlack  = slack[candidate.position - 1];
-          if (localSlack < threshold) {
-            // ⭐ Fix: normalize bottleneckPenalty → ∈ [0, 1], weight calibrated
-            double bottleneckPenalty = (threshold - localSlack) / std::max(threshold, 1e-9);
-            energyCost += battCap * 0.03 * bottleneckPenalty; // ~3% battCap max
+          if (energyCost < minExactCost) {
+            minExactCost = energyCost;
+            bestRouteIdx = r;
+            bestPos = pos;
           }
         }
-
-        if (energyCost < minExactCost) {
-          minExactCost = energyCost;
-          bestRouteIdx = candidate.routeIdx;
-          bestPos = candidate.position;
-          inserted = true;
-        }
       }
     }
 
-    if (inserted) {
+    if (bestRouteIdx != -1) {
       routes[bestRouteIdx].addNode(customerId, bestPos);
       routes[bestRouteIdx].evaluate();
     } else {

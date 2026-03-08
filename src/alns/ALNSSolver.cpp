@@ -136,7 +136,8 @@ ALNSSolver::ALNSSolver(std::shared_ptr<Instance> instance, ALNSConfig config,
 
   addRepairOperator(std::make_shared<GreedyEnergyInsertion>(instance), 1.5);
   addRepairOperator(std::make_shared<SmartStationRepair>(instance), 2.0);
-  // addRepairOperator(std::make_shared<SmartTimeAwareStationRepair>(instance), 1.5);
+  addRepairOperator(std::make_shared<SmartTimeAwareStationRepair>(instance),
+                    1.5);
 
   // // // Tăng cường Pareto (Đa mục tiêu, bao gồm distance)
   // addRepairOperator(std::make_shared<ParetoFocusRepair>(instance), 1.5);
@@ -457,9 +458,9 @@ std::vector<Solution> ALNSSolver::solve() {
     // Phase 3: Very strong perturbation at 2000+ iterations - increase destroy
     // intensity. Dùng totalStagnationEver_ vì counter kia bị reset bởi Phase 2
     if (totalStagnationEver_ > 4000) {
-      perturbationBoost_ = 1.5; // Destroy 50% more nodes
+      perturbationBoost_ = 1.75; // Destroy 50% more nodes
     } else if (totalStagnationEver_ > 2000) {
-      perturbationBoost_ = 1.25; // Destroy 25% more nodes
+      perturbationBoost_ = 1.5; // Destroy 25% more nodes
     } else {
       perturbationBoost_ = 1.0;
     }

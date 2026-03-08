@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\ALNSSolver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\LocalSearch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\ParetoArchive.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\ScatterSearch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\SolutionPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\destroy\InefficientRouteRemoval.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\destroy\RandomRemoval.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\destroy\RandomRouteRemoval.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\destroy\RouteMergingDestroy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\destroy\ShawDestroy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\destroy\TargetedStationRemoval.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\destroy\TimeSlackDestroy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\destroy\UnifiedCostDestroy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\repair\AdaptiveInsertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\repair\ChargingAwareRouteBuilder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\repair\GreedyEnergyInsertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\repair\ParetoFocusRepair.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\repair\RegretKRepair.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\repair\SmartStationRepair.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\alns\operators\repair\SmartTimeAwareStationRepair.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\app\AppController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Customer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Depot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Instance.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Node.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Route.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Solution.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Solver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Station.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\core\Vehicle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\io\Parser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\logger\ComprehensiveLogger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\test17\src\utils\Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Work\SLSCM-LaB\24092025\test17\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{85E1AE9A-E9C7-394C-AAED-B75CC6D80329}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

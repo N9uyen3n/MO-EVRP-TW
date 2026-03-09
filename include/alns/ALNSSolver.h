@@ -140,7 +140,7 @@ private:
 
   // Helper methods
   int calculateNodesToRemove();
-  Solution generateInitialSolution();
+  std::vector<Solution> generateInitialSolution();
 
   // Multi-start construction helpers
   Solution
@@ -149,6 +149,8 @@ private:
   std::vector<int> generateNNOrder();
   std::vector<int> generateEDFOrder();
   std::vector<int> generateTightestTWOrder();
+  std::vector<int> generateRandomizedWeightedOrder(double wDist, double wTW,
+                                                   double wDemand);
 };
 
 } // namespace alns

@@ -67,6 +67,9 @@ void OperatorPool::updateWeights(double decay) {
   for (size_t i = 0; i < operators.size(); ++i) {
     double avgScore = (usages[i] > 0) ? (scores[i] / usages[i]) : 0.0;
     weights[i] = weights[i] * decay + (1.0 - decay) * avgScore;
+    // Floor 0.1: giữ exploration tối thiểu cho mọi operator.
+    // Chống death spiral bằng weight reset khi VEH-Improve / Perturbation,
+    // không nâng floor (nâng floor làm mờ signal roulette wheel).
     weights[i] = std::max(0.1, weights[i]);
   }
 }
@@ -136,8 +139,9 @@ ALNSSolver::ALNSSolver(std::shared_ptr<Instance> instance, ALNSConfig config,
 
   addRepairOperator(std::make_shared<GreedyEnergyInsertion>(instance), 1.5);
   addRepairOperator(std::make_shared<SmartStationRepair>(instance), 2.0);
-  addRepairOperator(std::make_shared<SmartTimeAwareStationRepair>(instance),
-                    1.5);
+  // addRepairOperator(
+  // std::make_shared<SmartTimeAwareStationRepair>(instance), 2.5); // 2.5: cạnh
+  // tranh công bằng với SSR, chống death spiral
 
   // // // Tăng cường Pareto (Đa mục tiêu, bao gồm distance)
   // addRepairOperator(std::make_shared<ParetoFocusRepair>(instance), 1.5);
@@ -182,13 +186,28 @@ int ALNSSolver::calculateNodesToRemove() {
 std::vector<Solution> ALNSSolver::solve() {
   auto startTime = std::chrono::high_resolution_clock::now();
 
-  s_current = generateInitialSolution();
-  this->archive.initializeReferenceBox(s_current);
-  this->archive.tryAdd(s_current);
-
-  if (!s_current.isFeasible()) {
-    std::cerr << "[ERROR] Initial solution is not feasible!" << std::endl;
+  auto initialSolutions = generateInitialSolution();
+  if (initialSolutions.empty()) {
+    std::cerr << "[ERROR] Could not find any feasible initial solution!"
+              << std::endl;
     return {};
+  }
+
+  // Find the absolute best among the initials to act as s_current
+  s_current = initialSolutions.front();
+  double bestCost = s_current.getTotalDistance();
+  for (const auto &sol : initialSolutions) {
+    if (sol.isFeasible() && sol.getTotalDistance() < bestCost) {
+      bestCost = sol.getTotalDistance();
+      s_current = sol;
+    }
+  }
+
+  this->archive.initializeReferenceBox(s_current);
+  for (auto &sol : initialSolutions) {
+    if (sol.isFeasible()) {
+      this->archive.tryAdd(sol);
+    }
   }
 
   Solution s_best = s_current;
@@ -338,26 +357,58 @@ std::vector<Solution> ALNSSolver::solve() {
 
       // weightVectors: wIdx and w already computed at top of loop iteration.
 
-      // Dynamic scaling to align dimensions.
-      // Cap scales to prevent explosion when an objective is near zero.
-      double baseDist = std::max(1.0, s_current.getTotalDistance());
-      double giniScale = std::min(
-          500.0, baseDist / std::max(0.01, s_current.getWorkloadGini()));
-      double timeScale =
-          std::min(10.0, baseDist / std::max(1.0, s_current.getMaxTime()));
+      // Delta normalization using the range from the archive
+      double minGini = 1e18, maxGini = -1e18;
+      double minTime = 1e18, maxTime = -1e18;
+      double minDist = 1e18, maxDist = -1e18;
 
-      // veh_penalty: strong but not absolute — 3x baseDist lets SA occasionally
-      // accept one extra vehicle during exploration (instead of 1000 hard
-      // floor).
-      double veh_penalty = std::max(10000.0, baseDist * 5.0);
+      auto &front = archive.getFront();
+      if (!front.empty()) {
+        for (const auto &sol : front) {
+          minDist = std::min(minDist, sol.getTotalDistance());
+          maxDist = std::max(maxDist, sol.getTotalDistance());
+          minGini = std::min(minGini, sol.getWorkloadGini());
+          maxGini = std::max(maxGini, sol.getWorkloadGini());
+          minTime = std::min(minTime, sol.getMaxTime());
+          maxTime = std::max(maxTime, sol.getMaxTime());
+        }
+      } else {
+        // Fallback if archive is empty (should ideally not happen)
+        minDist =
+            std::min(s_current.getTotalDistance(), s_new.getTotalDistance());
+        maxDist =
+            std::max(s_current.getTotalDistance(), s_new.getTotalDistance());
+        minGini =
+            std::min(s_current.getWorkloadGini(), s_new.getWorkloadGini());
+        maxGini =
+            std::max(s_current.getWorkloadGini(), s_new.getWorkloadGini());
+        minTime = std::min(s_current.getMaxTime(), s_new.getMaxTime());
+        maxTime = std::max(s_current.getMaxTime(), s_new.getMaxTime());
+      }
+
+      double distR = std::max(1.0, maxDist - minDist);
+      double giniR = std::max(0.001, maxGini - minGini);
+      double timeR = std::max(1.0, maxTime - minTime);
+
+      // ⭐ Fix delta scale: sau khi normalize bằng range, delta ∈ [0,1].
+      // Dùng factor 100.0 cố định → tất cả objectives về cùng scale [0,100].
+      // KHÔNG nhân baseDist: distR đã normalize, nhân thêm baseDist gây
+      // phóng đại 14x khi distR nhỏ (archive homogeneous) → SA reject gần hết.
+      // veh_penalty = 2000: đủ mạnh để SA hầu như không accept +1 NV,
+      // nhưng không phụ thuộc vào baseDist (tránh instability cross-instances).
+      const double SA_SCALE = 100.0;
+      const double veh_penalty = 5000.0;
 
       double delta_objectives =
           veh_penalty *
               (s_new.getTotalVehicles() - s_current.getTotalVehicles()) +
-          w.dist * (s_new.getTotalDistance() - s_current.getTotalDistance()) +
-          w.gini * giniScale *
-              (s_new.getWorkloadGini() - s_current.getWorkloadGini()) +
-          w.time * timeScale * (s_new.getMaxTime() - s_current.getMaxTime());
+          SA_SCALE * w.dist *
+              (s_new.getTotalDistance() - s_current.getTotalDistance()) /
+              distR +
+          SA_SCALE * w.gini *
+              (s_new.getWorkloadGini() - s_current.getWorkloadGini()) / giniR +
+          SA_SCALE * w.time * (s_new.getMaxTime() - s_current.getMaxTime()) /
+              timeR;
 
       if (std::exp(-delta_objectives / currentTemperature) >
           dis(randomEngine)) {
@@ -425,6 +476,13 @@ std::vector<Solution> ALNSSolver::solve() {
         if (bestSol)
           s_current = *bestSol;
 
+        // ⭐ Weight reset: giúp operator bị death spiral sống lại sau
+        // perturbation
+        for (auto &w : repairPool.weights)
+          w = std::max(w, 1.0);
+        for (auto &w : destroyPool.weights)
+          w = std::max(w, 1.0);
+
         std::cout << "[Perturbation] Iter " << i
                   << ": Jumping to BEST archive solution [" << minVeh
                   << " veh, " << minDist << " dist] (stagnated "
@@ -433,10 +491,16 @@ std::vector<Solution> ALNSSolver::solve() {
       }
       // Reset counter so next phase boundary fires fresh after jump
       iterationsWithoutImprovement = 0;
+
+      // ⭐ BUG FIX: Phục hồi watermark HV sau perturbation để tránh
+      // death spiral của HV stagnation do archive thu gọn tạm thời.
+      hvStagnationCount_ = 0;
+      previousHV_ = 0.0;
     }
-    // Phase 1: Mild perturbation (only fires at 500-iters, NOT at 1000-iters)
-    else if (iterationsWithoutImprovement > 0 &&
-             iterationsWithoutImprovement % 500 == 0 &&
+    // Phase 1: Mild reheating mỗi 500 iter stagnation tổng cộng
+    // Dùng totalStagnationEver_ (không bị reset bởi segment boundary jump)
+    // thay vì iterationsWithoutImprovement (bị reset mỗi 200 iter).
+    else if (totalStagnationEver_ > 0 && totalStagnationEver_ % 500 == 0 &&
              totalStagnationEver_ < 3000) {
       currentTemperature =
           std::min(currentTemperature * 1.25, config.startTemperature * 0.9);
@@ -544,6 +608,13 @@ std::vector<Solution> ALNSSolver::solve() {
           lastMinVeh = currentMinVeh;
           hvStagnationCount_ = 0;
           previousHV_ = 0.0; // Reset watermark
+
+          // ⭐ Weight reset: kéo operator bị death spiral lên tối thiểu 1.0
+          // để có cơ hội explore vùng NV mới. Giữ nguyên operator đang cao.
+          for (auto &w : repairPool.weights)
+            w = std::max(w, 1.0);
+          for (auto &w : destroyPool.weights)
+            w = std::max(w, 1.0);
         } else {
           // Same vehicle level → check HV stagnation normally
           double currentHV = archive.computeHypervolume();
@@ -559,8 +630,13 @@ std::vector<Solution> ALNSSolver::solve() {
             hvStagnationCount_ = 0;
           } else if (currentHV <= 1e-9) {
             // Archive has effectively 0 HV (1 solution or degenerate)
-            // → counts as stagnation
-            hvStagnationCount_++;
+            // Lẽ ra đoạn này chỉ có 1 điểm, nhưng có thể archive có 2 điểm
+            // trùng nhau
+            if (archive.getSize() >= 2) {
+              hvStagnationCount_++;
+            }
+            // else: archive vừa được rebuilt sau breakthrough hoặc đang
+            // xây front mới → không đếm
           } else {
             hvImprovement = (currentHV - previousHV_) / previousHV_;
 
@@ -716,10 +792,41 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
       s_imp = s_new;
     } else {
       double baseDist = std::max(1.0, s_imp.getTotalDistance());
-      double veh_penalty = std::max(500.0, baseDist * 3.0);
+      const double veh_penalty = 2000.0;
+      const double SA_SCALE = 100.0;
+
+      // Default fallback ranges — ước tính từ s_imp thay vì hardcode
+      // distR: ~10% baseDist là range hợp lý nếu archive chưa có gì
+      // giniR: dùng giá trị tuyệt đối s_imp (không phải 0.1 cố định)
+      // timeR: dùng 10% maxTime của s_imp
+      double distR = std::max(1.0, baseDist * 0.1);
+      double giniR = std::max(0.001, s_imp.getWorkloadGini() * 0.5);
+      double timeR = std::max(1.0, s_imp.getMaxTime() * 0.1);
+
+      if (archive.getSize() > 0) {
+        double minGini = 1e18, maxGini = -1e18;
+        double minTime = 1e18, maxTime = -1e18;
+        double minDist = 1e18, maxDist = -1e18;
+        for (const auto &sol : archive.getFront()) {
+          minDist = std::min(minDist, sol.getTotalDistance());
+          maxDist = std::max(maxDist, sol.getTotalDistance());
+          minGini = std::min(minGini, sol.getWorkloadGini());
+          maxGini = std::max(maxGini, sol.getWorkloadGini());
+          minTime = std::min(minTime, sol.getMaxTime());
+          maxTime = std::max(maxTime, sol.getMaxTime());
+        }
+        distR = std::max(1.0, maxDist - minDist);
+        giniR = std::max(0.001, maxGini - minGini);
+        timeR = std::max(1.0, maxTime - minTime);
+      }
+
       double delta =
           veh_penalty * (s_new.getTotalVehicles() - s_imp.getTotalVehicles()) +
-          (s_new.getTotalDistance() - s_imp.getTotalDistance());
+          SA_SCALE * 0.6 *
+              (s_new.getTotalDistance() - s_imp.getTotalDistance()) / distR +
+          SA_SCALE * 0.2 * (s_new.getWorkloadGini() - s_imp.getWorkloadGini()) /
+              giniR +
+          SA_SCALE * 0.2 * (s_new.getMaxTime() - s_imp.getMaxTime()) / timeR;
       if (std::exp(-delta / temp) > dis(randomEngine)) {
         s_imp = s_new;
       }
@@ -744,12 +851,13 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
 // ******************************************************************
 // File: src/alns/ALNSSolver.cpp
 
-Solution ALNSSolver::generateInitialSolution() {
-  std::cout << "[Info] Generating Initial Solution (Multi-start)...\n";
-  Solution bestSol(instance);
-  double bestCost = std::numeric_limits<double>::infinity();
-  int minVehicles = std::numeric_limits<int>::max();
+std::vector<Solution> ALNSSolver::generateInitialSolution() {
+  std::cout << "[Info] Generating Initial Solution (Multi-start + Diverse "
+               "Weighted RCRS)...\n";
+  std::vector<Solution> initials;
 
+  // 1. Giai đoạn 1: 4 Deterministic Heuristics cũ (Giữ lại để đảm bảo baseline
+  // tốt)
   std::vector<std::vector<int>> orderings;
   orderings.push_back(generateSweepOrder());
   orderings.push_back(generateNNOrder());
@@ -768,29 +876,59 @@ Solution ALNSSolver::generateInitialSolution() {
       std::cout << "     Failed (Infeasible)\n";
       continue;
     }
-
     int v = s.getTotalVehicles();
     double dist = s.getTotalDistance();
     std::cout << "     Result: " << v << " vehicles, dist " << dist << "\n";
+    initials.push_back(s);
+  }
 
-    if (v < minVehicles || (v == minVehicles && dist < bestCost)) {
-      minVehicles = v;
-      bestCost = dist;
-      bestSol = s;
+  // 2. Giai đoạn 2: 10 Diverse Randomized Init bằng constructSolutionFromOrder
+  // kết hợp Trọng số Ngẫu nhiên
+  std::cout << "  -> Generating 10 Diverse Randomized Initial Solutions...\n";
+  std::uniform_real_distribution<> weightDist(0.0, 1.0);
+
+  for (int i = 0; i < 10; ++i) {
+    // Sinh ngẫu nhiên trọng số cho (Khoảng cách nòng cốt, Cửa sổ thời gian, Nhu
+    // cầu)
+    double wDist = weightDist(randomEngine);
+    double wTW = weightDist(randomEngine);
+    double wDemand = weightDist(randomEngine);
+
+    std::vector<int> randOrder =
+        generateRandomizedWeightedOrder(wDist, wTW, wDemand);
+    Solution s_rand = constructSolutionFromOrder(randOrder);
+
+    if (s_rand.isFeasible()) {
+      int v = s_rand.getTotalVehicles();
+      double dist = s_rand.getTotalDistance();
+      std::cout << "     Randomized Init " << i + 1 << " Result: " << v
+                << " vehicles, dist " << dist << "\n";
+      initials.push_back(s_rand);
+    } else {
+      std::cout << "     Randomized Init " << i + 1 << " Failed (Infeasible)\n";
     }
   }
 
-  if (minVehicles == std::numeric_limits<int>::max()) {
+  if (initials.empty()) {
     std::cerr << "[ERROR] Could not find any feasible initial solution!\n";
   } else {
+    // Sort initials to present the best one in summary
+    auto bestSolParam =
+        std::min_element(initials.begin(), initials.end(),
+                         [](const Solution &a, const Solution &b) {
+                           return a.getTotalDistance() < b.getTotalDistance();
+                         });
+
     std::cout << "\n========================================\n"
-              << "Best Initial Solution Summary:\n"
-              << "  Routes: " << bestSol.getNumRoutes() << "\n"
-              << "  Total Distance: " << bestSol.getTotalDistance() << "\n"
+              << "Initial Solutions Generated: " << initials.size() << "\n"
+              << "Best Initial Setup Summary:\n"
+              << "  Routes: " << bestSolParam->getNumRoutes() << "\n"
+              << "  Total Distance: " << bestSolParam->getTotalDistance()
+              << "\n"
               << "========================================\n\n";
   }
 
-  return bestSol;
+  return initials;
 }
 
 std::vector<int> ALNSSolver::generateSweepOrder() {
@@ -872,9 +1010,64 @@ std::vector<int> ALNSSolver::generateTightestTWOrder() {
     double twA = a->getDueDate() - a->getReadyTime();
     double twB = b->getDueDate() - b->getReadyTime();
     if (std::abs(twA - twB) < 1e-6) {
-      return a->getDueDate() < b->getDueDate();
+      return a->getReadyTime() < b->getReadyTime();
     }
     return twA < twB;
+  });
+  return unservedIds;
+}
+
+std::vector<int> ALNSSolver::generateRandomizedWeightedOrder(double wDist,
+                                                             double wTW,
+                                                             double wDemand) {
+  std::vector<int> unservedIds;
+  for (const auto &c : instance->getCustomers()) {
+    unservedIds.push_back(c->getId());
+  }
+
+  // Pre-calculate min/max for normalization
+  double maxDist = 0.1, maxTW = 0.1, maxDem = 0.1;
+  for (int id : unservedIds) {
+    auto node = instance->getNodeById(id);
+    Customer *c = static_cast<Customer *>(node.get());
+    double dist = instance->getDistance(0, id);
+    double tw = node->getDueDate() - node->getReadyTime();
+    double dem = c->getDemand();
+
+    if (dist > maxDist)
+      maxDist = dist;
+    if (tw > maxTW)
+      maxTW = tw;
+    if (dem > maxDem)
+      maxDem = dem;
+  }
+
+  std::sort(unservedIds.begin(), unservedIds.end(), [&](int a_id, int b_id) {
+    auto nodeA = instance->getNodeById(a_id);
+    auto nodeB = instance->getNodeById(b_id);
+    Customer *cA = static_cast<Customer *>(nodeA.get());
+    Customer *cB = static_cast<Customer *>(nodeB.get());
+
+    double nDistA = instance->getDistance(0, a_id) / maxDist;
+    double nTWA = (nodeA->getDueDate() - nodeA->getReadyTime()) / maxTW;
+    double nDemA = cA->getDemand() / maxDem;
+
+    double nDistB = instance->getDistance(0, b_id) / maxDist;
+    double nTWB = (nodeB->getDueDate() - nodeB->getReadyTime()) / maxTW;
+    double nDemB = cB->getDemand() / maxDem;
+
+    // smaller score = higher priority
+    // closer to depot = smaller dist
+    // tighter TW = smaller TW
+    // larger demand = harder to serve = we want it higher priority, so (1.0 -
+    // nDem)
+    double scoreA = wDist * nDistA + wTW * nTWA + wDemand * (1.0 - nDemA);
+    double scoreB = wDist * nDistB + wTW * nTWB + wDemand * (1.0 - nDemB);
+
+    if (std::abs(scoreA - scoreB) < 1e-6) {
+      return instance->getDistance(0, a_id) < instance->getDistance(0, b_id);
+    }
+    return scoreA < scoreB; // Ascending sort by urgency score
   });
   return unservedIds;
 }
@@ -979,8 +1172,12 @@ Solution ALNSSolver::constructSolutionFromOrder(
               double timeToStat = instance->getTime(custId, nearStationId);
               Station *stat = stationLookup[nearStationId];
               double arrivalStat = endService + timeToStat;
+              double battAtStat = energyLeftAtCust - energyToStat;
+              // ⭐ Fix: partial charge — chỉ sạc đủ để về depot, không sạc đầy
+              double energyStatToDepot =
+                  instance->getDistance(nearStationId, depotId) * vehEnergyRate;
               double chargeNeeded =
-                  vehMaxBattery - (energyLeftAtCust - energyToStat);
+                  std::max(0.0, energyStatToDepot - battAtStat);
               double chargeTime = chargeNeeded * stat->getChargingRate();
               double timeStatToDepot =
                   instance->getTime(nearStationId, depotId);
@@ -1037,9 +1234,12 @@ Solution ALNSSolver::constructSolutionFromOrder(
         }
         customerAddedInThisRoute = true;
       } else {
-        // ⭐ FIX: Always try charging if stuck, regardless of battery level
-        // (unless full)
-        if (currBatt < vehMaxBattery - 1e-6) {
+        // ⭐ FIX: Only force a station if we actually don't have enough battery
+        // to return to the depot. Forcing a station just because battery < max
+        // causes an infinite loop with zero-charge station pruning!
+        double energyToDepotSafe =
+            instance->getDistance(currNodeId, depotId) * vehEnergyRate;
+        if (currBatt < energyToDepotSafe) {
           int bestStationId = -1;
           double minStationDist = std::numeric_limits<double>::max();
 
@@ -1102,8 +1302,15 @@ Solution ALNSSolver::constructSolutionFromOrder(
                 std::max(0.0, compromiseTarget - battAtStation);
             double chargeTime = chargeAmount * stat->getChargingRate();
 
-            currBatt = battAtStation + chargeAmount;
-            currTime += t + chargeTime;
+            // ⭐ Fix: đọc currTime/currBatt từ route states (nhất quán với
+            // customer tracking). Tránh bỏ qua waiting time tại station
+            // nếu arrive trước station.readyTime.
+            const auto &stStates = currentRoute.getStates();
+            if (!stStates.empty()) {
+              const auto &lastSt = stStates[stStates.size() - 2];
+              currTime = lastSt.departureTime;
+              currBatt = lastSt.remainingBattery;
+            }
             currNodeId = bestStationId;
             continue;
           }

@@ -71,6 +71,7 @@ Solution ParetoArchive::getRandomSolution(std::mt19937 &rng) const {
 }
 
 AddResult ParetoArchive::tryAdd(const Solution &newSolution) {
+  expandNadirIfNeeded(newSolution);
   int veh = newSolution.getTotalVehicles();
 
   // Cross-bucket strict dominance check:
@@ -300,7 +301,7 @@ void ParetoArchive::clear() {
 
 double ParetoArchive::computeHypervolume() const {
   const auto &flat = getFront();
-  if (flat.size() < 2)
+  if (flat.empty())
     return 0.0;
 
   // =========================================================================
@@ -339,31 +340,26 @@ double ParetoArchive::computeHypervolume() const {
 
   std::vector<Point3D> points;
   points.reserve(flat.size());
-  // for (const auto &sol : flat) {
-  //   // Only compute HV for the current lowest vehicle level
-  //   if (sol.getTotalVehicles() > minVeh)
-  //     continue;
-  //
-  //   double nD = (sol.getTotalDistance() - usedIdealDist) / rangeDist;
-  //   double nG = (sol.getWorkloadGini() - usedIdealGini) / rangeGini;
-  //   double nT = (sol.getMaxTime() - usedIdealTime) / rangeTime;
-  //
-  //   // Clamp to reference point (solutions worse than reference slack are
-  //   // discarded or clamped)
-  //   // if (nD < REF && nG < REF && nT < REF) {
-  //   //   points.push_back(
-  //   //       {std::max(0.0, nD), std::max(0.0, nG), std::max(0.0, nT)});
-  //   // } else {
-  //   //   std::cout << "[HV-Debug] Ignored point: nD=" << nD << " nG=" << nG << " nT=" << nT << "\n";
-  //   // }
-  // }
+  for (const auto &sol : flat) {
+    // Only compute HV for the current lowest vehicle level
+    if (sol.getTotalVehicles() > minVeh)
+      continue;
+ 
+    double nD = (sol.getTotalDistance() - usedIdealDist) / rangeDist;
+    double nG = (sol.getWorkloadGini() - usedIdealGini) / rangeGini;
+    double nT = (sol.getMaxTime() - usedIdealTime) / rangeTime;
+ 
+    // Clamp to reference point (solutions worse than reference slack are
+    // discarded or clamped)
+    if (nD < REF && nG < REF && nT < REF) {
+      points.push_back(
+          {std::max(0.0, nD), std::max(0.0, nG), std::max(0.0, nT)});
+    }
+  }
 
-  // if (points.empty()) {
-  //     std::cout << "[HV-Debug] POINTS IS EMPTY! Archive size: " << flat.size() << " | minVeh: " << minVeh << "\n";
-  //     std::cout << "[HV-Debug] refIdealDist: " << usedIdealDist << " refNadirDist: " << usedNadirDist << "\n";
-  //     std::cout << "[HV-Debug] refIdealTime: " << usedIdealTime << " refNadirTime: " << usedNadirTime << "\n";
-  //     return 0.0;
-  // }
+  if (points.empty()) {
+      return 0.0;
+  }
 
   // Sort by MaxTime ascending (slicing axis)
   std::sort(
@@ -442,4 +438,13 @@ void ParetoArchive::initializeReferenceBox(const Solution &initialSolution) {
   refNadirDist_ = initialSolution.getTotalDistance() * 0.5; // Giving room for exploration
   refNadirGini_ = 1.0;                          // Gini bounded by definition
   refNadirMaxTime_ = initialSolution.getMaxTime() * 1.5;
+}
+
+void ParetoArchive::expandNadirIfNeeded(const Solution &sol) {
+  double d = sol.getTotalDistance();
+  double g = sol.getWorkloadGini();
+  double t = sol.getMaxTime();
+  if (d * 1.1 > refNadirDist_)    refNadirDist_    = d * 1.2;
+  if (g * 1.1 > refNadirGini_)    refNadirGini_    = g * 1.2;
+  if (t * 1.1 > refNadirMaxTime_) refNadirMaxTime_ = t * 1.2;
 }

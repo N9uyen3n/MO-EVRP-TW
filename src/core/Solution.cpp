@@ -171,7 +171,9 @@ void Solution::evaluateRoutes() {
     this->totalDistance += route.getTotalDistance();
     this->totalTime += route.getTotalTime();
     // User Request: Use Active Time (Travel + Service + Charge) for Gini
-    route_durations.push_back(route.getTotalTime());
+    // This accurately reflects the true workload (effort) of the driver
+    // rather than the bloated total time which includes idle waiting time.
+    route_durations.push_back(route.getActiveTime());
 
     if (route.getTotalTime() > this->maxTime) {
       this->maxTime = route.getTotalTime();

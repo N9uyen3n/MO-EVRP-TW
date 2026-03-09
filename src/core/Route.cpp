@@ -11,12 +11,6 @@
 #include <sstream> // <-- Cần include thư viện này
 #include <stdexcept>
 
-// Thread-local scratchpads to avoid allocation in hot loop
-// tl_simNodeSequence removed — Point9 virtual-index eliminates the copy
-// entirely
-thread_local std::vector<double> tl_dp;
-thread_local std::vector<NodeState> tl_simStates;
-
 Route::Route(int id, std::shared_ptr<Vehicle> vehicle,
              const std::shared_ptr<Instance> &instance)
     : id(id), vehicle(vehicle), instance(instance), evalResult() {
@@ -101,29 +95,23 @@ void Route::evaluate() const {
     return;
   }
 
-  // ⭐ Fix 1b: Cache references — tránh n lần double-dereference (*nodeSequence)[i]
-  const auto& seq = *nodeSequence;
-  auto&       st  = *states;
-
-  // ⭐ Fix 1a: Reuse thread_local dp — tránh malloc/memset mỗi lần evaluate()
-  tl_dp.assign(n, 0.0);
-  auto& dp = tl_dp;
-
+  std::vector<double> dp(n, 0.0);
   const double EPSILON = 1e-9;
-  const double battCap  = vehicle->getBatteryCapacity();
-  const double energyRate = vehicle->getEnergyConsumptionRate();
 
-  // ── Backward Pass: tính min battery requirement tại mỗi position ──
+  dp[n - 1] = 0.0;
+
   for (int i = n - 2; i >= 0; --i) {
-    double energy_to_next = instance->getDistance(seq[i], seq[i + 1]) * energyRate;
-    // ⭐ Fix 1e: raw pointer cast thay shared_ptr cast — không tốn atomic refcount
-    const Node* next_node = instance->getNodeById(seq[i + 1]).get();
+    double energy_to_next =
+        instance->getDistance((*nodeSequence)[i], (*nodeSequence)[i + 1]) *
+        vehicle->getEnergyConsumptionRate();
+    auto next_node = instance->getNodeById((*nodeSequence)[i + 1]);
     if (next_node->getType() == NodeType::STATION) {
-      dp[i] = energy_to_next + std::max(0.0, dp[i + 1] - battCap);
+      dp[i] = energy_to_next +
+              std::max(0.0, dp[i + 1] - vehicle->getBatteryCapacity());
     } else {
       dp[i] = energy_to_next + dp[i + 1];
     }
-    if (dp[i] > battCap + EPSILON) {
+    if (dp[i] > vehicle->getBatteryCapacity() + EPSILON) {
       evalResult = EvaluationResult();
       evalResult.feasible = false;
       isDirty = false;
@@ -138,44 +126,39 @@ void Route::evaluate() const {
     *minBatteryReq = dp;
   }
 
-  // ⭐ Fix 1c: Skip clear()+resize() khi size không đổi — tránh memset O(n)
-  // Forward pass ghi đè tất cả fields nên không cần zero-initialize
-  if ((int)st.size() != n) {
-    st.resize(n);
-  }
+  states->clear();
+  states->resize(n);
   evalResult = EvaluationResult();
 
-  // ⭐ Fix 1e: raw pointer cho depot — không tạo shared_ptr mới
-  const Depot* start_depot = static_cast<const Depot*>(instance->getNodeById(0).get());
-  st[0].arrivalTime      = start_depot->getReadyTime();
-  st[0].departureTime    = start_depot->getReadyTime();
-  st[0].remainingBattery = battCap;
-  st[0].remainingLoad    = vehicle->getCapacity();
-  st[0].chargeAmount     = 0.0;
+  auto start_depot = std::static_pointer_cast<Depot>(instance->getNodeById(0));
+  (*states)[0].arrivalTime = start_depot->getReadyTime();
+  (*states)[0].departureTime = start_depot->getReadyTime();
+  (*states)[0].remainingBattery = vehicle->getBatteryCapacity();
+  (*states)[0].remainingLoad = vehicle->getCapacity();
+  (*states)[0].chargeAmount = 0.0;
 
-  // ── Forward Pass: tính states (time, battery, load) ──
+  // ----------------------------------------------------------------
+  // FORWARD PASS
+  // ----------------------------------------------------------------
   for (int i = 0; i < n - 1; ++i) {
-    int from_id = seq[i];
-    int to_id   = seq[i + 1];
+    int from_id = (*nodeSequence)[i];
+    int to_id = (*nodeSequence)[i + 1];
+    auto to_node = instance->getNodeById(to_id);
 
-    // ⭐ Fix 1e: giữ shared_ptr ref (không copy) rồi lấy raw pointer để cast
-    const auto& to_node_ptr = instance->getNodeById(to_id);
-    const Node* to_node     = to_node_ptr.get();
+    NodeState &from_state = (*states)[i];
+    NodeState &to_state = (*states)[i + 1];
 
-    NodeState& from_state = st[i];
-    NodeState& to_state   = st[i + 1];
+    double distance = instance->getDistance(from_id, to_id);
+    double travel_time = instance->getTime(from_id, to_id);
+    double energy_consumed = distance * vehicle->getEnergyConsumptionRate();
 
-    double distance       = instance->getDistance(from_id, to_id);
-    double travel_time    = instance->getTime(from_id, to_id);
-    double energy_consumed = distance * energyRate;
-
-    evalResult.totalDistance          += distance;
+    evalResult.totalDistance += distance;
     evalResult.totalEnergyConsumption += energy_consumed;
 
-    to_state.arrivalTime      = from_state.departureTime + travel_time;
+    to_state.arrivalTime = from_state.departureTime + travel_time;
     to_state.remainingBattery = from_state.remainingBattery - energy_consumed;
-    to_state.remainingLoad    = from_state.remainingLoad;
-    to_state.chargeAmount     = 0.0;
+    to_state.remainingLoad = from_state.remainingLoad;
+    to_state.chargeAmount = 0.0;
 
     if (to_state.remainingBattery < -EPSILON) {
       evalResult.feasible = false;
@@ -185,15 +168,15 @@ void Route::evaluate() const {
 
     switch (to_node->getType()) {
     case NodeType::CUSTOMER: {
-      // ⭐ Fix 1e: raw pointer cast — zero cost, không đụng refcount
-      const Customer* customer = static_cast<const Customer*>(to_node);
+      auto customer = std::static_pointer_cast<Customer>(to_node);
       to_state.remainingLoad -= customer->getDemand();
       if (to_state.remainingLoad < -EPSILON) {
         evalResult.feasible = false;
         isDirty = false;
         return;
       }
-      double wait_time = std::max(0.0, customer->getReadyTime() - to_state.arrivalTime);
+      double wait_time =
+          std::max(0.0, customer->getReadyTime() - to_state.arrivalTime);
       to_state.timeWait = wait_time;
       evalResult.totalWaitTime += wait_time;
       double service_start_time = to_state.arrivalTime + wait_time;
@@ -202,18 +185,14 @@ void Route::evaluate() const {
         isDirty = false;
         return;
       }
-      st[i + 1].departureTime = service_start_time + customer->getServiceTime();
+      (*states)[i + 1].departureTime =
+          service_start_time + customer->getServiceTime();
       break;
     }
     case NodeType::STATION: {
-      // ⭐ Fix 1d: inline duplicate station check — xóa loop O(n) thứ 3 bên dưới
-      if (i > 0 && seq[i + 1] == seq[i]) {
-        evalResult.feasible = false;
-        isDirty = false;
-        return;
-      }
-      const Station* station = static_cast<const Station*>(to_node);
-      double wait_time = std::max(0.0, station->getReadyTime() - to_state.arrivalTime);
+      auto station = std::static_pointer_cast<Station>(to_node);
+      double wait_time =
+          std::max(0.0, station->getReadyTime() - to_state.arrivalTime);
       to_state.timeWait = wait_time;
       evalResult.totalWaitTime += wait_time;
       double charge_start_time = to_state.arrivalTime + wait_time;
@@ -222,16 +201,18 @@ void Route::evaluate() const {
         isDirty = false;
         return;
       }
-      double charge_needed  = std::max(0.0, dp[i + 1] - to_state.remainingBattery);
-      double charge_possible = battCap - to_state.remainingBattery;
-      double charge_amount  = std::min(charge_needed, charge_possible);
-      double charge_time    = charge_amount * station->getChargingRate();
-      st[i + 1].chargeAmount = charge_amount;
-      evalResult.totalChargeTime   += charge_time;
+      double charge_needed =
+          std::max(0.0, dp[i + 1] - to_state.remainingBattery);
+      double charge_possible =
+          vehicle->getBatteryCapacity() - to_state.remainingBattery;
+      double charge_amount = std::min(charge_needed, charge_possible);
+      double charge_time = charge_amount * station->getChargingRate();
+      (*states)[i + 1].chargeAmount = charge_amount;
+      evalResult.totalChargeTime += charge_time;
       evalResult.totalChargeAmount += charge_amount;
-      st[i + 1].departureTime    = charge_start_time + charge_time;
-      st[i + 1].remainingBattery += charge_amount;
-      if (st[i + 1].departureTime > station->getDueDate() + EPSILON) {
+      (*states)[i + 1].departureTime = charge_start_time + charge_time;
+      (*states)[i + 1].remainingBattery += charge_amount;
+      if ((*states)[i + 1].departureTime > station->getDueDate() + EPSILON) {
         evalResult.feasible = false;
         isDirty = false;
         return;
@@ -239,173 +220,265 @@ void Route::evaluate() const {
       break;
     }
     case NodeType::DEPOT: {
-      const Depot* depot = static_cast<const Depot*>(to_node);
+      auto depot = std::static_pointer_cast<Depot>(to_node);
       if (to_state.arrivalTime > depot->getDueDate() + EPSILON) {
         evalResult.feasible = false;
         isDirty = false;
         return;
       }
-      st[i + 1].departureTime = to_state.arrivalTime;
-      // ⭐ Fix Point7: Removed depot->setLastTime() — global mutation trên shared Depot object
-      // gây stale state khi evaluate() nhiều routes trong ALNS (route sau ghi đè route trước).
-      // arrivalTime đã được lưu trong st[i+1].arrivalTime — dùng states thay vì depot global state.
+      (*states)[i + 1].departureTime = to_state.arrivalTime;
+      depot->setLastTime(to_state.arrivalTime);
       break;
     }
     }
   }
 
-  // ⭐ Fix 1d: Loop duplicate station check đã được inline vào forward pass — xóa loop này
+  // ----------------------------------------------------------------
+  // SLACK-TIME ABSORPTION PASS
+  //
+  // Ý tưởng: sau forward pass, nếu customer[j] có wait_time > 0,
+  // "hấp thụ" thời gian chờ đó vào station gần nhất phía trước [s]
+  // bằng cách sạc thêm tại [s]. Vì departure của [s] tăng đúng bằng
+  // lượng wait_time bị hấp thụ, arrival của customer[j] cũng tăng
+  // tương ứng → wait_time giảm, nhưng battery cao hơn.
+  // Net effect: tổng route time giữ nguyên, battery lớn hơn
+  // → có thể loại bỏ station phía sau (redundant).
+  //
+  // Đảm bảo: đoạn [s+1, j] không chứa station khác (vì last_station_idx
+  // luôn được reset khi gặp station mới), nên ripple battery an toàn.
+  // ----------------------------------------------------------------
+  {
+    int last_station_idx = -1; // index của station gần nhất phía trước
+
+    for (int i = 1; i < n; ++i) {
+      auto node = instance->getNodeById((*nodeSequence)[i]);
+
+      if (node->getType() == NodeType::STATION) {
+        // Gặp station mới → cập nhật tracker, reset accumulator
+        last_station_idx = i;
+        continue;
+      }
+
+      if (node->getType() != NodeType::CUSTOMER) continue;
+
+      // Không có station phía trước → bỏ qua
+      if (last_station_idx == -1) continue;
+
+      double wait_time = (*states)[i].timeWait;
+      if (wait_time < EPSILON) continue; // Không có slack để hấp thụ
+
+      int s = last_station_idx;
+      auto station_node = std::static_pointer_cast<Station>(
+          instance->getNodeById((*nodeSequence)[s]));
+      double charging_rate = station_node->getChargingRate(); // time / energy
+
+      // Lượng energy có thể sạc thêm tại station[s]
+      double battery_after_charge = (*states)[s].remainingBattery;
+      double max_extra_energy = vehicle->getBatteryCapacity() - battery_after_charge;
+      if (max_extra_energy < EPSILON) continue; // Battery đã full
+
+      // Thời gian tương ứng
+      double max_extra_time = max_extra_energy * charging_rate;
+
+      // Clamp bởi DueDate của station
+      double time_before_station_due =
+          std::max(0.0, station_node->getDueDate() - (*states)[s].departureTime);
+
+      // Lấy min của 3 ràng buộc
+      double extra_charge_time = std::min({
+          wait_time,               // (a) không sạc quá thời gian chờ
+          max_extra_time,          // (b) không vượt battery capacity
+          time_before_station_due  // (c) không vi phạm station due date
+      });
+
+      if (extra_charge_time < EPSILON) continue;
+
+      double extra_energy = extra_charge_time / charging_rate;
+
+      // --- CẬP NHẬT STATION[s] ---
+      (*states)[s].chargeAmount    += extra_energy;
+      (*states)[s].remainingBattery += extra_energy;
+      (*states)[s].departureTime   += extra_charge_time;
+      evalResult.totalChargeTime   += extra_charge_time;
+      evalResult.totalChargeAmount += extra_energy;
+
+      // --- RIPPLE TIME: từ s+1 đến i (inclusive) ---
+      // Tất cả nodes trong đoạn [s+1, i] bị "dịch" arrival về sau
+      // đúng extra_charge_time, nhưng wait_time tại customer giảm tương ứng
+      for (int k = s + 1; k <= i; ++k) {
+        auto node_k = instance->getNodeById((*nodeSequence)[k]);
+        (*states)[k].arrivalTime += extra_charge_time;
+
+        if (node_k->getType() == NodeType::CUSTOMER) {
+          double new_arrival  = (*states)[k].arrivalTime;
+          double old_wait     = (*states)[k].timeWait;
+          double new_wait     = std::max(0.0, node_k->getReadyTime() - new_arrival);
+
+          // Cập nhật totalWaitTime
+          evalResult.totalWaitTime -= old_wait;
+          evalResult.totalWaitTime += new_wait;
+
+          (*states)[k].timeWait      = new_wait;
+          (*states)[k].departureTime = new_arrival + new_wait
+                                       + node_k->getServiceTime();
+        } else {
+          // Station hoặc Depot trong đoạn: không xảy ra
+          // (last_station_idx đã được reset khi gặp station)
+          // Safety: dịch departureTime nếu có
+          (*states)[k].departureTime += extra_charge_time;
+        }
+      }
+
+      // --- RIPPLE BATTERY: từ s+1 đến i (inclusive) ---
+      // Đoạn này không có station khác nên battery tăng đều extra_energy
+      for (int k = s + 1; k <= i; ++k) {
+        (*states)[k].remainingBattery += extra_energy;
+      }
+    }
+  }
+  // ----------------------------------------------------------------
+  // KẾT THÚC SLACK-TIME ABSORPTION PASS
+  // ----------------------------------------------------------------
+
+  for (int i = 1; i < n; ++i) {
+    auto node_prev = instance->getNodeById((*nodeSequence)[i - 1]);
+    if (node_prev->getType() == NodeType::STATION) {
+      if ((*nodeSequence)[i] == (*nodeSequence)[i - 1]) {
+        evalResult.feasible = false;
+        isDirty = false;
+        return;
+      }
+    }
+  }
 
   evalResult.feasible = true;
-  evalResult.totalTime = st.back().arrivalTime - st.front().departureTime;
+  evalResult.totalTime =
+      states->back().arrivalTime - states->front().departureTime;
   isDirty = false;
 }
 
 // Thread-local scratchpads to avoid allocation in hot loop
-// tl_simNodeSequence removed — Point9 virtual-index eliminates the copy entirely
-// thread_local std::vector<double> tl_dp;
-// thread_local std::vector<NodeState> tl_simStates;
+thread_local std::vector<int> tl_simNodeSequence;
+thread_local std::vector<double> tl_dp;
+thread_local std::vector<NodeState> tl_simStates;
 
 // Tier 1 - Exact Check
-//
-// ⭐ Point 9: Virtual index — KHÔNG copy nodeSequence. Zero allocation, zero memcpy.
-//   simSeq(i) map index trong sim-route [0..n) → node id:
-//     i < pos  → origSeq[i]
-//     i == pos → nodeId  (inserted node)
-//     i > pos  → origSeq[i-1]
-//
-// ⭐ Point 5: Incremental forward pass — reuse states[0..pos-1] đã tính sẵn.
-//   Backward pass vẫn full O(n) vì dp[i] ripple phụ thuộc dp[i+1..n-1].
-//   Forward pass bắt đầu từ position → trung bình O(n/2) thay vì O(n).
-//   Delta = (sim suffix) - (original suffix) — không cần simulate prefix.
-//
 InsertionResult Route::checkInsertionCost(int nodeId, size_t position) const {
-  evaluate(); // no-op nếu !isDirty — đảm bảo states[] và evalResult valid
+  tl_simNodeSequence.clear();
+  tl_simNodeSequence.reserve(nodeSequence->size() + 1);
+  tl_simNodeSequence.insert(tl_simNodeSequence.end(), nodeSequence->begin(), nodeSequence->begin() + position);
+  tl_simNodeSequence.push_back(nodeId);
+  tl_simNodeSequence.insert(tl_simNodeSequence.end(), nodeSequence->begin() + position, nodeSequence->end());
 
-  const auto& origSeq  = *nodeSequence;
-  const int   origN    = (int)origSeq.size();
-  const int   n        = origN + 1;
-  const int   pos      = (int)position;
+  int n = tl_simNodeSequence.size();
+  const double EPSILON = 1e-9;
 
-  const double EPSILON    = 1e-9;
-  const double battCap    = vehicle->getBatteryCapacity();
-  const double energyRate = vehicle->getEnergyConsumptionRate();
-
-  // ⭐ Point 9: virtual index — không alloc không memcpy
-  auto simSeq = [&](int i) -> int {
-    if (i < pos)  return origSeq[i];
-    if (i == pos) return nodeId;
-    return origSeq[i - 1];
-  };
-
-  // ── Backward Pass: tính dp[] cho sim-route — O(n) không thể tránh ──
   tl_dp.assign(n, 0.0);
   for (int i = n - 2; i >= 0; --i) {
-    double energy = instance->getDistance(simSeq(i), simSeq(i + 1)) * energyRate;
-    const Node* nxt = instance->getNodeById(simSeq(i + 1)).get();
-    tl_dp[i] = (nxt->getType() == NodeType::STATION)
-               ? energy + std::max(0.0, tl_dp[i + 1] - battCap)
-               : energy + tl_dp[i + 1];
-    if (tl_dp[i] > battCap + EPSILON)
+    double energy_to_next =
+        instance->getDistance(tl_simNodeSequence[i], tl_simNodeSequence[i + 1]) *
+        vehicle->getEnergyConsumptionRate();
+    auto next_node = instance->getNodeById(tl_simNodeSequence[i + 1]);
+    if (next_node->getType() == NodeType::STATION) {
+      tl_dp[i] = energy_to_next +
+                 std::max(0.0, tl_dp[i + 1] - vehicle->getBatteryCapacity());
+    } else {
+      tl_dp[i] = energy_to_next + tl_dp[i + 1];
+    }
+    if (tl_dp[i] > vehicle->getBatteryCapacity() + EPSILON) {
       return {false};
+    }
   }
 
-  // ── Point 5: Incremental Forward Pass từ position ──
-  // states[0..pos-1] giữ nguyên vì không có node/edge nào thay đổi trước pos.
-  // Seed "cur" = states[pos-1] (departureTime, remainingBattery, remainingLoad).
-  int suffixLen = n - pos;
-  if ((int)tl_simStates.size() < suffixLen)
-    tl_simStates.resize(suffixLen);
+  tl_simStates.resize(n);
+  double simTotalWaitTime = 0.0;
+  double simTotalChargeAmount = 0.0;
+  double simTotalEnergyConsumption = 0.0;
+  double simTotalDistance = 0.0;
+  auto start_depot = std::static_pointer_cast<Depot>(instance->getNodeById(0));
+  tl_simStates[0].arrivalTime = start_depot->getReadyTime();
+  tl_simStates[0].departureTime = start_depot->getReadyTime();
+  tl_simStates[0].remainingBattery = vehicle->getBatteryCapacity();
+  tl_simStates[0].remainingLoad = vehicle->getCapacity();
 
-  double sufDistance = 0.0, sufEnergy = 0.0, sufWait = 0.0, sufCharge = 0.0;
-  NodeState cur = (*states)[pos - 1]; // seed từ last valid state trước insertion point
-
-  for (int i = pos; i < n; ++i) {
-    int from_id = simSeq(i - 1);
-    int to_id   = simSeq(i);
-    const auto& to_node_ptr = instance->getNodeById(to_id);
-    const Node* to_node     = to_node_ptr.get();
-
-    double dist   = instance->getDistance(from_id, to_id);
-    double ttime  = instance->getTime(from_id, to_id);
-    double energy = dist * energyRate;
-    sufDistance += dist;
-    sufEnergy   += energy;
-
-    NodeState& to_state = tl_simStates[i - pos];
-    to_state.arrivalTime      = cur.departureTime + ttime;
-    to_state.remainingBattery = cur.remainingBattery - energy;
-    to_state.remainingLoad    = cur.remainingLoad;
-    to_state.chargeAmount     = 0.0;
-
+  for (int i = 0; i < n - 1; ++i) {
+    int from_id = tl_simNodeSequence[i];
+    int to_id = tl_simNodeSequence[i + 1];
+    auto to_node = instance->getNodeById(to_id);
+    NodeState &from_state = tl_simStates[i];
+    NodeState &to_state = tl_simStates[i + 1];
+    double distance = instance->getDistance(from_id, to_id);
+    double travel_time = instance->getTime(from_id, to_id);
+    double energy_consumed = distance * vehicle->getEnergyConsumptionRate();
+    simTotalDistance += distance;
+    simTotalEnergyConsumption += energy_consumed;
+    to_state.arrivalTime = from_state.departureTime + travel_time;
+    to_state.remainingBattery = from_state.remainingBattery - energy_consumed;
+    to_state.remainingLoad = from_state.remainingLoad;
+    to_state.chargeAmount = 0.0;
     if (to_state.remainingBattery < -EPSILON)
       return {false};
-
     switch (to_node->getType()) {
     case NodeType::CUSTOMER: {
-      const Customer* cust = static_cast<const Customer*>(to_node);
+      auto cust = std::static_pointer_cast<Customer>(to_node);
       to_state.remainingLoad -= cust->getDemand();
-      if (to_state.remainingLoad < -EPSILON) return {false};
-      double wait = std::max(0.0, cust->getReadyTime() - to_state.arrivalTime);
-      sufWait += wait;
-      double svc_start = to_state.arrivalTime + wait;
-      if (svc_start > cust->getDueDate() + EPSILON) return {false};
-      to_state.departureTime = svc_start + cust->getServiceTime();
+      if (to_state.remainingLoad < -EPSILON)
+        return {false};
+      double wait_time =
+          std::max(0.0, cust->getReadyTime() - to_state.arrivalTime);
+      simTotalWaitTime += wait_time;
+      double service_start_time = to_state.arrivalTime + wait_time;
+      if (service_start_time > cust->getDueDate() + EPSILON)
+        return {false};
+      to_state.departureTime = service_start_time + cust->getServiceTime();
       break;
     }
     case NodeType::STATION: {
-      if (i > 0 && to_id == simSeq(i - 1)) return {false}; // duplicate station
-      const Station* station = static_cast<const Station*>(to_node);
-      double wait = std::max(0.0, station->getReadyTime() - to_state.arrivalTime);
-      sufWait += wait;
-      double chrg_start = to_state.arrivalTime + wait;
-      if (chrg_start > station->getDueDate() + EPSILON) return {false};
-      double chrg_needed   = std::max(0.0, tl_dp[i] - to_state.remainingBattery);
-      double chrg_possible = battCap - to_state.remainingBattery;
-      double chrg_amount   = std::min(chrg_needed, chrg_possible);
-      sufCharge += chrg_amount;
-      to_state.chargeAmount     = chrg_amount;
-      to_state.departureTime    = chrg_start + chrg_amount * station->getChargingRate();
-      to_state.remainingBattery += chrg_amount;
-      if (to_state.departureTime > station->getDueDate() + EPSILON) return {false};
+      auto station = std::static_pointer_cast<Station>(to_node);
+      double wait_time =
+          std::max(0.0, station->getReadyTime() - to_state.arrivalTime);
+      simTotalWaitTime += wait_time;
+      double charge_start_time = to_state.arrivalTime + wait_time;
+      if (charge_start_time > station->getDueDate() + EPSILON)
+        return {false};
+      double charge_needed =
+          std::max(0.0, tl_dp[i + 1] - to_state.remainingBattery);
+      double charge_possible =
+          vehicle->getBatteryCapacity() - to_state.remainingBattery;
+      double charge_amount = std::min(charge_needed, charge_possible);
+      double charge_time = charge_amount * station->getChargingRate();
+      to_state.chargeAmount = charge_amount;
+      simTotalChargeAmount += charge_amount;
+      to_state.departureTime = charge_start_time + charge_time;
+      to_state.remainingBattery += charge_amount;
+      if (to_state.departureTime > station->getDueDate() + EPSILON)
+        return {false};
       break;
     }
     case NodeType::DEPOT: {
-      const Depot* depot = static_cast<const Depot*>(to_node);
-      if (to_state.arrivalTime > depot->getDueDate() + EPSILON) return {false};
+      auto depot = std::static_pointer_cast<Depot>(to_node);
+      if (to_state.arrivalTime > depot->getDueDate() + EPSILON)
+        return {false};
       to_state.departureTime = to_state.arrivalTime;
       break;
     }
     }
-    cur = to_state;
   }
-
-  // ── Tính delta: (sim suffix) - (original suffix) ──
-  // Original suffix = edges từ pos-1 đến origN-1, states từ pos đến origN-1
-  double origSufDistance = 0.0, origSufEnergy = 0.0, origSufWait = 0.0, origSufCharge = 0.0;
-  for (int i = pos - 1; i < origN - 1; ++i) {
-    double d = instance->getDistance(origSeq[i], origSeq[i + 1]);
-    origSufDistance += d;
-    origSufEnergy   += d * energyRate;
-  }
-  for (int i = pos; i < origN; ++i) {
-    origSufWait   += (*states)[i].timeWait;
-    origSufCharge += (*states)[i].chargeAmount;
-  }
-
-  double simDepotArrival  = tl_simStates[n - 1 - pos].arrivalTime;
-  double origDepotArrival = (*states)[origN - 1].arrivalTime;
-
   InsertionResult res;
-  res.isFeasible             = true;
-  res.deltaDistance          = sufDistance - origSufDistance;
-  res.deltaEnergyConsumption = sufEnergy   - origSufEnergy;
-  res.deltaWaitTime          = sufWait     - origSufWait;
-  res.deltaChargeAmount      = sufCharge   - origSufCharge;
-  res.deltaTime              = simDepotArrival - origDepotArrival;
+  res.isFeasible = true;
+  if (isDirty) {
+      evaluate();
+  }
+  res.deltaDistance = simTotalDistance - evalResult.totalDistance;
+  double simTotalTime =
+      tl_simStates[n - 1].arrivalTime - tl_simStates[0].departureTime;
+  res.deltaTime = simTotalTime - evalResult.totalTime;
+  res.deltaChargeAmount = simTotalChargeAmount - evalResult.totalChargeAmount;
+  res.deltaWaitTime = simTotalWaitTime - evalResult.totalWaitTime;
+  res.deltaEnergyConsumption =
+      simTotalEnergyConsumption - evalResult.totalEnergyConsumption;
   return res;
 }
-
 
 // --- GETTERS ---
 int Route::getId() const { return id; }
@@ -467,7 +540,6 @@ double Route::getActiveTime() const {
 
 double Route::getTotalDemand() const {
   double totalDemand = 0.0;
-  // Node::getDemand() returns 0 for Depot and Station
   for (int nodeId : *nodeSequence) {
     totalDemand += instance->getNodeById(nodeId)->getDemand();
   }
@@ -487,10 +559,8 @@ int Route::getNodeAt(size_t pos) const {
 
 int Route::getLastNodeId() const {
   if (nodeSequence->size() <= 2) {
-    // Route is empty or has only depots, return the starting depot
     return 0;
   }
-  // Return the node at the second to last position (before the final depot)
   return (*nodeSequence)[nodeSequence->size() - 2];
 }
 
@@ -595,13 +665,12 @@ bool Route::canPossiblyInsert(int nodeIdToInsert, size_t position,
 
   const auto &prev_state = states->at(position - 1);
   int prev_node_id = (*nodeSequence)[position - 1];
-  // ⭐ Fix 1e: raw pointer
-  const Node* nodeToInsert = instance->getNodeById(nodeIdToInsert).get();
+  auto nodeToInsert = instance->getNodeById(nodeIdToInsert);
   const double EPSILON = 1e-9;
 
   double availableLoad = prev_state.remainingLoad;
   if (nodeIdToRemove != -1) {
-    const Node* nodeToRemove = instance->getNodeById(nodeIdToRemove).get();
+    auto nodeToRemove = instance->getNodeById(nodeIdToRemove);
     if (nodeToRemove->getType() == NodeType::CUSTOMER) {
       availableLoad += nodeToRemove->getDemand();
     }
@@ -630,15 +699,12 @@ bool Route::canPossiblyInsert(int nodeIdToInsert, size_t position,
 InsertionResult Route::fastForwardCheck(int nodeId, size_t position) const {
   evaluate();
 
-  const double EPSILON    = 1e-9;
-  const double energyRate = vehicle->getEnergyConsumptionRate();
-  const auto&  seq        = *nodeSequence;  // ⭐ Fix 1b: cache reference
+  const double EPSILON = 1e-9;
 
-  int prevNodeId = seq[position - 1];
-  int nextNodeId = seq[position];
-  // ⭐ Fix 1e: raw pointer
-  const Customer* customerNode =
-      static_cast<const Customer*>(instance->getNodeById(nodeId).get());
+  int prevNodeId = (*nodeSequence)[position - 1];
+  int nextNodeId = (*nodeSequence)[position];
+  auto customerNode =
+      std::static_pointer_cast<Customer>(instance->getNodeById(nodeId));
 
   double oldEdgeDistance = instance->getDistance(prevNodeId, nextNodeId);
   double newEdgeDistance = instance->getDistance(prevNodeId, nodeId) +
@@ -650,31 +716,33 @@ InsertionResult Route::fastForwardCheck(int nodeId, size_t position) const {
   double simTotalWaitTime = 0;
 
   // prev -> customer
-  currentState.departureTime    += instance->getTime(prevNodeId, nodeId);
-  currentState.remainingBattery -= instance->getDistance(prevNodeId, nodeId) * energyRate;
+  currentState.departureTime += instance->getTime(prevNodeId, nodeId);
+  currentState.remainingBattery -= instance->getDistance(prevNodeId, nodeId) *
+                                   vehicle->getEnergyConsumptionRate();
   currentLoad -= customerNode->getDemand();
 
   if (currentState.remainingBattery < -EPSILON || currentLoad < -EPSILON ||
       currentState.departureTime > customerNode->getDueDate() + EPSILON) {
     return {false};
   }
-  double waitAtCust = std::max(0.0, customerNode->getReadyTime() - currentState.departureTime);
+  double waitAtCust =
+      std::max(0.0, customerNode->getReadyTime() - currentState.departureTime);
   simTotalWaitTime += waitAtCust;
   currentState.departureTime =
       currentState.departureTime + waitAtCust + customerNode->getServiceTime();
 
   // customer -> next
-  currentState.departureTime    += instance->getTime(nodeId, nextNodeId);
-  currentState.remainingBattery -= instance->getDistance(nodeId, nextNodeId) * energyRate;
+  currentState.departureTime += instance->getTime(nodeId, nextNodeId);
+  currentState.remainingBattery -= instance->getDistance(nodeId, nextNodeId) *
+                                   vehicle->getEnergyConsumptionRate();
   if (currentState.remainingBattery < -EPSILON)
     return {false};
 
   // Ripple simulation
-  for (size_t i = position; i < seq.size() - 1; ++i) {
-    int current_node_id = seq[i];
-    int next_node_id    = seq[i + 1];
-    // ⭐ Fix 1e: raw pointer
-    const Node* current_node_obj = instance->getNodeById(current_node_id).get();
+  for (size_t i = position; i < nodeSequence->size() - 1; ++i) {
+    int current_node_id = (*nodeSequence)[i];
+    int next_node_id = (*nodeSequence)[i + 1];
+    auto current_node_obj = instance->getNodeById(current_node_id);
 
     if (currentState.departureTime > current_node_obj->getDueDate() + EPSILON)
       return {false};
@@ -685,36 +753,42 @@ InsertionResult Route::fastForwardCheck(int nodeId, size_t position) const {
     currentState.departureTime += wait_time;
 
     if (current_node_obj->getType() == NodeType::STATION) {
-      double energyToDepot    = instance->getDistance(current_node_id, 0) * energyRate;
-      double requiredBattery  = energyToDepot * 1.1;
+      double energyToDepot = instance->getDistance(current_node_id, 0) *
+                             vehicle->getEnergyConsumptionRate();
+      double requiredBattery = energyToDepot * 1.1;
 
       if (currentState.remainingBattery < requiredBattery) {
         double chargeAmount = requiredBattery - currentState.remainingBattery;
-        chargeAmount = std::min(chargeAmount,
-                                vehicle->getBatteryCapacity() - currentState.remainingBattery);
-        const Station* station = static_cast<const Station*>(current_node_obj);
+        chargeAmount =
+            std::min(chargeAmount, vehicle->getBatteryCapacity() -
+                                       currentState.remainingBattery);
+
+        auto station = std::static_pointer_cast<Station>(current_node_obj);
         double chargeTime = chargeAmount * station->getChargingRate();
-        currentState.departureTime    += chargeTime;
+        currentState.departureTime += chargeTime;
         currentState.remainingBattery += chargeAmount;
       }
     }
 
-    currentState.departureTime    += current_node_obj->getServiceTime();
-    currentState.departureTime    += instance->getTime(current_node_id, next_node_id);
-    currentState.remainingBattery -= instance->getDistance(current_node_id, next_node_id) * energyRate;
+    currentState.departureTime += current_node_obj->getServiceTime();
+
+    currentState.departureTime +=
+        instance->getTime(current_node_id, next_node_id);
+    currentState.remainingBattery -=
+        instance->getDistance(current_node_id, next_node_id) *
+        vehicle->getEnergyConsumptionRate();
     if (currentState.remainingBattery < -EPSILON)
       return {false};
   }
 
-  const Node* final_depot = instance->getNodeById(seq.back()).get();
+  auto final_depot = instance->getNodeById(nodeSequence->back());
   if (currentState.departureTime > final_depot->getDueDate() + EPSILON)
     return {false};
 
   InsertionResult res;
-  res.isFeasible   = true;
+  res.isFeasible = true;
   res.deltaDistance = deltaDistance;
 
-  // This is an approximation
   double oldWaitTime = 0;
   for (size_t i = position - 1; i < states->size(); ++i) {
     oldWaitTime += (*states)[i].timeWait;
@@ -730,7 +804,6 @@ bool Route::quickCapacityCheck(double demand) const {
   if (states->empty()) {
     return true;
   }
-  // This is a heuristic. It checks against the final remaining load.
   return demand <= states->back().remainingLoad;
 }
 
@@ -748,10 +821,8 @@ std::vector<double> Route::getTimeSlack() const {
   if (n != (int)states->size()) {
     return slack;
   }
-  const auto& seq = *nodeSequence;
   for (int i = 0; i < n; ++i) {
-    // ⭐ Fix 1e: raw pointer
-    const Node* node = instance->getNodeById(seq[i]).get();
+    auto node = instance->getNodeById((*nodeSequence)[i]);
     slack[i] = std::max(0.0, node->getDueDate() - (*states)[i].departureTime);
   }
   return slack;
@@ -762,7 +833,7 @@ std::vector<double> Route::getEnergySlack() const {
   int n = nodeSequence->size();
   std::vector<double> slack(n, 0.0);
   if (n != (int)states->size() || n != (int)minBatteryReq->size()) {
-    return slack; // Safety: mismatched sizes
+    return slack;
   }
   for (int i = 0; i < n; ++i) {
     slack[i] = (*states)[i].remainingBattery - (*minBatteryReq)[i];
@@ -776,7 +847,7 @@ Route::getBottleneckNodes(double thresholdRatio) const {
   std::vector<std::pair<int, double>> bottlenecks;
   double threshold = thresholdRatio * vehicle->getBatteryCapacity();
   auto slack = getEnergySlack();
-  for (int i = 1; i < (int)slack.size() - 1; ++i) { // Skip depots
+  for (int i = 1; i < (int)slack.size() - 1; ++i) {
     if (slack[i] < threshold) {
       bottlenecks.push_back({i, slack[i]});
     }
@@ -795,21 +866,19 @@ std::vector<int> Route::getRedundantStations() const {
   double capacity = vehicle->getBatteryCapacity();
   const double EPSILON = 1e-9;
 
-  const auto& seq = *nodeSequence;  // ⭐ Fix 1b
   for (int i = 1; i < n - 1; ++i) {
-    // ⭐ Fix 1e: raw pointer
-    const Node* node = instance->getNodeById(seq[i]).get();
+    auto node = instance->getNodeById((*nodeSequence)[i]);
     if (node->getType() != NodeType::STATION)
       continue;
 
     // Condition 1: Low charge amount (< 10% capacity)
     bool lowCharge = (*states)[i].chargeAmount < 0.10 * capacity;
 
-    // Condition 2: Bypass feasible (can skip station and still complete route)
+    // Condition 2: Bypass feasible
     bool bypassable = false;
     if (i >= 1 && i + 1 < n) {
-      int prevId = seq[i - 1];
-      int nextId = seq[i + 1];
+      int prevId = (*nodeSequence)[i - 1];
+      int nextId = (*nodeSequence)[i + 1];
       double energyBypass = instance->getDistance(prevId, nextId) *
                             vehicle->getEnergyConsumptionRate();
       double batteryAtPrev = (*states)[i - 1].remainingBattery;

@@ -68,14 +68,14 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/c208C15.txt";
     // instancePath = "../data/solomon/c101_21.txt";
-    // instancePath = "../data/solomon/c102_21.txt";
+    // // instancePath = "../data/solomon/c102_21.txt";
     // instancePath = "../data/solomon/r101_21.txt";
     // instancePath = "../data/solomon/r102_21.txt";
     // instancePath = "../data/solomon/r107_21.txt";
-    // instancePath = "../data/solomon/r103_21.txt";
+    instancePath = "../data/solomon/r103_21.txt";
 
     // instancePath = "../data/solomon/r104_21.txt";
-    instancePath = "../data/solomon/r105_21.txt";
+    // instancePath = "../data/solomon/r105_21.txt";
     // instancePath = "../data/solomon/rc101_21.txt";
     // instancePath = "../data/solomon/c106C15.txt";
     // instancePath = "../data/solomon/c104_21.txt";
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
     std::string baseName = pathObj.stem().string();
 
     // Tạo đường dẫn thư mục output: logs/<TênFile>/<CustomRunName> (nếu có)
-    std::string outputDir = "logs_testLS3/" + baseName;
+    std::string outputDir = "logs_testLS4/" + baseName;
     std::string runName = baseName;
 
     if (!customRunName.empty()) {

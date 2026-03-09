@@ -67,7 +67,13 @@ public:
    * @brief Initializes the fixed reference box using the initial solution.
    * Ensures consistent HV scaling over the entire run.
    */
-  void initializeReferenceBox(const Solution& initialSolution);
+  void initializeReferenceBox(const Solution &initialSolution);
+
+  /**
+   * @brief Expands the nadir box if the provided solution comes close to or
+   * exceeds it.
+   */
+  void expandNadirIfNeeded(const Solution &sol);
 
 private:
   // Sorts by number of vehicles (ascending).

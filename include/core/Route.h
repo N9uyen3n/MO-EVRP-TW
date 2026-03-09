@@ -73,6 +73,9 @@ public:
   int getLastNodeId() const;
   size_t size() const;
 
+  double getCentroidX() const;
+  double getCentroidY() const;
+
   void print() const;
   std::string toString() const;
   long long getHash() const;

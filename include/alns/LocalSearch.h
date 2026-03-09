@@ -195,6 +195,7 @@ private:
                                                      int topK) const;
 
   // --- Vehicle Reduction Helpers ---
+  bool runElectricityFreeVehicleReduction(Solution &solution);
   bool runSmartMultiRouteMerge(Solution &solution);
   bool tryEliminateSmallestRoute(Solution &solution);
   // bool ejectionChain(Solution &solution); // Strategy 3: BFS ejection chain
@@ -218,25 +219,25 @@ private:
 
   // ========== ITERATION CONTROL CONSTANTS ==========
   static constexpr int MAX_LS_ITERATIONS =
-      10; // Tổng số vòng lặp tối đa (reduced to prevent LS dominance)
+      20; // Tổng số vòng lặp tối đa (reduced to prevent LS dominance)
   static constexpr int EARLY_STOP_THRESHOLD =
-      5; // Dừng sớm sau N vòng không cải tiến
+      6; // Dừng sớm sau N vòng không cải tiến
   static constexpr int CHARGING_FREQUENCY = 4; // Chạy Phase 2 mỗi N vòng
   static constexpr int VEHICLE_REDUCTION_FREQUENCY = 3;
 
   // --- Adaptive Sizing Parameters ---
   int noImprovementCount_ = 0;
-  int maxNodesToCheck_ = 4; // For relocate
-  int maxSwapAttempts_ = 3; // For swap
+  int maxNodesToCheck_ = 10; // For relocate
+  int maxSwapAttempts_ = 15; // For swap
 
   // --- Adaptive Sizing Constants ---
   static constexpr int MIN_NODES_TO_CHECK = 3;
   static constexpr int MAX_NODES_TO_CHECK = 10;
   static constexpr int MIN_SWAP_ATTEMPTS = 1;
-  static constexpr int MAX_SWAP_ATTEMPTS = 5;
+  static constexpr int MAX_SWAP_ATTEMPTS = 10;
 
   // --- K-Nearest Neighbors Cache ---
-  static constexpr int K_NEIGHBORS = 20;
+  static constexpr int K_NEIGHBORS = 40;
   std::unordered_map<int, std::vector<int>>
       knnCache_; // customerId -> list of K nearest customer IDs
 

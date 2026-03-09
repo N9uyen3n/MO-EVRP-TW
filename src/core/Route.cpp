@@ -564,6 +564,32 @@ int Route::getLastNodeId() const {
   return (*nodeSequence)[nodeSequence->size() - 2];
 }
 
+double Route::getCentroidX() const {
+  if (nodeSequence->size() <= 2) return 0.0;
+  double sumX = 0.0;
+  int count = 0;
+  for (int nodeId : *nodeSequence) {
+    if (instance->getNodeById(nodeId)->getType() == NodeType::CUSTOMER) {
+      sumX += instance->getNodeById(nodeId)->getX();
+      count++;
+    }
+  }
+  return count > 0 ? sumX / count : 0.0;
+}
+
+double Route::getCentroidY() const {
+  if (nodeSequence->size() <= 2) return 0.0;
+  double sumY = 0.0;
+  int count = 0;
+  for (int nodeId : *nodeSequence) {
+    if (instance->getNodeById(nodeId)->getType() == NodeType::CUSTOMER) {
+      sumY += instance->getNodeById(nodeId)->getY();
+      count++;
+    }
+  }
+  return count > 0 ? sumY / count : 0.0;
+}
+
 size_t Route::size() const { return nodeSequence->size(); }
 
 void Route::print() const {

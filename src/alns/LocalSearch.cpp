@@ -36,17 +36,20 @@ LocalSearch::LocalSearch(std::shared_ptr<Instance> inst) : instance(inst) {
 }
 
 // ============================================================================
-// Algorithm: 3-Phase Hybrid Local Search
+// Algorithm: 4-Phase Hybrid Local Search
 // ============================================================================
 // Input:  Solution S (feasible)
 // Output: Improved Solution S'
 //
 // Phase 1 — Distance Optimization (Variable Neighborhood Descent)
 //   Cycle through {Relocate, Swap, Or-Opt, 2-Opt} with restart-on-improve
-// Phase 2 — Charging Optimization (every CHARGING_FREQUENCY iterations)
+// Phase 2 — Electricity-Free Vehicle Reduction (NEW)
+//   Strip stations, merge routes in VRP-TW space (ignore battery),
+//   then re-insert stations optimally → enables proactive charging patterns
+// Phase 3 — Charging Optimization (every CHARGING_FREQUENCY iterations)
 //   Remove redundant stations, reposition, swap, optimize amounts
-// Phase 3 — Vehicle Reduction (every VEHICLE_REDUCTION_FREQUENCY iterations)
-//   Multi-route merge, smallest route elimination
+// Phase 4 — Classic Vehicle Reduction (fallback, every 4 phase2 calls)
+//   Multi-route merge, smallest route elimination, ejection chain
 // ============================================================================
 void LocalSearch::run(Solution &solution) {
   // ⭐ VITAL: Must invalidate context from previous ALNS iterations
@@ -61,7 +64,8 @@ void LocalSearch::run(Solution &solution) {
   // This was masking all improvements from VEH-Improve breakthroughs onward.
   noImprovementCount_ = 0;
 
-  int phase3Calls = 0; // Local counter to avoid state leak across seeds
+  int phase2Calls = 0; // Electricity-free reduction counter
+  int phase4Calls = 0; // Classic reduction counter
   for (int iter = 0; iter < MAX_LS_ITERATIONS; ++iter) {
     bool improved = false;
 
@@ -74,7 +78,22 @@ void LocalSearch::run(Solution &solution) {
       searchContext_.invalidate();
     }
 
-    // --- Phase 2: Charging Optimization (periodic) ---
+    // --- Phase 2: Electricity-Free Vehicle Reduction (NEW) ---
+    // Bỏ qua electricity constraint, merge routes trong VRP-TW space,
+    // sau đó chèn stations tối ưu để restore feasibility.
+    // Chạy trước Charging Optimization để charging có nền tảng route tốt hơn.
+    if (solution.getRoutes().size() > 1) {
+      if (++phase2Calls % 2 == 0) {
+        if (runElectricityFreeVehicleReduction(solution)) {
+          improved = true;
+          noImprovementCount_ = 0;
+          searchContext_.invalidate();
+        }
+      }
+    }
+
+    // --- Phase 3: Charging Optimization (periodic) ---
+    // Chạy sau Vehicle Reduction để tối ưu stations trên routes đã được merge.
     if (iter % CHARGING_FREQUENCY == 0) {
       if (runChargingOptimization(solution)) {
         improved = true;
@@ -82,12 +101,10 @@ void LocalSearch::run(Solution &solution) {
       }
     }
 
-    // --- Phase 3: Vehicle Reduction (TĂNG FREQUENCY ĐỂ TRÁNH CONFLICT ALNS)
-    // --- Chỉ kích hoạt Phase 3 khi VND đã không còn cải thiện (để Phase 3 có
-    // nền tảng ổn định) Và điều tiết (tăng Vehicle Reduction Frequency) để
-    // không cạnh tranh với Operators của ALNS.
+    // --- Phase 4: Classic Vehicle Reduction (fallback) ---
+    // Chạy khi electricity-free pass không giảm được xe.
     if (solution.getRoutes().size() > 1) {
-      if (++phase3Calls % 2 == 0) {
+      if (++phase4Calls % 3 == 0) {
         if (runVehicleReduction(solution)) {
           improved = true;
           noImprovementCount_ = 0;
@@ -768,16 +785,14 @@ bool LocalSearch::searchInterTwoOpt(Solution &solution,
     if (n1 < 3)
       continue; // Need at least depot + 1 customer + depot
 
-    for (int r2 = r1 + 1; r2 < numRoutes; ++r2) {
-      // ⭐ GRANULAR FILTER: Only consider close routes
-      if (!areRoutesClose(centroids[r1], centroids[r2],
-                          distanceThreshold_ * 1.5))
-        continue;
+      // ⭐ OPTIMIZATION: Use granular neighbor lists to avoid O(R^2)
+      for (int r2 : ctx.neighborLists[r1]) {
+        if (r2 <= r1) continue; // Avoid redundant pairs since neighbor list is symmetric
 
-      const auto &nodes2 = routes[r2].getNodes();
-      int n2 = (int)nodes2.size();
-      if (n2 < 3)
-        continue;
+        const auto &nodes2 = routes[r2].getNodes();
+        int n2 = (int)nodes2.size();
+        if (n2 < 3)
+          continue;
 
       // Try all edge pairs (i, j): edge (i → i+1) from r1, edge (j → j+1) from
       // r2 i ranges from 1..n1-2: skip cut at depot_start (i=0) and depot_end
@@ -2454,6 +2469,317 @@ double LocalSearch::calculateEuclideanDistance(const RouteCentroid &c1,
   return std::sqrt(std::pow(c1.x - c2.x, 2) + std::pow(c1.y - c2.y, 2));
 }
 
+// ============================================================================
+// Electricity-Free Vehicle Reduction
+//
+// Ý tưởng (Cách B — VRP-TW Shadow):
+//   1. Chọn 2 routes nhỏ nhất/gần nhau để merge
+//   2. Strip tất cả stations ra khỏi cả 2 routes → làm việc trong VRP-TW space
+//   3. Thử merge toàn bộ customers vào 1 hoặc 2 routes (chỉ check capacity+TW)
+//   4. Nếu merge thành công → chèn stations tối ưu (greedy nearest)
+//   5. Nếu feasible với battery → accept, gọi removeRedundantStations
+//
+// Điểm khác biệt với runSmartMultiRouteMerge:
+//   - Bước 3 KHÔNG check battery → tìm được merges mà bản gốc bỏ lỡ
+//   - Bước 4 chèn stations SAU khi biết customer order → tối ưu hơn
+// ============================================================================
+bool LocalSearch::runElectricityFreeVehicleReduction(Solution &solution) {
+  auto &routes = solution.getRoutes();
+  int numRoutes = (int)routes.size();
+  if (numRoutes < 2) return false;
+
+  const double EPSILON = 1e-9;
+  double batteryCapacity = routes[0].getVehicle()->getBatteryCapacity();
+  double energyRate      = routes[0].getVehicle()->getEnergyConsumptionRate();
+  double vehicleCapacity = routes[0].getVehicle()->getCapacity();
+
+  // --- BƯỚC 1: Chọn cặp routes để merge (ưu tiên nhỏ + gần nhau) ---
+  int r1_idx = -1, r2_idx = -1;
+  double bestScore = -1e9;
+
+  for (int i = 0; i < numRoutes; ++i) {
+    for (int j = i + 1; j < numRoutes; ++j) {
+      int s1 = (int)routes[i].getCustomers().size();
+      int s2 = (int)routes[j].getCustomers().size();
+      int sizeSum = s1 + s2;
+      if (sizeSum == 0 || sizeSum > 30) continue;
+
+      double dist = calculateEuclideanDistance(computeCentroid(routes[i]),
+                                               computeCentroid(routes[j]));
+      double score = (1000.0 - sizeSum) - dist;
+      if (score > bestScore) {
+        bestScore = score;
+        r1_idx = i;
+        r2_idx = j;
+      }
+    }
+  }
+  if (r1_idx == -1) return false;
+
+  // --- BƯỚC 2: Strip stations — lấy chỉ customers ---
+  std::vector<int> pool1 = routes[r1_idx].getCustomers();
+  std::vector<int> pool2 = routes[r2_idx].getCustomers();
+  std::vector<int> allCustomers;
+  allCustomers.insert(allCustomers.end(), pool1.begin(), pool1.end());
+  allCustomers.insert(allCustomers.end(), pool2.begin(), pool2.end());
+
+  double oldDist = routes[r1_idx].getTotalDistance()
+                 + routes[r2_idx].getTotalDistance();
+
+  // Capture tất cả member variables cần thiết bằng [this, &...]
+  // để lambda có thể gọi instance, stationIds, removeRedundantStations
+
+  // Helper: build VRP-TW route từ customer list (ignore battery)
+  // FIX: Dùng "earliest due date" tie-break thay vì pure nearest-distance
+  // để tránh trap: chọn customer xa deadline → cuối sequence không về depot được
+  auto buildVRPTWRoute = [this, &EPSILON, vehicleCapacity](
+      const std::vector<int> &customers) -> std::vector<int>
+  {
+    std::vector<int> seq;
+    std::vector<bool> visited(customers.size(), false);
+    double currentTime = instance->getNodeById(0)->getReadyTime();
+    double currentLoad = 0.0;
+    int currentNode    = 0;
+    const int depotId  = 0;
+
+    while (seq.size() < customers.size()) {
+      int    bestNext    = -1;
+      double bestScore   = 1e18;
+      int    bestIdx     = -1;
+
+      for (size_t k = 0; k < customers.size(); ++k) {
+        if (visited[k]) continue;
+        int cid   = customers[k];
+        auto cust = std::static_pointer_cast<Customer>(
+                        instance->getNodeById(cid));
+
+        if (currentLoad + cust->getDemand() > vehicleCapacity + EPSILON) continue;
+
+        double travelTime = instance->getTime(currentNode, cid);
+        double arrival    = currentTime + travelTime;
+        double startTime  = arrival > cust->getReadyTime()
+                            ? arrival : cust->getReadyTime();
+        if (startTime > cust->getDueDate() + EPSILON) continue;
+
+        // Check: sau khi thăm cid, còn về depot được không?
+        double depTime    = startTime + cust->getServiceTime();
+        double tToDepot   = instance->getTime(cid, depotId);
+        auto   depot      = instance->getNodeById(depotId);
+        if (depTime + tToDepot > depot->getDueDate() + EPSILON) continue;
+
+        // Score = distance (primary) + normalized urgency (secondary tie-break)
+        double dist  = instance->getDistance(currentNode, cid);
+        double slack = cust->getDueDate() - startTime; // slack nhỏ = urgent
+        // Ưu tiên gần + urgent (slack nhỏ) — tránh để lại customers có TW chặt
+        double score = dist * 0.8 + slack * 0.2;
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestNext  = cid;
+          bestIdx   = (int)k;
+        }
+      }
+
+      if (bestNext == -1) break;
+
+      visited[bestIdx] = true;
+      seq.push_back(bestNext);
+
+      auto cust2     = std::static_pointer_cast<Customer>(
+                           instance->getNodeById(bestNext));
+      double travel2 = instance->getTime(currentNode, bestNext);
+      double arr2    = currentTime + travel2;
+      double start2  = arr2 > cust2->getReadyTime() ? arr2 : cust2->getReadyTime();
+      currentTime    = start2 + cust2->getServiceTime();
+      currentLoad   += cust2->getDemand();
+      currentNode    = bestNext;
+    }
+    return seq;
+  };
+
+  // Helper: insert stations vào customer sequence để restore battery feasibility
+  // FIX: Track actual time để check TW feasibility sau khi chèn station
+  auto insertStationsGreedy = [this, &EPSILON, batteryCapacity, energyRate,
+                                &routes, r1_idx](
+      const std::vector<int> &custSeq) -> Route
+  {
+    auto vehicle = routes[r1_idx].getVehicle();
+    Route r(0, vehicle, instance);
+
+    std::vector<int> fullSeq = {0};
+    fullSeq.insert(fullSeq.end(), custSeq.begin(), custSeq.end());
+    fullSeq.push_back(0);
+
+    double battery     = batteryCapacity;
+    double currentTime = instance->getNodeById(0)->getReadyTime();
+    std::vector<int> built = {0};
+
+    for (size_t k = 1; k < fullSeq.size(); ++k) {
+      int from       = built.back();
+      int to         = fullSeq[k];
+      double eNeeded = instance->getDistance(from, to) * energyRate;
+
+      if (battery < eNeeded - EPSILON) {
+        // Tìm station: ít detour, EV đến được, và KHÔNG vi phạm TW của 'to'
+        int    bestSt      = -1;
+        double bestDetour  = 1e18;
+
+        for (int sid : stationIds) {
+          double eSt = instance->getDistance(from, sid) * energyRate;
+          if (eSt > battery + EPSILON) continue; // Không đến được station
+
+          // Tính charge amount tối thiểu để đến được 'to'
+          double eStToTo   = instance->getDistance(sid, to) * energyRate;
+          double afterSt   = batteryCapacity - eSt; // sạc đủ để đến to
+          if (afterSt < eStToTo - EPSILON) continue; // Station quá xa 'to'
+
+          // Check TW: thời gian đến 'to' sau khi đi qua station có hợp lệ không?
+          double tSt       = instance->getTime(from, sid);
+          double arrSt     = currentTime + tSt;
+          // Charge amount = đủ để đến to (không sạc full để tiết kiệm thời gian)
+          double chargeAmt = eStToTo - (battery - eSt);
+          if (chargeAmt < 0) chargeAmt = 0;
+          double chargeTime = chargeAmt / instance->getVehicleEnergyRate();
+          double depSt      = arrSt + chargeTime;
+          double tStToTo    = instance->getTime(sid, to);
+          double arrTo      = depSt + tStToTo;
+
+          // Check TW của 'to' (chỉ với customers, depot không có TW strict)
+          auto toNode = instance->getNodeById(to);
+          if (toNode->getType() == NodeType::CUSTOMER) {
+            if (arrTo > toNode->getDueDate() + EPSILON) continue;
+          }
+
+          double detour = instance->getDistance(from, sid)
+                        + instance->getDistance(sid, to)
+                        - instance->getDistance(from, to);
+          if (detour < bestDetour) {
+            bestDetour = detour;
+            bestSt     = sid;
+          }
+        }
+
+        if (bestSt != -1) {
+          double eSt        = instance->getDistance(from, bestSt) * energyRate;
+          double tSt        = instance->getTime(from, bestSt);
+          double eStToTo    = instance->getDistance(bestSt, to) * energyRate;
+          double battAfterTravel = battery - eSt;
+          double chargeAmt  = eStToTo - battAfterTravel;
+          if (chargeAmt < 0) chargeAmt = 0;
+          double chargeTime = chargeAmt / instance->getVehicleEnergyRate();
+
+          built.push_back(bestSt);
+          battery      = battAfterTravel + chargeAmt; // thực tế, không full
+          currentTime += tSt + chargeTime;
+        }
+        // Recalc sau khi đã (có thể) ghé station
+        from    = built.back();
+        eNeeded = instance->getDistance(from, to) * energyRate;
+      }
+
+      // Advance time đến 'to'
+      double tFromTo  = instance->getTime(from, to);
+      double arrTo    = currentTime + tFromTo;
+      auto   toNode2  = instance->getNodeById(to);
+      if (toNode2->getType() == NodeType::CUSTOMER) {
+        auto cust = std::static_pointer_cast<Customer>(toNode2);
+        double startTo = arrTo > cust->getReadyTime() ? arrTo : cust->getReadyTime();
+        currentTime    = startTo + cust->getServiceTime();
+      } else {
+        currentTime = arrTo; // depot
+      }
+
+      built.push_back(to);
+      battery -= eNeeded;
+      if (battery < -EPSILON) battery = 0.0;
+    }
+
+    for (size_t k = 1; k + 1 < built.size(); ++k) {
+      r.addNode(built[k], k);
+    }
+    r.evaluate();
+    return r;
+  };
+
+  // --- THỬ MERGE VÀO 1 ROUTE ---
+  {
+    std::vector<int> mergedSeq = buildVRPTWRoute(allCustomers);
+
+    if (mergedSeq.size() == allCustomers.size()) {
+      Route merged = insertStationsGreedy(mergedSeq);
+      merged.evaluate();
+
+      if (merged.isFeasible()) {
+        removeRedundantStations(merged);
+        merged.evaluate();
+
+        if (merged.isFeasible()) {
+          solution.removeRoute(std::max(r1_idx, r2_idx));
+          solution.removeRoute(std::min(r1_idx, r2_idx));
+          solution.addRoute(merged);
+          return true;
+        }
+      }
+    }
+  }
+
+  // --- THỬ PHÂN PHỐI LẠI VÀO 2 ROUTES (cải thiện distance) ---
+  {
+    int    seed1 = -1, seed2 = -1;
+    double maxD  = -1.0;
+    for (size_t i = 0; i < allCustomers.size(); ++i) {
+      for (size_t j = i + 1; j < allCustomers.size(); ++j) {
+        double d = instance->getDistance(allCustomers[i], allCustomers[j]);
+        if (d > maxD) {
+          maxD  = d;
+          seed1 = allCustomers[i];
+          seed2 = allCustomers[j];
+        }
+      }
+    }
+    if (seed1 == -1) return false;
+
+    std::vector<int> group1 = {seed1}, group2 = {seed2};
+    for (int cid : allCustomers) {
+      if (cid == seed1 || cid == seed2) continue;
+      double d1 = instance->getDistance(seed1, cid);
+      double d2 = instance->getDistance(seed2, cid);
+      if (d1 <= d2) group1.push_back(cid);
+      else          group2.push_back(cid);
+    }
+
+    std::vector<int> seq1 = buildVRPTWRoute(group1);
+    std::vector<int> seq2 = buildVRPTWRoute(group2);
+
+    if (seq1.size() == group1.size() && seq2.size() == group2.size()) {
+      Route nr1 = insertStationsGreedy(seq1);
+      Route nr2 = insertStationsGreedy(seq2);
+      nr1.evaluate();
+      nr2.evaluate();
+
+      if (nr1.isFeasible() && nr2.isFeasible()) {
+        removeRedundantStations(nr1);
+        removeRedundantStations(nr2);
+        nr1.evaluate();
+        nr2.evaluate();
+
+        if (nr1.isFeasible() && nr2.isFeasible()) {
+          double newDist = nr1.getTotalDistance() + nr2.getTotalDistance();
+          if (newDist < oldDist * 0.997) {
+            solution.removeRoute(std::max(r1_idx, r2_idx));
+            solution.removeRoute(std::min(r1_idx, r2_idx));
+            solution.addRoute(nr1);
+            solution.addRoute(nr2);
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 bool LocalSearch::runSmartMultiRouteMerge(Solution &solution) {
   auto &routes = solution.getRoutes();
   int numRoutes = routes.size();
@@ -2671,21 +2997,13 @@ bool LocalSearch::runSmartMultiRouteMerge(Solution &solution) {
 
 LocalSearch::RouteCentroid
 LocalSearch::computeCentroid(const Route &route) const {
-  double sumX = 0, sumY = 0;
-  int count = 0;
-  for (int nodeId : route.getNodes()) {
-    auto node = instance->getNodeById(nodeId);
-    if (node->getType() == NodeType::CUSTOMER) {
-      sumX += node->getX();
-      sumY += node->getY();
-      count++;
-    }
-  }
-  if (count == 0) {
+  double x = route.getCentroidX();
+  double y = route.getCentroidY();
+  if (x == 0.0 && y == 0.0) {
     auto depot = instance->getNodeById(0);
     return {depot->getX(), depot->getY()};
   }
-  return {sumX / count, sumY / count};
+  return {x, y};
 }
 
 std::vector<LocalSearch::RouteCentroid>

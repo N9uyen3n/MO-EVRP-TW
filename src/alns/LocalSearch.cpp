@@ -631,6 +631,13 @@ bool LocalSearch::searchRelocate(Solution &solution,
           if (r1 == r2 && (j == i || j == i + 1))
             continue;
 
+          // Tier 3 Filter: Fast feasibility check before any delta evaluation
+          // For INTRA_RELOCATE, we are inserting nodeId at j, and removing it from i.
+          // For INTER_RELOCATE, we are inserting nodeId at j, removing nothing from r2.
+          if (!routes[r2].canPossiblyInsert(nodeId, j, (r1 == r2) ? nodeId : -1)) {
+            continue;
+          }
+
           // --- TỐI ƯU MỚI: PRE-DELTA CHECK ---
           activeMove.reset();
           activeMove.type =

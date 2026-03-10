@@ -111,6 +111,12 @@ private:
   std::shared_ptr<Vehicle> vehicle;
   std::shared_ptr<Instance> instance;
 
+  // [SPEED-R1/R2] Cached derived fields — invalidated on sequence mutation
+  mutable double              cachedTotalDemand_   = 0.0;
+  mutable bool                cachedDemandDirty_   = true;
+  mutable std::vector<int>    cachedCustomers_;
+  mutable bool                cachedCustomersDirty_ = true;
+
   // --- Data with Copy-On-Write ---
   mutable std::shared_ptr<std::vector<int>> nodeSequence;
   mutable std::shared_ptr<std::vector<NodeState>> states;

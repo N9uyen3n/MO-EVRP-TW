@@ -46,12 +46,16 @@ void Route::addNode(int nodeId, size_t position) {
   detach();
   nodeSequence->insert(nodeSequence->begin() + position, nodeId);
   isDirty = true;
+  cachedDemandDirty_ = true;    // [SPEED-R5]
+  cachedCustomersDirty_ = true; // [SPEED-R5]
 }
 
 void Route::addNode(int nodeId) {
   detach();
   nodeSequence->insert(nodeSequence->end() - 1, nodeId);
   isDirty = true;
+  cachedDemandDirty_ = true;    // [SPEED-R5]
+  cachedCustomersDirty_ = true; // [SPEED-R5]
 }
 
 void Route::removeNode(size_t position) {
@@ -62,6 +66,8 @@ void Route::removeNode(size_t position) {
   detach();
   nodeSequence->erase(nodeSequence->begin() + position);
   isDirty = true;
+  cachedDemandDirty_ = true;    // [SPEED-R5]
+  cachedCustomersDirty_ = true; // [SPEED-R5]
 }
 
 void Route::clear() {
@@ -70,6 +76,8 @@ void Route::clear() {
   nodeSequence->push_back(0);
   nodeSequence->push_back(0);
   isDirty = true;
+  cachedDemandDirty_ = true;    // [SPEED-R5]
+  cachedCustomersDirty_ = true; // [SPEED-R5]
   evaluate();
 }
 
@@ -80,6 +88,7 @@ void Route::reverseNodes(size_t i, size_t j) {
   detach();
   std::reverse(nodeSequence->begin() + i, nodeSequence->begin() + j + 1);
   isDirty = true;
+  // [SPEED-R5] demand unchanged by reversal, customers unchanged — no invalidate needed
 }
 
 void Route::evaluate() const {
@@ -303,10 +312,9 @@ void Route::evaluate() const {
       evalResult.totalChargeAmount += extra_energy;
 
       // --- RIPPLE TIME: từ s+1 đến i (inclusive) ---
-      // Tất cả nodes trong đoạn [s+1, i] bị "dịch" arrival về sau
-      // đúng extra_charge_time, nhưng wait_time tại customer giảm tương ứng
+      // [SPEED-R6] Cache getNodeById once per ripple node (was called 2-3x each)
       for (int k = s + 1; k <= i; ++k) {
-        auto node_k = instance->getNodeById((*nodeSequence)[k]);
+        const auto &node_k = instance->getNodeById((*nodeSequence)[k]);
         (*states)[k].arrivalTime += extra_charge_time;
 
         if (node_k->getType() == NodeType::CUSTOMER) {
@@ -314,7 +322,6 @@ void Route::evaluate() const {
           double old_wait     = (*states)[k].timeWait;
           double new_wait     = std::max(0.0, node_k->getReadyTime() - new_arrival);
 
-          // Cập nhật totalWaitTime
           evalResult.totalWaitTime -= old_wait;
           evalResult.totalWaitTime += new_wait;
 
@@ -322,9 +329,6 @@ void Route::evaluate() const {
           (*states)[k].departureTime = new_arrival + new_wait
                                        + node_k->getServiceTime();
         } else {
-          // Station hoặc Depot trong đoạn: không xảy ra
-          // (last_station_idx đã được reset khi gặp station)
-          // Safety: dịch departureTime nếu có
           (*states)[k].departureTime += extra_charge_time;
         }
       }
@@ -488,14 +492,16 @@ std::shared_ptr<Vehicle> Route::getVehicle() const { return vehicle; }
 const std::vector<int> &Route::getNodes() const { return *nodeSequence; }
 
 std::vector<int> Route::getCustomers() const {
-  std::vector<int> customers;
+  // [SPEED-R2] Cached customer list — rebuilt only when nodeSequence changes.
+  // Called in tryEliminateSmallestRoute, ejectionChain, vehicle reduction.
+  if (!cachedCustomersDirty_) return cachedCustomers_;
+  cachedCustomers_.clear();
   for (int nodeId : *nodeSequence) {
-    auto node = instance->getNodeById(nodeId);
-    if (node->getType() == NodeType::CUSTOMER) {
-      customers.push_back(nodeId);
-    }
+    if (instance->getNodeById(nodeId)->getType() == NodeType::CUSTOMER)
+      cachedCustomers_.push_back(nodeId);
   }
-  return customers;
+  cachedCustomersDirty_ = false;
+  return cachedCustomers_;
 }
 
 bool Route::isFeasible() const {
@@ -539,10 +545,15 @@ double Route::getActiveTime() const {
 }
 
 double Route::getTotalDemand() const {
+  // [SPEED-R1] Cached — recomputed only when sequence changes (isDirty).
+  // Eliminates O(N) getNodeById() per capacity check in ejectionChain/reduce.
+  if (!cachedDemandDirty_) return cachedTotalDemand_;
   double totalDemand = 0.0;
   for (int nodeId : *nodeSequence) {
     totalDemand += instance->getNodeById(nodeId)->getDemand();
   }
+  cachedTotalDemand_  = totalDemand;
+  cachedDemandDirty_  = false;
   return totalDemand;
 }
 
@@ -566,11 +577,13 @@ int Route::getLastNodeId() const {
 
 double Route::getCentroidX() const {
   if (nodeSequence->size() <= 2) return 0.0;
+  // [SPEED-R3] Single getNodeById call per node (was 2x — type check + getX)
   double sumX = 0.0;
   int count = 0;
   for (int nodeId : *nodeSequence) {
-    if (instance->getNodeById(nodeId)->getType() == NodeType::CUSTOMER) {
-      sumX += instance->getNodeById(nodeId)->getX();
+    const auto &node = instance->getNodeById(nodeId);
+    if (node->getType() == NodeType::CUSTOMER) {
+      sumX += node->getX();
       count++;
     }
   }
@@ -579,11 +592,13 @@ double Route::getCentroidX() const {
 
 double Route::getCentroidY() const {
   if (nodeSequence->size() <= 2) return 0.0;
+  // [SPEED-R4] Single getNodeById call per node (was 2x)
   double sumY = 0.0;
   int count = 0;
   for (int nodeId : *nodeSequence) {
-    if (instance->getNodeById(nodeId)->getType() == NodeType::CUSTOMER) {
-      sumY += instance->getNodeById(nodeId)->getY();
+    const auto &node = instance->getNodeById(nodeId);
+    if (node->getType() == NodeType::CUSTOMER) {
+      sumY += node->getY();
       count++;
     }
   }

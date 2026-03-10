@@ -68,8 +68,8 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/c208C15.txt";
     // instancePath = "../data/solomon/c101_21.txt";
-    // // instancePath = "../data/solomon/c102_21.txt";
-    // instancePath = "../data/solomon/r101_21.txt";
+    // instancePath = "../data/solomon/c102_21.txt";
+    instancePath = "../data/solomon/r101_21.txt";
     // instancePath = "../data/solomon/r102_21.txt";
     // instancePath = "../data/solomon/r107_21.txt";
     // instancePath = "../data/solomon/r103_21.txt";
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/r202_21.txt";
     // instancePath = "../data/solomon/r202C15.txt";
     // instancePath = "../data/solomon/rc202_21.txt";
-    instancePath = "../data/solomon/rc103_21.txt";
+    // instancePath = "../data/solomon/rc103_21.txt";
     // instancePath = "../data/solomon/rc203_21.txt";
     // instancePath = "../data/solomon/rc204_21.txt";
     // instancePath = "../data/solomon/rc205_21.txt";

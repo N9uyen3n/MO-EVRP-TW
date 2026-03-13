@@ -1,0 +1,297 @@
+--- 
++++ 
+@@ -2524,21 +2524,18 @@
+     };
+     const auto &nodes = route.getNodes();
+     const auto &states = route.getStates();
+-    auto cNode = instance->getNodeById(cId);
+-
+     PosCost best{0, 1e18};
+-
+     for (size_t pos = 1; pos < nodes.size(); ++pos) {
+       int prevId = nodes[pos - 1];
+       int nextId = nodes[pos];
+       double arrC =
+           states[pos - 1].departureTime + instance->getTime(prevId, cId);
+ 
+-      if (arrC > cNode->getDueDate())
++      if (arrC > instance->getNodeDueDate(cId))
+         continue;
+ 
+-      double waitC = std::max(0.0, cNode->getReadyTime() - arrC);
+-      double depC = arrC + waitC + cNode->getServiceTime();
++      double waitC = std::max(0.0, instance->getNodeReadyTime(cId) - arrC);
++      double depC = arrC + waitC + instance->getNodeServiceTime(cId);
+       double arrNextNew = depC + instance->getTime(cId, nextId);
+       double delay = std::max(0.0, arrNextNew - states[pos].arrivalTime);
+       double effectiveSlack = slacks[pos] + states[pos].timeWait;
+@@ -2718,10 +2715,8 @@
+         for (int idx = 0; idx < (int)up.size(); ++idx) {
+           int cId = up[idx];
+           double dem = demandById_[cId];
+-          auto cNode = instance->getNodeById(cId); // hoisted outside (r,pos)
+           PlaceResult rank1, rank2;
+           rank2.cost = 1e18;
+-
+           for (int r = 0; r < WR; ++r) {
+             if (workRoutes[r].getTotalDemand() + dem > vehCap)
+               continue;
+@@ -2730,17 +2725,17 @@
+             const std::vector<double> &slacks = cachedSlacks[r];
+ 
+             for (size_t pos = 1; pos < workRoutes[r].size(); ++pos) {
+-              double effectiveCost = 1e18;
+-
+-              int prevId = wnodes[pos - 1];
+-              int nextId = wnodes[pos];
+-              double arrC = states[pos - 1].departureTime +
+-                            instance->getTime(prevId, cId);
+-
+-              if (arrC <= cNode->getDueDate()) {
+-                double waitC = std::max(0.0, cNode->getReadyTime() - arrC);
+-                double depC = arrC + waitC + cNode->getServiceTime();
+-                double arrNextNew = depC + instance->getTime(cId, nextId);
++               double effectiveCost = 1e18;
++
++               int prevId = wnodes[pos - 1];
++               int nextId = wnodes[pos];
++               double arrC = states[pos - 1].departureTime +
++                             instance->getTime(prevId, cId);
++
++               if (arrC <= instance->getNodeDueDate(cId)) {
++                 double waitC = std::max(0.0, instance->getNodeReadyTime(cId) - arrC);
++                 double depC = arrC + waitC + instance->getNodeServiceTime(cId);
++                 double arrNextNew = depC + instance->getTime(cId, nextId);
+                 double delay =
+                     std::max(0.0, arrNextNew - states[pos].arrivalTime);
+                 double effSlack = slacks[pos] + states[pos].timeWait;
+@@ -2801,7 +2796,7 @@
+           if (rank1.r == -1)
+             continue;
+ 
+-          double twWidth = cNode->getDueDate() - cNode->getReadyTime();
++          double twWidth = instance->getNodeDueDate(cId) - instance->getNodeReadyTime(cId);
+           double twPenalty = 100.0 / std::max(1.0, twWidth);
+           double regret =
+               ((rank2.r == -1) ? 1e15 : (rank2.cost - rank1.cost)) + twPenalty;
+@@ -2875,7 +2870,6 @@
+             if (workRoutes[r].getTotalDemand() - demY + demX > vehCap)
+               continue;
+ 
+-            auto custY = instance->getNodeById(yId);
+             int receivable = 0;
+             for (int r2 = 0; r2 < WR; ++r2) {
+               if (r2 == r)
+@@ -2883,7 +2877,7 @@
+               if (workRoutes[r2].getTotalDemand() + demY <= vehCap)
+                 receivable++;
+             }
+-            double twWidth = custY->getDueDate() - custY->getReadyTime();
++            double twWidth = instance->getNodeDueDate(yId) - instance->getNodeReadyTime(yId);
+             double scoreY =
+                 receivable + twWidth / 100.0 - ejectPenalty[yId] * 1000.0;
+             if (scoreY > bestYScore) {
+@@ -3259,7 +3253,6 @@
+   candidates.clear();
+ 
+   const auto &nodes = route.getNodes();
+-  auto targetNode = instance->getNodeById(nodeId);
+   const auto &states = route.getStates();
+ 
+   for (size_t pos = 1; pos < nodes.size(); ++pos) {
+@@ -3277,10 +3270,10 @@
+     double arrivalTime =
+         states[pos - 1].departureTime + instance->getTime(prevNodeId, nodeId);
+ 
+-    if (arrivalTime > targetNode->getDueDate()) {
++    if (arrivalTime > instance->getNodeDueDate(nodeId)) {
+       timePenalty = 10000.0;
+-    } else if (arrivalTime < targetNode->getReadyTime()) {
+-      timePenalty = (targetNode->getReadyTime() - arrivalTime) * 0.5;
++    } else if (arrivalTime < instance->getNodeReadyTime(nodeId)) {
++      timePenalty = (instance->getNodeReadyTime(nodeId) - arrivalTime) * 0.5;
+     }
+ 
+     candidates.push_back({pos, detour + timePenalty});
+@@ -3828,9 +3821,6 @@
+   const auto &nodes = route.getNodes();
+   const auto &states = route.getStates();
+ 
+-  auto customerNode =
+-      std::static_pointer_cast<Customer>(instance->getNodeById(nodeId));
+-
+   for (size_t pos = 1; pos < nodes.size(); ++pos) {
+     int prev = nodes[pos - 1];
+ 
+@@ -3843,12 +3833,12 @@
+         states[pos - 1].departureTime + instance->getTime(prev, nodeId);
+ 
+     double twPenalty = 0.0;
+-    if (arrivalTime > customerNode->getDueDate()) {
++    if (arrivalTime > instance->getNodeDueDate(nodeId)) {
+       twPenalty = 1000.0;
+-    } else if (arrivalTime < customerNode->getReadyTime()) {
++    } else if (arrivalTime < instance->getNodeReadyTime(nodeId)) {
+       twPenalty = 0.5;
+     } else {
+-      double slack = customerNode->getDueDate() - arrivalTime;
++      double slack = instance->getNodeDueDate(nodeId) - arrivalTime;
+       if (slack < 10.0) {
+         twPenalty = (10.0 - slack) / 10.0;
+       }
+@@ -3971,10 +3961,8 @@
+   const auto &states = route.getStates();
+ 
+   // [SPEED-1] Cache TW values once — avoids hashtable lookup per position
+-  auto customerNode =
+-      std::static_pointer_cast<Customer>(instance->getNodeById(nodeId));
+-  const double twReady = customerNode->getReadyTime();
+-  const double twDue = customerNode->getDueDate();
++  const double twReady = instance->getNodeReadyTime(nodeId);
++  const double twDue = instance->getNodeDueDate(nodeId);
+ 
+   bool foundAny = false;
+   for (int pos = 1; pos < routeSize; ++pos) {
+@@ -4314,9 +4302,9 @@
+ 
+       double timeUtoV = instance->getTime(u, v);
+       double earliestArrival =
+-          nodeU->getReadyTime() + nodeU->getServiceTime() + timeUtoV;
+-
+-      if (earliestArrival <= nodeV->getDueDate() + 1e-9) {
++          instance->getNodeReadyTime(u) + instance->getNodeServiceTime(u) + timeUtoV;
++
++      if (earliestArrival <= instance->getNodeDueDate(v) + 1e-9) {
+         twNext_[u][v] = true;
+       }
+     }
+@@ -4407,10 +4395,9 @@
+ 
+   // Helper: simulate arrival time tại node `to` sau khi đến từ `from` lúc `t`
+   auto arrivalAt = [&](int from, int to, double t) -> double {
+-    auto nd = instance->getNodeById(to);
+     double travel = instance->getDistance(from, to); // dist = time (speed=1)
+     double arrive = t + travel;
+-    return std::max(arrive, (double)nd->getReadyTime()); // wait if early
++    return std::max(arrive, (double)instance->getNodeReadyTime(to)); // wait if early
+   };
+ 
+   for (int cNew : newCustomers) {
+@@ -4423,7 +4410,6 @@
+     if (alreadyIn)
+       continue;
+ 
+-    auto ndNew = instance->getNodeById(cNew);
+     int szSeq = (int)seq.size();
+ 
+     double bestFeasibleDelta = 1e18;
+@@ -4439,8 +4425,7 @@
+       int prev = depotId;
+       for (int i = 0; i < szSeq; ++i) {
+         arrTime[i] = arrivalAt(prev, seq[i], t);
+-        auto nd = instance->getNodeById(seq[i]);
+-        t = arrTime[i] + nd->getServiceTime();
++        t = arrTime[i] + instance->getNodeServiceTime(seq[i]);
+         prev = seq[i];
+       }
+     }
+@@ -4465,11 +4450,11 @@
+                        instance->getNodeById(seq[pos - 1])->getServiceTime())
+                     : 0.0;
+       double arrCNew = tPrev + instance->getDistance(prevId, cNew);
+-      double waitCNew = std::max(0.0, (double)ndNew->getReadyTime() - arrCNew);
+-      double depCNew = std::max(arrCNew, (double)ndNew->getReadyTime()) +
+-                       ndNew->getServiceTime();
+-
+-      if (arrCNew > ndNew->getDueDate())
++      double waitCNew = std::max(0.0, (double)instance->getNodeReadyTime(cNew) - arrCNew);
++      double depCNew = std::max(arrCNew, (double)instance->getNodeReadyTime(cNew)) +
++                       instance->getNodeServiceTime(cNew);
++
++      if (arrCNew > instance->getNodeDueDate(cNew))
+         continue; // TW fail for cNew
+ 
+       // Check TW propagation: customers from pos onward get pushed by ΔT
+@@ -4478,13 +4463,12 @@
+       for (int k = pos; k < szSeq; ++k) {
+         double arrK = tNext + instance->getDistance(
+                                   (k == pos) ? cNew : seq[k - 1], seq[k]);
+-        auto ndK = instance->getNodeById(seq[k]);
+-        if (arrK > ndK->getDueDate()) {
++        if (arrK > instance->getNodeDueDate(seq[k])) {
+           twOk = false;
+           break;
+         }
+         tNext =
+-            std::max(arrK, (double)ndK->getReadyTime()) + ndK->getServiceTime();
++            std::max(arrK, (double)instance->getNodeReadyTime(seq[k])) + instance->getNodeServiceTime(seq[k]);
+       }
+ 
+       if (twOk && delta < bestFeasibleDelta) {
+@@ -4568,7 +4552,7 @@
+   };
+   auto gapNext = [&](int pos) -> int { return (pos < N) ? seq[pos] : depotId; };
+ 
+-  std::optional<Route> bestRoute;
++  Route bestRoute(route.getId(), vehicle, instance);
+   bool found = false;
+   double bestCost = 1e18;
+ 
+@@ -4675,7 +4659,7 @@
+ 
+   // Detect k từ bestRoute (đếm stations)
+   int bestK = 0;
+-  for (int nid : bestRoute.value().getNodes())
++  for (int nid : bestRoute.getNodes())
+     if (nodeTypeById_[nid] == NodeType::STATION)
+       ++bestK;
+ 
+@@ -4715,7 +4699,7 @@
+ 
+         bool swapFound = false;
+         double swapCost = 1e18;
+-        std::optional<Route> swapRoute;
++        Route swapRoute(route.getId(), vehicle, instance);
+ 
+         if (bestK == 0) {
+           Route r = buildRouteFromSeq(newSeq, {});
+@@ -4764,7 +4748,7 @@
+     }
+   }
+ 
+-  route = bestRoute.value();
++  route = bestRoute;
+   return true;
+ }
+ 
+@@ -4813,7 +4797,7 @@
+     return false;
+ 
+   const double vehCap = instance->getVehicleCapacity();
+-  const double horizon = instance->getNodeById(0)->getDueDate();
++  const double horizon = instance->getNodeDueDate(0);
+   const int depotId = 0;
+ 
+   // ── Victim scoring ────────────────────────────────────────────────────────
+@@ -4835,7 +4819,7 @@
+     for (int c : custs) {
+       auto node = instance->getNodeById(c);
+       avgTW +=
+-          (node->getDueDate() - node->getReadyTime()) / std::max(1.0, horizon);
++          (instance->getNodeDueDate(c) - instance->getNodeReadyTime(c)) / std::max(1.0, horizon);
+       cx += node->getX();
+       cy += node->getY();
+     }
+@@ -5011,10 +4995,8 @@
+         if (attempt > 0)
+           std::shuffle(toInsert.begin(), toInsert.end(), rng);
+         std::stable_sort(toInsert.begin(), toInsert.end(), [&](int a, int b) {
+-          auto na = instance->getNodeById(a);
+-          auto nb = instance->getNodeById(b);
+-          return (na->getDueDate() - na->getReadyTime()) <
+-                 (nb->getDueDate() - nb->getReadyTime());
++          return (instance->getNodeDueDate(a) - instance->getNodeReadyTime(a)) <
++                 (instance->getNodeDueDate(b) - instance->getNodeReadyTime(b));
+         });
+       } else if (strategy == 1) {
+         // Cluster-first: assign customers ke route terdekat dulu

@@ -1,0 +1,60 @@
+--- 
++++ 
+@@ -49,11 +49,16 @@
+ int Instance::getNearestStationId(int nodeId) const {
+   // OPTIMIZATION 7: Build cache on first use, not in constructor
+   if (nearestStationCache.empty()) {
+-    int maxId = nodes.back()->getId();
++    int maxId = 0;
++    for (const auto& n : nodes) {
++      if (n->getId() > maxId) {
++        maxId = n->getId();
++      }
++    }
+     nearestStationCache.assign(maxId + 1, -1);
+   }
+ 
+-  if (nodeId < 0 || nodeId >= nearestStationCache.size()) {
++  if (nodeId < 0 || static_cast<size_t>(nodeId) >= nearestStationCache.size()) {
+     return -1;
+   }
+ 
+@@ -104,6 +109,38 @@
+ 
+     if (auto station = std::dynamic_pointer_cast<Station>(node)) {
+       stations.push_back(station);
++    }
++  }
++
++  buildFlatArrays();
++}
++
++void Instance::buildFlatArrays() {
++  int maxId = 0;
++  for (const auto& nodePtr : nodes) {
++    if (nodePtr->getId() > maxId) {
++      maxId = nodePtr->getId();
++    }
++  }
++  int n = maxId + 1;
++  nodeType_.resize(n);
++  nodeReadyTime_.resize(n);
++  nodeDueDate_.resize(n);
++  nodeDemand_.resize(n, 0.0);
++  nodeServiceTime_.resize(n, 0.0);
++  nodeChargingRate_.resize(n, 0.0);
++
++  for (const auto& nodePtr : nodes) {
++    int id = nodePtr->getId();
++    nodeType_[id]        = nodePtr->getType();
++    nodeReadyTime_[id]   = nodePtr->getReadyTime();
++    nodeDueDate_[id]     = nodePtr->getDueDate();
++    nodeDemand_[id]      = nodePtr->getDemand();
++    nodeServiceTime_[id] = nodePtr->getServiceTime();
++    if (nodePtr->getType() == NodeType::STATION) {
++      if (auto s = std::static_pointer_cast<Station>(nodePtr)) {
++        nodeChargingRate_[id] = s->getChargingRate();
++      }
+     }
+   }
+ }

@@ -1,0 +1,60 @@
+Breakpoint 1 at 0xe7c73: file /mnt/d/Work/SLSCM-LaB/24092025/test18/src/core/Route.cpp, line 78.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+========================================
+       TESTING MO-ALNS EVRP SOLVER      
+========================================
+[INFO] No instance file provided. Using default: ../data/solomon/rc202_21.txt
+[INFO] Loading instance from: ../data/solomon/rc202_21.txt ...
+[INFO] Instance loaded successfully.
+       - Customers: 100
+       - Stations:  21
+[INFO] ALNS Configured.
+[INFO] Output Directory set to: logs_testLS5/rc202_21
+Logging ENABLED. Output: logs_testLS5/rc202_21
+[INFO] Starting Solver...
+[Info] Generating Initial Solution (Multi-start + Diverse Weighted RCRS)...
+  -> Trying heuristic: Sweep...
+     Result: 8 vehicles, dist 1890.78
+  -> Trying heuristic: True Nearest Neighbor...
+     Result: 8 vehicles, dist 1903.61
+  -> Trying heuristic: Earliest Deadline First...
+     Result: 12 vehicles, dist 2798.18
+  -> Trying heuristic: Tightest Time Window First...
+     Result: 10 vehicles, dist 2389.69
+  -> Generating 30 Diverse Randomized Initial Solutions...
+     Randomized Init 1 Result: 12 vehicles, dist 2815.66
+     Randomized Init 2 Result: 12 vehicles, dist 2956.8
+     Randomized Init 3 Result: 10 vehicles, dist 2521.73
+     Randomized Init 4 Result: 11 vehicles, dist 2833.89
+     Randomized Init 5 Result: 13 vehicles, dist 3118.36
+     Randomized Init 6 Result: 11 vehicles, dist 2667.73
+     Randomized Init 7 Result: 12 vehicles, dist 2971.48
+     Randomized Init 8 Result: 12 vehicles, dist 2842.21
+     Randomized Init 9 Result: 11 vehicles, dist 2855.92
+     Randomized Init 10 Result: 13 vehicles, dist 3161.83
+     Randomized Init 11 Result: 11 vehicles, dist 2647.55
+     Randomized Init 12 Result: 13 vehicles, dist 3042.62
+     Randomized Init 13 Result: 13 vehicles, dist 2875.8
+     Randomized Init 14 Result: 10 vehicles, dist 2359.18
+     Randomized Init 15 Result: 12 vehicles, dist 2695.83
+     Randomized Init 16 Result: 12 vehicles, dist 2873.01
+     Randomized Init 17 Result: 13 vehicles, dist 3067.41
+     Randomized Init 18 Result: 12 vehicles, dist 2951.14
+     Randomized Init 19 Result: 13 vehicles, dist 2936.71
+     Randomized Init 20 Result: 12 vehicles, dist 2998.59
+     Randomized Init 21 Result: 12 vehicles, dist 2917.75
+     Randomized Init 22 Result: 13 vehicles, dist 3153.99
+     Randomized Init 23 Result: 12 vehicles, dist 2833.96
+     Randomized Init 24 Result: 12 vehicles, dist 2940.95
+     Randomized Init 25 Result: 12 vehicles, dist 2926.86
+     Randomized Init 26 Result: 11 vehicles, dist 2620.9
+     Randomized Init 27 Result: 12 vehicles, dist 2931
+Breakpoint 1, Route::removeNode (this=0x555555727340, position=34) at /mnt/d/Work/SLSCM-LaB/24092025/test18/src/core/Route.cpp:78
+78	    throw std::out_of_range("Vi tri xoa node khong hop le. Khong the xoa depot.");
+#0  Route::removeNode (this=0x555555727340, position=34) at /mnt/d/Work/SLSCM-LaB/24092025/test18/src/core/Route.cpp:78
+#1  0x000055555559c024 in LocalSearch::ejectionChain (this=0x555555709438, solution=...) at /mnt/d/Work/SLSCM-LaB/24092025/test18/src/alns/LocalSearch.cpp:2960
+#2  0x0000555555595da5 in LocalSearch::runVehicleReduction (this=0x555555709438, solution=...) at /mnt/d/Work/SLSCM-LaB/24092025/test18/src/alns/LocalSearch.cpp:2082
+#3  0x000055555558bcc2 in LocalSearch::run (this=0x555555709438, solution=...) at /mnt/d/Work/SLSCM-LaB/24092025/test18/src/alns/LocalSearch.cpp:149
+#4  0x00005555555639cc in alns::ALNSSolver::solve (this=0x555555707f70) at /mnt/d/Work/SLSCM-LaB/24092025/test18/src/alns/ALNSSolver.cpp:332
+#5  0x000055555555ccb9 in main (argc=1, argv=0x7fffffffe2e8) at /mnt/d/Work/SLSCM-LaB/24092025/test18/src/test/TestALNS.cpp:221

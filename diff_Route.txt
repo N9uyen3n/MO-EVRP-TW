@@ -1,0 +1,389 @@
+--- 
++++ 
+@@ -129,8 +129,7 @@
+   minBatteryReq.assign(n, 0.0);
+   for (int i = n - 2; i >= 0; --i) {
+     double e = instance->getDistance(nodeSequence[i], nodeSequence[i + 1]) * eRate;
+-    auto   nxt = instance->getNodeById(nodeSequence[i + 1]);
+-    if (nxt->getType() == NodeType::STATION)
++    if (instance->getNodeType(nodeSequence[i + 1]) == NodeType::STATION)
+       minBatteryReq[i] = e + std::max(0.0, minBatteryReq[i + 1] - batCap);
+     else
+       minBatteryReq[i] = e + minBatteryReq[i + 1];
+@@ -149,9 +148,9 @@
+   evalResult = EvaluationResult();
+ 
+   {
+-    auto depot = std::static_pointer_cast<Depot>(instance->getNodeById(0));
+-    states[0].arrivalTime       = depot->getReadyTime();
+-    states[0].departureTime     = depot->getReadyTime();
++    double depotReady = instance->getNodeReadyTime(0);
++    states[0].arrivalTime       = depotReady;
++    states[0].departureTime     = depotReady;
+     states[0].remainingBattery  = batCap;
+     states[0].remainingLoad     = vehicle->getCapacity();
+     states[0].chargeAmount      = 0.0;
+@@ -161,7 +160,6 @@
+   for (int i = 0; i < n - 1; ++i) {
+     const int from_id = nodeSequence[i];
+     const int to_id   = nodeSequence[i + 1];
+-    auto to_node      = instance->getNodeById(to_id);
+ 
+     NodeState &from = states[i];
+     NodeState &to   = states[i + 1];
+@@ -185,25 +183,25 @@
+       return;
+     }
+ 
+-    switch (to_node->getType()) {
++    NodeType toType = instance->getNodeType(to_id);
++    switch (toType) {
+     case NodeType::CUSTOMER: {
+-      auto cust = std::static_pointer_cast<Customer>(to_node);
+-      to.remainingLoad -= cust->getDemand();
++      to.remainingLoad -= instance->getNodeDemand(to_id);
+       if (to.remainingLoad < -EPSILON) {
+         evalResult.feasible = false;
+         isDirty = false; absorptionDirty_ = true;
+         return;
+       }
+-      double wait = std::max(0.0, cust->getReadyTime() - to.arrivalTime);
++      double wait = std::max(0.0, instance->getNodeReadyTime(to_id) - to.arrivalTime);
+       to.timeWait = wait;
+       evalResult.totalWaitTime += wait;
+       double svcStart = to.arrivalTime + wait;
+-      if (svcStart > cust->getDueDate() + EPSILON) {
++      if (svcStart > instance->getNodeDueDate(to_id) + EPSILON) {
+         evalResult.feasible = false;
+         isDirty = false; absorptionDirty_ = true;
+         return;
+       }
+-      to.departureTime = svcStart + cust->getServiceTime();
++      to.departureTime = svcStart + instance->getNodeServiceTime(to_id);
+       break;
+     }
+     case NodeType::STATION: {
+@@ -213,12 +211,11 @@
+         isDirty = false; absorptionDirty_ = true;
+         return;
+       }
+-      auto station = std::static_pointer_cast<Station>(to_node);
+-      double wait = std::max(0.0, station->getReadyTime() - to.arrivalTime);
++      double wait = std::max(0.0, instance->getNodeReadyTime(to_id) - to.arrivalTime);
+       to.timeWait = wait;
+       evalResult.totalWaitTime += wait;
+       double chargeStart = to.arrivalTime + wait;
+-      if (chargeStart > station->getDueDate() + EPSILON) {
++      if (chargeStart > instance->getNodeDueDate(to_id) + EPSILON) {
+         evalResult.feasible = false;
+         isDirty = false; absorptionDirty_ = true;
+         return;
+@@ -231,13 +228,13 @@
+         isDirty = false; absorptionDirty_ = true;
+         return;
+       }
+-      double chargeTime = chargeAmt * station->getChargingRate();
++      double chargeTime = chargeAmt * instance->getNodeChargingRate(to_id);
+       to.chargeAmount     = chargeAmt;
+       to.remainingBattery += chargeAmt;
+       to.departureTime    = chargeStart + chargeTime;
+       evalResult.totalChargeTime   += chargeTime;
+       evalResult.totalChargeAmount += chargeAmt;
+-      if (to.departureTime > station->getDueDate() + EPSILON) {
++      if (to.departureTime > instance->getNodeDueDate(to_id) + EPSILON) {
+         evalResult.feasible = false;
+         isDirty = false; absorptionDirty_ = true;
+         return;
+@@ -245,14 +242,12 @@
+       break;
+     }
+     case NodeType::DEPOT: {
+-      auto depot = std::static_pointer_cast<Depot>(to_node);
+-      if (to.arrivalTime > depot->getDueDate() + EPSILON) {
++      if (to.arrivalTime > instance->getNodeDueDate(to_id) + EPSILON) {
+         evalResult.feasible = false;
+         isDirty = false; absorptionDirty_ = true;
+         return;
+       }
+       to.departureTime = to.arrivalTime;
+-      depot->setLastTime(to.arrivalTime);
+       break;
+     }
+     }
+@@ -285,29 +280,27 @@
+   double station_bat_snapshot  = 0.0;
+ 
+   for (int i = 1; i < n; ++i) {
+-    auto node = instance->getNodeById(nodeSequence[i]);
+-
+-    if (node->getType() == NodeType::STATION) {
++    NodeType type = instance->getNodeType(nodeSequence[i]);
++
++    if (type == NodeType::STATION) {
+       last_station_idx     = i;
+       station_bat_snapshot = states[i].remainingBattery;
+       continue;
+     }
+-    if (node->getType() != NodeType::CUSTOMER) continue;
++    if (type != NodeType::CUSTOMER) continue;
+     if (last_station_idx == -1)               continue;
+ 
+     double wait = states[i].timeWait;
+     if (wait < EPSILON) continue;
+ 
+     const int s = last_station_idx;
+-    auto station_node  = std::static_pointer_cast<Station>(
+-        instance->getNodeById(nodeSequence[s]));
+-    double charging_rate = station_node->getChargingRate();
++    double charging_rate = instance->getNodeChargingRate(nodeSequence[s]);
+ 
+     double max_extra_energy = batCap - station_bat_snapshot;
+     if (max_extra_energy < EPSILON) continue;
+ 
+     double max_extra_time        = max_extra_energy * charging_rate;
+-    double time_before_due       = std::max(0.0, station_node->getDueDate()
++    double time_before_due       = std::max(0.0, instance->getNodeDueDate(nodeSequence[s])
+                                             - states[s].departureTime);
+     double extra_charge_time     = std::min({wait, max_extra_time, time_before_due});
+     if (extra_charge_time < EPSILON) continue;
+@@ -326,21 +319,20 @@
+     double time_shift = extra_charge_time;
+     for (int k = s + 1; k <= i; ++k) {
+       if (time_shift < EPSILON) break;
+-      auto node_k = instance->getNodeById(nodeSequence[k]);
++      int node_k_id = nodeSequence[k];
+       states[k].arrivalTime += time_shift;
+ 
+-      if (node_k->getType() == NodeType::CUSTOMER) {
+-        auto cust_k    = std::static_pointer_cast<Customer>(node_k);
++      if (instance->getNodeType(node_k_id) == NodeType::CUSTOMER) {
+         double new_arr = states[k].arrivalTime;
+         double old_wait = states[k].timeWait;
+-        double new_wait = std::max(0.0, cust_k->getReadyTime() - new_arr);
++        double new_wait = std::max(0.0, instance->getNodeReadyTime(node_k_id) - new_arr);
+         double absorbed = old_wait - new_wait;
+         time_shift = std::max(0.0, time_shift - absorbed);
+ 
+         evalResult.totalWaitTime -= old_wait;
+         evalResult.totalWaitTime += new_wait;
+         states[k].timeWait       = new_wait;
+-        states[k].departureTime  = new_arr + new_wait + cust_k->getServiceTime();
++        states[k].departureTime  = new_arr + new_wait + instance->getNodeServiceTime(node_k_id);
+       } else {
+         states[k].departureTime += time_shift;
+       }
+@@ -384,8 +376,7 @@
+   tl_dp.assign(n, 0.0);
+   for (int i = n - 2; i >= 0; --i) {
+     double e    = instance->getDistance(simNodeAt(i), simNodeAt(i + 1)) * eRate;
+-    auto   nxt  = instance->getNodeById(simNodeAt(i + 1));
+-    if (nxt->getType() == NodeType::STATION)
++    if (instance->getNodeType(simNodeAt(i + 1)) == NodeType::STATION)
+       tl_dp[i] = e + std::max(0.0, tl_dp[i + 1] - batCap);
+     else
+       tl_dp[i] = e + tl_dp[i + 1];
+@@ -397,9 +388,9 @@
+   double simDist = 0.0, simWait = 0.0, simCharge = 0.0, simEnergy = 0.0;
+ 
+   {
+-    auto depot = std::static_pointer_cast<Depot>(instance->getNodeById(0));
+-    tl_simStates[0].arrivalTime      = depot->getReadyTime();
+-    tl_simStates[0].departureTime    = depot->getReadyTime();
++    double depotReady = instance->getNodeReadyTime(0);
++    tl_simStates[0].arrivalTime      = depotReady;
++    tl_simStates[0].departureTime    = depotReady;
+     tl_simStates[0].remainingBattery = batCap;
+     tl_simStates[0].remainingLoad    = vehicle->getCapacity();
+     tl_simStates[0].chargeAmount     = 0.0;
+@@ -408,7 +399,6 @@
+   for (int i = 0; i < n - 1; ++i) {
+     int from_id  = simNodeAt(i);
+     int to_id    = simNodeAt(i + 1);
+-    auto to_node = instance->getNodeById(to_id);
+     NodeState &from = tl_simStates[i];
+     NodeState &to   = tl_simStates[i + 1];
+ 
+@@ -426,39 +416,37 @@
+ 
+     if (to.remainingBattery < -EPSILON) return {false};
+ 
+-    switch (to_node->getType()) {
++    NodeType toType = instance->getNodeType(to_id);
++    switch (toType) {
+     case NodeType::CUSTOMER: {
+-      auto cust = std::static_pointer_cast<Customer>(to_node);
+-      to.remainingLoad -= cust->getDemand();
++      to.remainingLoad -= instance->getNodeDemand(to_id);
+       if (to.remainingLoad < -EPSILON) return {false};
+-      double wait = std::max(0.0, cust->getReadyTime() - to.arrivalTime);
++      double wait = std::max(0.0, instance->getNodeReadyTime(to_id) - to.arrivalTime);
+       simWait += wait;
+       double svcStart = to.arrivalTime + wait;
+-      if (svcStart > cust->getDueDate() + EPSILON) return {false};
+-      to.departureTime = svcStart + cust->getServiceTime();
++      if (svcStart > instance->getNodeDueDate(to_id) + EPSILON) return {false};
++      to.departureTime = svcStart + instance->getNodeServiceTime(to_id);
+       break;
+     }
+     case NodeType::STATION: {
+-      auto station = std::static_pointer_cast<Station>(to_node);
+-      double wait = std::max(0.0, station->getReadyTime() - to.arrivalTime);
++      double wait = std::max(0.0, instance->getNodeReadyTime(to_id) - to.arrivalTime);
+       simWait += wait;
+       double chargeStart = to.arrivalTime + wait;
+-      if (chargeStart > station->getDueDate() + EPSILON) return {false};
++      if (chargeStart > instance->getNodeDueDate(to_id) + EPSILON) return {false};
+       double chargeNeeded   = std::max(0.0, tl_dp[i + 1] - to.remainingBattery);
+       double chargePossible = batCap - to.remainingBattery;
+       double chargeAmt      = std::min(chargeNeeded, chargePossible);
+       if (chargeAmt < chargeNeeded - EPSILON) return {false};
+-      double chargeTime = chargeAmt * station->getChargingRate();
++      double chargeTime = chargeAmt * instance->getNodeChargingRate(to_id);
+       to.chargeAmount     = chargeAmt;
+       simCharge           += chargeAmt;
+       to.remainingBattery += chargeAmt;
+       to.departureTime    = chargeStart + chargeTime;
+-      if (to.departureTime > station->getDueDate() + EPSILON) return {false};
++      if (to.departureTime > instance->getNodeDueDate(to_id) + EPSILON) return {false};
+       break;
+     }
+     case NodeType::DEPOT: {
+-      auto depot = std::static_pointer_cast<Depot>(to_node);
+-      if (to.arrivalTime > depot->getDueDate() + EPSILON) return {false};
++      if (to.arrivalTime > instance->getNodeDueDate(to_id) + EPSILON) return {false};
+       to.departureTime = to.arrivalTime;
+       break;
+     }
+@@ -489,7 +477,7 @@
+   if (!cachedCustomersDirty_) return cachedCustomers_;
+   cachedCustomers_.clear();
+   for (int nid : nodeSequence)
+-    if (instance->getNodeById(nid)->getType() == NodeType::CUSTOMER)
++    if (instance->getNodeType(nid) == NodeType::CUSTOMER)
+       cachedCustomers_.push_back(nid);
+   cachedCustomersDirty_ = false;
+   return cachedCustomers_;
+@@ -541,7 +529,7 @@
+   if (!cachedDemandDirty_) return cachedTotalDemand_;
+   double total = 0.0;
+   for (int nid : nodeSequence)
+-    total += instance->getNodeById(nid)->getDemand();
++    total += instance->getNodeDemand(nid);
+   cachedTotalDemand_ = total;
+   cachedDemandDirty_ = false;
+   return total;
+@@ -665,20 +653,17 @@
+   const double EPSILON   = 1e-9;
+   const auto  &prevState = states[position - 1];
+   int prev_id            = nodeSequence[position - 1];
+-  auto nodeToInsert      = instance->getNodeById(nodeIdToInsert);
+-
+   double avail = prevState.remainingLoad;
+   if (nodeIdToRemove != -1) {
+-    auto nr = instance->getNodeById(nodeIdToRemove);
+-    if (nr->getType() == NodeType::CUSTOMER) avail += nr->getDemand();
+-  }
+-  if (nodeToInsert->getDemand() > avail + EPSILON) return false;
++    if (instance->getNodeType(nodeIdToRemove) == NodeType::CUSTOMER) avail += instance->getNodeDemand(nodeIdToRemove);
++  }
++  if (instance->getNodeDemand(nodeIdToInsert) > avail + EPSILON) return false;
+ 
+   double energy = instance->getDistance(prev_id, nodeIdToInsert) * vehicle->getEnergyConsumptionRate();
+   if (prevState.remainingBattery < energy - EPSILON) return false;
+ 
+   double arrival = prevState.departureTime + instance->getTime(prev_id, nodeIdToInsert);
+-  if (arrival > nodeToInsert->getDueDate() + EPSILON) return false;
++  if (arrival > instance->getNodeDueDate(nodeIdToInsert) + EPSILON) return false;
+ 
+   return true;
+ }
+@@ -714,8 +699,7 @@
+ 
+   for (int i = simN - 2; i >= 0; --i) {
+     double e   = instance->getDistance(simNodeAt(i), simNodeAt(i + 1)) * eRate;
+-    auto   nxt = instance->getNodeById(simNodeAt(i + 1));
+-    if (nxt->getType() == NodeType::STATION)
++    if (instance->getNodeType(simNodeAt(i + 1)) == NodeType::STATION)
+       ffc_dp[i] = e + std::max(0.0, ffc_dp[i + 1] - batCap);
+     else
+       ffc_dp[i] = e + ffc_dp[i + 1];
+@@ -728,45 +712,42 @@
+   for (int i = 0; i < simN - 1; ++i) {
+     int from_id  = simNodeAt(i);
+     int to_id    = simNodeAt(i + 1);
+-    auto to_node = instance->getNodeById(to_id);
+     double dist   = instance->getDistance(from_id, to_id);
+     double energy = dist * eRate;
+     double arr    = cur.departureTime + instance->getTime(from_id, to_id);
+     double bat    = cur.remainingBattery - energy;
+     if (bat < -EPSILON) return {false};
+ 
+-    switch (to_node->getType()) {
++    NodeType toType = instance->getNodeType(to_id);
++    switch (toType) {
+     case NodeType::CUSTOMER: {
+-      auto cust = std::static_pointer_cast<Customer>(to_node);
+-      double wait = std::max(0.0, cust->getReadyTime() - arr);
++      double wait = std::max(0.0, instance->getNodeReadyTime(to_id) - arr);
+       simWait += wait;
+       double svc = arr + wait;
+-      if (svc > cust->getDueDate() + EPSILON) return {false};
+-      cur.remainingLoad -= cust->getDemand();
++      if (svc > instance->getNodeDueDate(to_id) + EPSILON) return {false};
++      cur.remainingLoad -= instance->getNodeDemand(to_id);
+       if (cur.remainingLoad < -EPSILON) return {false};
+-      cur.departureTime     = svc + cust->getServiceTime();
++      cur.departureTime     = svc + instance->getNodeServiceTime(to_id);
+       cur.remainingBattery  = bat;
+       break;
+     }
+     case NodeType::STATION: {
+-      auto station = std::static_pointer_cast<Station>(to_node);
+-      double wait = std::max(0.0, station->getReadyTime() - arr);
++      double wait = std::max(0.0, instance->getNodeReadyTime(to_id) - arr);
+       simWait += wait;
+       double cs = arr + wait;
+-      if (cs > station->getDueDate() + EPSILON) return {false};
++      if (cs > instance->getNodeDueDate(to_id) + EPSILON) return {false};
+       double chargeNeeded   = std::max(0.0, ffc_dp[i + 1] - bat);
+       double chargePossible = batCap - bat;
+       double chargeAmt      = std::min(chargeNeeded, chargePossible);
+       if (chargeAmt < chargeNeeded - EPSILON) return {false};
+-      double ct = chargeAmt * station->getChargingRate();
+-      if (cs + ct > station->getDueDate() + EPSILON) return {false};
++      double ct = chargeAmt * instance->getNodeChargingRate(to_id);
++      if (cs + ct > instance->getNodeDueDate(to_id) + EPSILON) return {false};
+       cur.departureTime    = cs + ct;
+       cur.remainingBattery = bat + chargeAmt;
+       break;
+     }
+     case NodeType::DEPOT: {
+-      auto depot = std::static_pointer_cast<Depot>(to_node);
+-      if (arr > depot->getDueDate() + EPSILON) return {false};
++      if (arr > instance->getNodeDueDate(to_id) + EPSILON) return {false};
+       cur.departureTime    = arr;
+       cur.remainingBattery = bat;
+       break;
+@@ -819,11 +800,9 @@
+   std::vector<double> slack(n, 0.0);
+   if (n != static_cast<int>(states.size())) return slack;
+ 
+-  auto lastNode = instance->getNodeById(nodeSequence[n - 1]);
+-  slack[n - 1] = std::max(0.0, lastNode->getDueDate() - states[n - 1].arrivalTime);
++  slack[n - 1] = std::max(0.0, instance->getNodeDueDate(nodeSequence[n - 1]) - states[n - 1].arrivalTime);
+   for (int i = n - 2; i >= 0; --i) {
+-    auto node = instance->getNodeById(nodeSequence[i]);
+-    double local = std::max(0.0, node->getDueDate() - states[i].departureTime);
++    double local = std::max(0.0, instance->getNodeDueDate(nodeSequence[i]) - states[i].departureTime);
+     slack[i] = std::min(local, slack[i + 1] + states[i + 1].timeWait);
+   }
+   return slack;
+@@ -857,7 +836,7 @@
+ 
+   const double EPSILON = 1e-9;
+   for (int i = 1; i < n - 1; ++i) {
+-    if (instance->getNodeById(nodeSequence[i])->getType() != NodeType::STATION)
++    if (instance->getNodeType(nodeSequence[i]) != NodeType::STATION)
+       continue;
+     int    prevId       = nodeSequence[i - 1];
+     int    nextId       = nodeSequence[i + 1];

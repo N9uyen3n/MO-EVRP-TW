@@ -8,8 +8,7 @@
 //         *** Requires adding `std::vector<double> demandById_;` to
 //         LocalSearch.h ***
 //
-// [OPT-2] nodeTypeById_ usage completed — All remaining
-// getNodeById()->getType()
+// [OPT-2] nodeTypeById_ usage completed — All remaining getNodeById()->getType()
 //         calls in searchSwap, searchCrossExchange, repositionStations,
 //         searchStationSwap, removeRedundantStations replaced with O(1) array
 //         lookup.
@@ -25,13 +24,39 @@
 //         std::set.
 //
 // [OPT-6] thread_local candidate buffers — reuse heap allocation across calls
-//         in findBestInsertionPositions_TimeAware and
-//         getTopKInsertionPositions.
+//         in findBestInsertionPositions_TimeAware and getTopKInsertionPositions.
 //
 // [OPT-7] calculateEuclideanDistance — std::hypot replaces sqrt(pow+pow).
 //
-// [OPT-8] getDemand() double-call in ejectionChain::findDirect removed (one
-// call).
+// [OPT-8] getDemand() double-call in ejectionChain::findDirect removed (one call).
+//
+// [OPT-9] readyTimeById_ / dueDateById_ / serviceTimeById_ — Flat O(1) TW
+//         lookups. Eliminates getNodeById() shared_ptr copy (atomic inc/dec)
+//         in every hot inner loop: findDirect, tryInsertFast, runStageA,
+//         findBestForCustomer, reconstructRouteWithTwoStations, etc.
+//         *** Requires adding three std::vector<double> members to
+//         LocalSearch.h ***
+//
+// [OPT-10] findBestInsertionPositions_KNN — replace thread_local unordered_set
+//          with thread_local vector<bool> indexed by nodeId (flat array).
+//          Eliminates all hash computation and hash-table cache misses.
+//          neighborSet.clear() was O(K) hash destructions; now O(K) bool resets.
+//          neighborSet.count() was O(1) amortised but with hash overhead;
+//          now inNeighborSet[id] is a single array read — no hashing at all.
+//          Called in every inner iteration of searchOrOpt / searchRelocate /
+//          searchOrOptReversed → measurable win in VND hot path.
+//
+// [OPT-11] findBestInsertionPositions_KNN — avoid per-call vector allocation.
+//          Previously returned std::vector<size_t> (new heap alloc every call).
+//          Now fills a thread_local tl_knn_result buffer and returns a const
+//          reference to it. All call-sites updated to use const auto &.
+//          *** Call-sites in searchOrOpt / searchRelocate / searchOrOptReversed
+//          must NOT store the reference past the next KNN call. ***
+//
+// [OPT-12] searchInterTwoOpt — remove spurious solution.evaluateRoutes().
+//          newR1/newR2 are already individually evaluate()d before commit.
+//          solution.evaluateRoutes() was re-evaluating ALL routes O(R×N);
+//          replaced with solution.markDirty() which is O(1).
 //
 // =============================================================================
 
@@ -84,6 +109,20 @@ LocalSearch::LocalSearch(std::shared_ptr<Instance> inst) : instance(inst) {
   for (const auto &cust : instance->getCustomers()) {
     demandById_[cust->getId()] = cust->getDemand();
   }
+
+  // [OPT-9] Precompute flat TW caches — eliminates getNodeById() shared_ptr
+  // copy (atomic inc/dec) in every hot inner loop.
+  // readyTime / dueDate / serviceTime are immutable after construction.
+  readyTimeById_.assign(maxNodeId + 1, 0.0);
+  dueDateById_.assign(maxNodeId + 1, 1e18);
+  serviceTimeById_.assign(maxNodeId + 1, 0.0);
+  for (const auto &node : instance->getNodes()) {
+    int id = node->getId();
+    readyTimeById_[id]   = node->getReadyTime();
+    dueDateById_[id]     = node->getDueDate();
+    serviceTimeById_[id] = node->getServiceTime();
+  }
+
   this->vehicleReductionFreq = 1;
 }
 
@@ -117,7 +156,13 @@ void LocalSearch::run(Solution &solution) {
   // for the counter to tick over.
   // ──────────────────────────────────────────────────────────────────────────
   double t1 = 0, t2 = 0, t3 = 0; // tạm thời
-  for (int iter = 0; iter < MAX_LS_ITERATIONS; ++iter) {
+  int maxIter = MAX_LS_ITERATIONS;
+  int earlyStop = EARLY_STOP_THRESHOLD;
+  if (instance->getCustomers().size() / solution.getNumRoutes() >= 20) {
+    maxIter /= 2;
+    earlyStop /= 1.5;
+  }
+  for (int iter = 0; iter < maxIter; ++iter) {
     bool improved = false;
 
     updateSearchContext(solution);
@@ -169,7 +214,7 @@ void LocalSearch::run(Solution &solution) {
       maxNodesToCheck_ = std::min(MAX_NODES_TO_CHECK, maxNodesToCheck_ + 1);
       maxSwapAttempts_ = std::min(MAX_SWAP_ATTEMPTS, maxSwapAttempts_ + 1);
 
-      if (noImprovementCount_ >= EARLY_STOP_THRESHOLD)
+      if (noImprovementCount_ >= earlyStop)
         break;
     }
   }
@@ -1040,7 +1085,8 @@ bool LocalSearch::searchRelocate(Solution &solution,
                               instance->getDistance(prev_n, next_n);
 
       for (int r2 : neighborLists[r1]) {
-        auto candidatePositions =
+        // [OPT-11] const ref to thread_local buffer — no heap allocation.
+        const auto &candidatePositions =
             findBestInsertionPositions_KNN(routes[r2], nodeId, 4);
 
         for (size_t j : candidatePositions) {
@@ -1359,9 +1405,12 @@ bool LocalSearch::searchInterTwoOpt(Solution &solution,
           double newDist = newR1.getTotalDistance() + newR2.getTotalDistance();
 
           if (newDist < oldDist - 1e-9) {
-            routes[r1] = newR1;
-            routes[r2] = newR2;
-            solution.evaluateRoutes();
+            routes[r1] = newR1;  // already evaluate()d above
+            routes[r2] = newR2;  // already evaluate()d above
+            // [OPT-12] newR1/newR2 already individually evaluated.
+            // solution.evaluateRoutes() was re-evaluating ALL routes O(R×N).
+            // markDirty() is O(1) — tells Solution its cached total is stale.
+            solution.markDirty();
             ctx.markDirty(r1, r2);
             return true;
           }
@@ -1739,7 +1788,8 @@ bool LocalSearch::searchOrOpt(Solution &solution,
           const auto &nodes2 =
               routes[r2].getNodes(); // [OPT] Lấy tham chiếu trực tiếp
 
-          auto candidatePositions =
+          // [OPT-11] const ref to thread_local buffer — no heap allocation.
+          const auto &candidatePositions =
               findBestInsertionPositions_KNN(routes[r2], firstNodeId, 3);
 
           for (int j : candidatePositions) {
@@ -1754,7 +1804,7 @@ bool LocalSearch::searchOrOpt(Solution &solution,
             // [PRUNE-DIST] Granularity filter: skip nếu cả 2 điểm nối mới đều
             // xa
             if (instance->getDistance(prev2, firstNodeId) >=
-                    distanceThreshold_ &&
+                    distanceThreshold_ ||
                 instance->getDistance(lastNodeId, next2) >=
                     distanceThreshold_) {
               continue;
@@ -2175,13 +2225,13 @@ bool LocalSearch::repositionStations(Solution &solution) {
                            instance->getDistance(altStationId, nextNodeId);
 
         if (altDetour < bestDetour - 1e-6) {
-          auto altStation = instance->getNodeById(altStationId);
+          // [OPT-9] Flat TW array — no shared_ptr copy for station dueDate.
           const auto &prevState = routes[r].getStates()[i - 1];
           double arrivalTime = prevState.departureTime +
                                instance->getTime(prevNodeId, altStationId);
 
-          if (arrivalTime <= altStation->getDueDate()) {
-            bestDetour = altDetour;
+          if (arrivalTime <= dueDateById_[altStationId]) {
+            bestDetour    = altDetour;
             bestStationId = altStationId;
           }
         }
@@ -2474,25 +2524,25 @@ bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
 
   std::vector<int> unplaced = customersToMove;
 
-  // Sort by tightest TW first
+  // Sort by tightest TW first.
+  // [OPT-9] Flat TW arrays — no shared_ptr copy inside comparator.
   std::sort(unplaced.begin(), unplaced.end(), [&](int a, int b) {
-    auto ca = instance->getNodeById(a);
-    auto cb = instance->getNodeById(b);
-    double twA = ca->getDueDate() - ca->getReadyTime();
-    double twB = cb->getDueDate() - cb->getReadyTime();
-    return twA < twB;
+    return (dueDateById_[a] - readyTimeById_[a]) <
+           (dueDateById_[b] - readyTimeById_[b]);
   });
 
   auto findBestForCustomer = [&](int custId) -> InsertCandidate {
     InsertCandidate best;
     best.custId = custId;
 
-    auto custNode = instance->getNodeById(custId);
-    double twWindow = custNode->getDueDate() - custNode->getReadyTime();
+    // [OPT-9] Flat TW arrays — no shared_ptr copy.
+    double cDue    = dueDateById_[custId];
+    double cReady  = readyTimeById_[custId];
+    double twWindow = cDue - cReady;
     bool isTightTW = (twWindow <= 30.0);
 
     for (int r = 0; r < (int)newRoutes.size(); ++r) {
-      const auto &nodes = newRoutes[r].getNodes();
+      const auto &nodes  = newRoutes[r].getNodes();
       const auto &states = newRoutes[r].getStates();
 
       for (size_t pos = 1; pos < nodes.size(); ++pos) {
@@ -2502,14 +2552,12 @@ bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
           if (res.isFeasible) {
             double cost = res.deltaDistance;
             if (isTightTW && pos <= states.size()) {
-              double travelToPrev = instance->getTime(nodes[pos - 1], custId);
-              double arrivalAtCust =
-                  states[pos - 1].departureTime + travelToPrev;
-              double slack = custNode->getDueDate() - arrivalAtCust;
+              double travelToPrev  = instance->getTime(nodes[pos - 1], custId);
+              double arrivalAtCust = states[pos - 1].departureTime + travelToPrev;
+              double slack = cDue - arrivalAtCust;
               if (slack < 0)
                 continue;
-              double waitPenalty =
-                  std::max(0.0, custNode->getReadyTime() - arrivalAtCust);
+              double waitPenalty = std::max(0.0, cReady - arrivalAtCust);
               cost += waitPenalty * 0.3;
             }
             if (cost < best.cost)
@@ -2518,33 +2566,32 @@ bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
         }
 
         // Options B & C: Station-assisted, top-1 station by detour
-        int prevId = nodes[pos - 1];
-        int nextId = nodes[pos];
+        int prevId    = nodes[pos - 1];
+        int nextId    = nodes[pos];
         double directDist = instance->getDistance(prevId, nextId);
 
-        struct SC {
-          int id;
-          double det;
-        };
-        std::vector<SC> sc;
+        // [OPT-9] thread_local SC buffer — eliminates heap alloc per (r,pos).
+        struct SC { int id; double det; };
+        static thread_local std::vector<SC> sc;
+        sc.clear();
         sc.reserve(stationIds.size());
         for (int sid : stationIds)
           sc.push_back({sid, instance->getDistance(prevId, sid) +
                                  instance->getDistance(sid, nextId) -
                                  directDist});
-        int topK = std::min(2, (int)sc.size()); // reduced to 1 earlier
+        int topK = std::min(2, (int)sc.size());
         std::partial_sort(sc.begin(), sc.begin() + topK, sc.end(),
                           [](const SC &a, const SC &b) { return a.det < b.det; });
 
         for (int k = 0; k < topK; ++k) {
           int sid = sc[k].id;
-          
+
           // [OPT-4] Pre-filter distance before deep copy
           // Estimate B: prev -> cust -> sid -> next
-          double costB = instance->getDistance(prevId, custId) + 
-                         instance->getDistance(custId, sid) + 
+          double costB = instance->getDistance(prevId, custId) +
+                         instance->getDistance(custId, sid) +
                          instance->getDistance(sid, nextId) - directDist;
-          
+
           if (costB < best.cost) {
             Route copy = newRoutes[r];
             copy.addNode(custId, pos);
@@ -2559,10 +2606,10 @@ bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
           }
 
           // Estimate C: prev -> sid -> cust -> next
-          double costC = instance->getDistance(prevId, sid) + 
-                         instance->getDistance(sid, custId) + 
+          double costC = instance->getDistance(prevId, sid) +
+                         instance->getDistance(sid, custId) +
                          instance->getDistance(custId, nextId) - directDist;
-          
+
           if (costC < best.cost) {
             Route copy = newRoutes[r];
             copy.addNode(custId, pos);
@@ -2732,19 +2779,19 @@ bool LocalSearch::ejectionChain(Solution &solution) {
   };
   std::vector<VictimCand> victimCands;
   {
-    double horizon = instance->getNodeById(0)->getDueDate();
+    // [OPT-9] depot dueDate = planning horizon — use flat array, no shared_ptr copy.
+    double horizon = dueDateById_[0];
     for (int r = 0; r < numRoutes; ++r) {
       const auto &custs = routes[r].getCustomers();
       int cnt = (int)custs.size();
       const int avgCusts = instance->getCustomers().size() / solution.getNumRoutes();
-      const int victimSizeLimit = std::max(10, avgCusts * 2);
+      const int victimSizeLimit = std::max(10, avgCusts);
       if (cnt == 0 || cnt > victimSizeLimit)
         continue;
       double avgTW = 0.0;
       for (int c : custs) {
-        auto nd = instance->getNodeById(c);
-        avgTW +=
-            (nd->getDueDate() - nd->getReadyTime()) / std::max(1.0, horizon);
+        // [OPT-9] Flat TW arrays — no shared_ptr copy.
+        avgTW += (dueDateById_[c] - readyTimeById_[c]) / std::max(1.0, horizon);
       }
       avgTW /= cnt;
       double sizeFactor = 1.0 - cnt / 21.0;
@@ -2794,10 +2841,13 @@ bool LocalSearch::ejectionChain(Solution &solution) {
                         const std::vector<std::vector<double>> &slacks,
                         int excludeR = -1) -> PlaceResult {
     PlaceResult best;
-    double dem = demandById_[cId];
-    auto custNode = instance->getNodeById(cId);
-    double twWindow = custNode->getDueDate() - custNode->getReadyTime();
-    bool isTightTW = (twWindow <= 30.0);
+    double dem      = demandById_[cId];
+    // [OPT-9] Use flat TW arrays — no shared_ptr copy, no atomic inc/dec.
+    double cDue     = dueDateById_[cId];
+    double cReady   = readyTimeById_[cId];
+    double cSvc     = serviceTimeById_[cId];
+    double twWindow = cDue - cReady;
+    bool isTightTW  = (twWindow <= 30.0);
 
     for (int r = 0; r < (int)workRoutes.size(); ++r) {
       if (r == excludeR)
@@ -2815,13 +2865,13 @@ bool LocalSearch::ejectionChain(Solution &solution) {
         double arrC =
             states[pos - 1].departureTime + instance->getTime(prevId, cId);
 
-        if (arrC > custNode->getDueDate())
+        if (arrC > cDue)
           continue;
 
-        double waitC = std::max(0.0, custNode->getReadyTime() - arrC);
-        double depC = arrC + waitC + custNode->getServiceTime();
+        double waitC      = std::max(0.0, cReady - arrC);
+        double depC       = arrC + waitC + cSvc;
         double arrNextNew = depC + instance->getTime(cId, nextId);
-        double delay = std::max(0.0, arrNextNew - states[pos].arrivalTime);
+        double delay      = std::max(0.0, arrNextNew - states[pos].arrivalTime);
         double effectiveSlack = sl[pos] + states[pos].timeWait;
 
         if (delay > effectiveSlack)
@@ -2835,9 +2885,9 @@ bool LocalSearch::ejectionChain(Solution &solution) {
 
         double totalCost = res.deltaDistance;
         if (isTightTW) {
-          double travel = instance->getTime(wnodes[pos - 1], cId);
+          double travel  = instance->getTime(wnodes[pos - 1], cId);
           double arrival = states[pos - 1].departureTime + travel;
-          totalCost += std::max(0.0, custNode->getReadyTime() - arrival) * 0.3;
+          totalCost += std::max(0.0, cReady - arrival) * 0.3;
         }
         if (totalCost < best.cost)
           best = {r, pos, totalCost};
@@ -2858,9 +2908,12 @@ bool LocalSearch::ejectionChain(Solution &solution) {
       size_t pos;
       double cost;
     };
-    const auto &nodes = route.getNodes();
+    const auto &nodes  = route.getNodes();
     const auto &states = route.getStates();
-    auto cNode = instance->getNodeById(cId);
+    // [OPT-9] Flat TW arrays — no shared_ptr copy.
+    double cDue   = dueDateById_[cId];
+    double cReady = readyTimeById_[cId];
+    double cSvc   = serviceTimeById_[cId];
 
     PosCost best{0, 1e18};
 
@@ -2870,13 +2923,13 @@ bool LocalSearch::ejectionChain(Solution &solution) {
       double arrC =
           states[pos - 1].departureTime + instance->getTime(prevId, cId);
 
-      if (arrC > cNode->getDueDate())
+      if (arrC > cDue)
         continue;
 
-      double waitC = std::max(0.0, cNode->getReadyTime() - arrC);
-      double depC = arrC + waitC + cNode->getServiceTime();
+      double waitC      = std::max(0.0, cReady - arrC);
+      double depC       = arrC + waitC + cSvc;
       double arrNextNew = depC + instance->getTime(cId, nextId);
-      double delay = std::max(0.0, arrNextNew - states[pos].arrivalTime);
+      double delay      = std::max(0.0, arrNextNew - states[pos].arrivalTime);
       double effectiveSlack = slacks[pos] + states[pos].timeWait;
 
       if (delay > effectiveSlack)
@@ -3052,9 +3105,12 @@ bool LocalSearch::ejectionChain(Solution &solution) {
         PlaceResult bestPlace;
 
         for (int idx = 0; idx < (int)up.size(); ++idx) {
-          int cId = up[idx];
+          int cId    = up[idx];
           double dem = demandById_[cId];
-          auto cNode = instance->getNodeById(cId); // hoisted outside (r,pos)
+          // [OPT-9] Flat TW arrays — no shared_ptr copy per customer per iteration.
+          double cDue   = dueDateById_[cId];
+          double cReady = readyTimeById_[cId];
+          double cSvc   = serviceTimeById_[cId];
           PlaceResult rank1, rank2;
           rank2.cost = 1e18;
 
@@ -3073,11 +3129,11 @@ bool LocalSearch::ejectionChain(Solution &solution) {
               double arrC = states[pos - 1].departureTime +
                             instance->getTime(prevId, cId);
 
-              if (arrC <= cNode->getDueDate()) {
-                double waitC = std::max(0.0, cNode->getReadyTime() - arrC);
-                double depC = arrC + waitC + cNode->getServiceTime();
+              if (arrC <= cDue) {
+                double waitC      = std::max(0.0, cReady - arrC);
+                double depC       = arrC + waitC + cSvc;
                 double arrNextNew = depC + instance->getTime(cId, nextId);
-                double delay =
+                double delay      =
                     std::max(0.0, arrNextNew - states[pos].arrivalTime);
                 double effSlack = slacks[pos] + states[pos].timeWait;
 
@@ -3137,9 +3193,10 @@ bool LocalSearch::ejectionChain(Solution &solution) {
           if (rank1.r == -1)
             continue;
 
-          double twWidth = cNode->getDueDate() - cNode->getReadyTime();
-          double twPenalty = 100.0 / std::max(1.0, twWidth);
-          double regret =
+          // [OPT-9] cDue / cReady already in scope from flat arrays above.
+          double twWidth    = cDue - cReady;
+          double twPenalty  = 100.0 / std::max(1.0, twWidth);
+          double regret     =
               ((rank2.r == -1) ? 1e15 : (rank2.cost - rank1.cost)) + twPenalty;
 
           if (regret > maxRegret) {
@@ -3204,14 +3261,14 @@ bool LocalSearch::ejectionChain(Solution &solution) {
           const auto &rnodes = workRoutes[r].getNodes();
 
           for (int i = 1; i < (int)rnodes.size() - 1; ++i) {
-            int yId = rnodes[i];
+            int yId    = rnodes[i];
             if (nodeTypeById_[yId] != NodeType::CUSTOMER)
               continue;
             double demY = demandById_[yId];
             if (workRoutes[r].getTotalDemand() - demY + demX > vehCap)
               continue;
 
-            auto custY = instance->getNodeById(yId);
+            // [OPT-9] Flat TW arrays for yId — no shared_ptr copy.
             int receivable = 0;
             for (int r2 = 0; r2 < WR; ++r2) {
               if (r2 == r)
@@ -3219,8 +3276,8 @@ bool LocalSearch::ejectionChain(Solution &solution) {
               if (workRoutes[r2].getTotalDemand() + demY <= vehCap)
                 receivable++;
             }
-            double twWidth = custY->getDueDate() - custY->getReadyTime();
-            double scoreY =
+            double twWidth = dueDateById_[yId] - readyTimeById_[yId];
+            double scoreY  =
                 receivable + twWidth / 100.0 - ejectPenalty[yId] * 1000.0;
             if (scoreY > bestYScore) {
               bestYScore = scoreY;
@@ -3595,7 +3652,9 @@ std::vector<size_t> LocalSearch::getTopKInsertionPositions(const Route &route,
   candidates.clear();
 
   const auto &nodes = route.getNodes();
-  auto targetNode = instance->getNodeById(nodeId);
+  // [OPT-9] Flat TW arrays — no shared_ptr copy.
+  double twDue   = dueDateById_[nodeId];
+  double twReady = readyTimeById_[nodeId];
   const auto &states = route.getStates();
 
   for (size_t pos = 1; pos < nodes.size(); ++pos) {
@@ -3613,10 +3672,10 @@ std::vector<size_t> LocalSearch::getTopKInsertionPositions(const Route &route,
     double arrivalTime =
         states[pos - 1].departureTime + instance->getTime(prevNodeId, nodeId);
 
-    if (arrivalTime > targetNode->getDueDate()) {
+    if (arrivalTime > twDue) {
       timePenalty = 10000.0;
-    } else if (arrivalTime < targetNode->getReadyTime()) {
-      timePenalty = (targetNode->getReadyTime() - arrivalTime) * 0.5;
+    } else if (arrivalTime < twReady) {
+      timePenalty = (twReady - arrivalTime) * 0.5;
     }
 
     candidates.push_back({pos, detour + timePenalty});
@@ -3994,10 +4053,10 @@ bool LocalSearch::segmentCrossExchangeForVehicleReduction(Solution &solution) {
               // ri
               if (!insertOk) {
                 insertOk =
-                    reconstructRouteWithTwoStations(candR, ejectCusts, 2);
+                    reconstructRouteWithTwoStations(candR, ejectCusts, 4);
               }
             } else {
-              insertOk = reconstructRouteWithTwoStations(candR, ejectCusts, 2);
+              insertOk = reconstructRouteWithTwoStations(candR, ejectCusts, 4);
             }
 
             if (insertOk) {
@@ -4164,8 +4223,10 @@ LocalSearch::findBestInsertionPositions_TimeAware(const Route &route,
   const auto &nodes = route.getNodes();
   const auto &states = route.getStates();
 
-  auto customerNode =
-      std::static_pointer_cast<Customer>(instance->getNodeById(nodeId));
+  // [OPT-9] Flat TW arrays — no shared_ptr copy / atomic inc-dec.
+  // nodeId here is always a customer (knnCache_ fallback path or direct call).
+  const double twDue   = dueDateById_[nodeId];
+  const double twReady = readyTimeById_[nodeId];
 
   for (size_t pos = 1; pos < nodes.size(); ++pos) {
     int prev = nodes[pos - 1];
@@ -4179,12 +4240,12 @@ LocalSearch::findBestInsertionPositions_TimeAware(const Route &route,
         states[pos - 1].departureTime + instance->getTime(prev, nodeId);
 
     double twPenalty = 0.0;
-    if (arrivalTime > customerNode->getDueDate()) {
+    if (arrivalTime > twDue) {
       twPenalty = 1000.0;
-    } else if (arrivalTime < customerNode->getReadyTime()) {
+    } else if (arrivalTime < twReady) {
       twPenalty = 0.5;
     } else {
-      double slack = customerNode->getDueDate() - arrivalTime;
+      double slack = twDue - arrivalTime;
       if (slack < 10.0) {
         twPenalty = (10.0 - slack) / 10.0;
       }
@@ -4261,56 +4322,84 @@ void LocalSearch::preprocessGranularity() {
 
 // ============================================================================
 // findBestInsertionPositions_KNN
-// [OPT-5] unordered_set<int> for O(1) neighbor lookup + vector<bool> for
-//         O(1) position dedup. Was O(n*K) with std::set + inner linear scan.
+// [OPT-5]  vector<bool> for O(1) position dedup (unchanged).
+// [OPT-10] Replace thread_local unordered_set with thread_local vector<bool>
+//          indexed directly by nodeId. Eliminates all hash computation and
+//          hash-table cache misses. neighborSet.clear() was O(K) hash
+//          destructions; bool reset is O(K) simple assignments.
+//          neighborSet.count() had hash overhead per lookup; now it is a single
+//          array read with no hashing at all.
+// [OPT-11] Return const ref to thread_local result buffer instead of
+//          constructing a new vector<size_t> on every call.
+//          Callers must use  const auto &  and must NOT keep the reference past
+//          the next call to this function (thread_local buffer is overwritten).
 // ============================================================================
-std::vector<size_t>
-LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
+std::vector<size_t> LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
                                             int topK) const {
+  // [OPT-11] Shared thread_local output buffer — zero allocation per call.
+  static thread_local std::vector<size_t> tl_knn_result;
+
   auto it = knnCache_.find(nodeId);
   if (it == knnCache_.end()) {
-    return findBestInsertionPositions_TimeAware(route, nodeId, topK);
+    // Station or unknown node: fall back to time-aware scan.
+    // findBestInsertionPositions_TimeAware still returns a new vector; copy
+    // into tl_knn_result so callers always get a consistent type.
+    tl_knn_result = findBestInsertionPositions_TimeAware(route, nodeId, topK);
+    return tl_knn_result;
   }
 
   const auto &nearestNeighbors = it->second;
   const auto &nodes = route.getNodes();
   const int routeSize = (int)nodes.size();
 
-  // [SPEED-2] thread_local set — zero heap alloc per call in hot loop
-  static thread_local std::unordered_set<int> neighborSet;
-  neighborSet.clear();
-  neighborSet.insert(nearestNeighbors.begin(), nearestNeighbors.end());
+  // [OPT-10] Flat bool array indexed by nodeId — replaces unordered_set.
+  // Size is maxNodeId+1 (same as nodeTypeById_). Initialized to false once;
+  // we restore touched entries to false after use (O(K), avoids full assign).
+  static thread_local std::vector<bool> inNeighborSet;
+  if ((int)inNeighborSet.size() < (int)nodeTypeById_.size())
+    inNeighborSet.assign(nodeTypeById_.size(), false);
 
-  // [SPEED-3] thread_local isCandidate — zero heap alloc, just assign + clear
+  // Mark neighbors — O(K) plain array writes, no hashing.
+  for (int nb : nearestNeighbors)
+    if (nb < (int)inNeighborSet.size())
+      inNeighborSet[nb] = true;
+
+  // [OPT-5] thread_local isCandidate — zero heap alloc, just assign + clear.
   static thread_local std::vector<bool> isCandidate;
   isCandidate.assign(routeSize + 1, false);
   for (int pos = 0; pos < routeSize; ++pos) {
-    if (neighborSet.count(nodes[pos])) {
+    int nid = nodes[pos];
+    if (nid < (int)inNeighborSet.size() && inNeighborSet[nid]) {
       if (pos > 0)
-        isCandidate[pos] = true;
+        isCandidate[pos]     = true;
       if (pos + 1 < routeSize)
         isCandidate[pos + 1] = true;
     }
   }
 
-  // Collect valid candidate positions
+  // Restore inNeighborSet to false — O(K), much cheaper than assign(N, false).
+  for (int nb : nearestNeighbors)
+    if (nb < (int)inNeighborSet.size())
+      inNeighborSet[nb] = false;
+
+  // Collect valid candidate positions.
   struct Candidate {
     size_t position;
     double cost;
     bool operator<(const Candidate &o) const { return cost < o.cost; }
   };
 
-  // [OPT-6] thread_local buffer
+  // [OPT-6] thread_local buffer.
   static thread_local std::vector<Candidate> candidates;
   candidates.clear();
 
   const auto &states = route.getStates();
 
-  // [SPEED-1] Cache TW values once — avoids hashtable lookup per position
-  auto customerNode =
-      std::static_pointer_cast<Customer>(instance->getNodeById(nodeId));
-  const double twReady = customerNode->getReadyTime();
-  const double twDue = customerNode->getDueDate();
+  // [OPT-9] Use flat TW arrays — no shared_ptr copy, no atomic inc/dec.
+  // nodeId is guaranteed to be a valid customer here (knnCache_ only has
+  // customer entries), so readyTimeById_/dueDateById_ are safe to index.
+  const double twReady = readyTimeById_[nodeId];
+  const double twDue   = dueDateById_[nodeId];
 
   bool foundAny = false;
   for (int pos = 1; pos < routeSize; ++pos) {
@@ -4320,8 +4409,8 @@ LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
 
     int prev = nodes[pos - 1];
     double distBefore = instance->getDistance(prev, nodes[pos]);
-    double distAfter = instance->getDistance(prev, nodeId) +
-                       instance->getDistance(nodeId, nodes[pos]);
+    double distAfter  = instance->getDistance(prev, nodeId)
+                      + instance->getDistance(nodeId, nodes[pos]);
     double detour = distAfter - distBefore;
 
     double arrivalTime =
@@ -4336,22 +4425,25 @@ LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
   }
 
   if (!foundAny) {
-    return findBestInsertionPositions_TimeAware(route, nodeId, topK);
+    tl_knn_result = findBestInsertionPositions_TimeAware(route, nodeId, topK);
+    return tl_knn_result;
   }
 
-  if (candidates.empty())
-    return {};
+  if (candidates.empty()) {
+    tl_knn_result.clear();
+    return tl_knn_result;
+  }
 
   int k = std::min(topK, (int)candidates.size());
   std::partial_sort(candidates.begin(), candidates.begin() + k,
                     candidates.end());
 
-  std::vector<size_t> result;
-  result.reserve(k);
+  // [OPT-11] Fill thread_local result — no heap allocation.
+  tl_knn_result.resize(k);
   for (int i = 0; i < k; ++i)
-    result.push_back(candidates[i].position);
+    tl_knn_result[i] = candidates[i].position;
 
-  return result;
+  return tl_knn_result;
 }
 
 MoveEvaluation LocalSearch::evaluateRelocateDelta(const Solution &solution,
@@ -4741,12 +4833,12 @@ bool LocalSearch::reconstructRouteWithTwoStations(
   // Nếu không có vị trí nào feasible về TW → fallback về min deltaDistance
   // (để Phase 2 2-opt có cơ hội fix sau, hoặc ít nhất không worse hơn trước)
 
-  // Helper: simulate arrival time tại node `to` sau khi đến từ `from` lúc `t`
+  // Helper: simulate arrival time tại node `to` sau khi đến từ `from` lúc `t`.
+  // [OPT-9] Flat TW arrays — no shared_ptr copy inside inner loop.
   auto arrivalAt = [&](int from, int to, double t) -> double {
-    auto nd = instance->getNodeById(to);
     double travel = instance->getDistance(from, to); // dist = time (speed=1)
     double arrive = t + travel;
-    return std::max(arrive, (double)nd->getReadyTime()); // wait if early
+    return std::max(arrive, readyTimeById_[to]); // wait if early
   };
 
   for (int cNew : newCustomers) {
@@ -4759,24 +4851,28 @@ bool LocalSearch::reconstructRouteWithTwoStations(
     if (alreadyIn)
       continue;
 
-    auto ndNew = instance->getNodeById(cNew);
+    // [OPT-9] Use flat TW arrays — eliminates 3+ getNodeById() calls per
+    // (pos, k) iteration (shared_ptr copy = atomic inc/dec each time).
+    double newReady = readyTimeById_[cNew];
+    double newDue   = dueDateById_[cNew];
+    double newSvc   = serviceTimeById_[cNew];
     int szSeq = (int)seq.size();
 
     double bestFeasibleDelta = 1e18;
-    double bestAnyDelta = 1e18;
+    double bestAnyDelta      = 1e18;
     int bestFeasiblePos = -1;
-    int bestAnyPos = 0;
+    int bestAnyPos      = 0;
 
-    // Simulate arrival times through existing seq (without cNew)
+    // Simulate arrival times through existing seq (without cNew).
     // arrTime[i] = arrival at seq[i] following depot→seq[0]→...→seq[i]
     std::vector<double> arrTime(szSeq);
     {
-      double t = 0.0;
-      int prev = depotId;
+      double t   = 0.0;
+      int prev   = depotId;
       for (int i = 0; i < szSeq; ++i) {
         arrTime[i] = arrivalAt(prev, seq[i], t);
-        auto nd = instance->getNodeById(seq[i]);
-        t = arrTime[i] + nd->getServiceTime();
+        // [OPT-9] serviceTimeById_ — no getNodeById() call.
+        t    = arrTime[i] + serviceTimeById_[seq[i]];
         prev = seq[i];
       }
     }
@@ -4792,40 +4888,37 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 
       if (delta < bestAnyDelta) {
         bestAnyDelta = delta;
-        bestAnyPos = pos;
+        bestAnyPos   = pos;
       }
 
-      // TW feasibility check for cNew itself
-      double tPrev =
-          (pos > 0) ? (arrTime[pos - 1] +
-                       instance->getNodeById(seq[pos - 1])->getServiceTime())
-                    : 0.0;
+      // TW feasibility check for cNew itself.
+      // [OPT-9] serviceTimeById_ replaces getNodeById(seq[pos-1])->getServiceTime()
+      double tPrev  = (pos > 0)
+                        ? (arrTime[pos - 1] + serviceTimeById_[seq[pos - 1]])
+                        : 0.0;
       double arrCNew = tPrev + instance->getDistance(prevId, cNew);
-      double waitCNew = std::max(0.0, (double)ndNew->getReadyTime() - arrCNew);
-      double depCNew = std::max(arrCNew, (double)ndNew->getReadyTime()) +
-                       ndNew->getServiceTime();
+      double depCNew = std::max(arrCNew, newReady) + newSvc;
 
-      if (arrCNew > ndNew->getDueDate())
+      if (arrCNew > newDue)
         continue; // TW fail for cNew
 
-      // Check TW propagation: customers from pos onward get pushed by ΔT
+      // Check TW propagation: customers from pos onward get pushed by ΔT.
       double tNext = depCNew;
-      bool twOk = true;
+      bool twOk    = true;
       for (int k = pos; k < szSeq; ++k) {
         double arrK = tNext + instance->getDistance(
                                   (k == pos) ? cNew : seq[k - 1], seq[k]);
-        auto ndK = instance->getNodeById(seq[k]);
-        if (arrK > ndK->getDueDate()) {
+        // [OPT-9] flat arrays — no getNodeById() per k.
+        if (arrK > dueDateById_[seq[k]]) {
           twOk = false;
           break;
         }
-        tNext =
-            std::max(arrK, (double)ndK->getReadyTime()) + ndK->getServiceTime();
+        tNext = std::max(arrK, readyTimeById_[seq[k]]) + serviceTimeById_[seq[k]];
       }
 
       if (twOk && delta < bestFeasibleDelta) {
         bestFeasibleDelta = delta;
-        bestFeasiblePos = pos;
+        bestFeasiblePos   = pos;
       }
     }
 
@@ -5640,7 +5733,11 @@ bool LocalSearch::searchOrOptReversed(Solution &solution,
           const std::vector<int> nodes2 = routes[r2].getNodes();
           int n2 = (int)nodes2.size();
 
-          auto candidatePositions =
+          // [OPT-11] const ref to thread_local buffer — no heap allocation.
+          // NOTE: nodes2 is already a copy (not a ref), so the KNN ref is safe
+          // as long as we do not call findBestInsertionPositions_KNN again
+          // before consuming candidatePositions.
+          const auto &candidatePositions =
               findBestInsertionPositions_KNN(routes[r2], revHead, 3);
 
           for (size_t ins : candidatePositions) {

@@ -235,7 +235,7 @@ std::vector<Solution> ALNSSolver::solve() {
                 ls_us = 0, acceptance_us = 0;
     } stats;
     auto now = std::chrono::high_resolution_clock::now;
-    decltype(now()) t1, t2, t3, t4, t5, t6;
+    decltype(now()) t1, t2, t3, t4, t5, t6, alns_time;
 
     std::uniform_real_distribution<> dis(0.0, 1.0);
 
@@ -247,6 +247,7 @@ std::vector<Solution> ALNSSolver::solve() {
         {1.00, 0.00, 0.00},
         {0.00, 1.00, 0.00},
         {0.00, 0.00, 1.00},
+        {0.70, 0.30, 0.00},
         {0.50, 0.50, 0.00},
         {0.30, 0.60, 0.10},
         {0.00, 0.60, 0.40},
@@ -258,19 +259,32 @@ std::vector<Solution> ALNSSolver::solve() {
 
     std::cout << "[HV] Using 3D Hypervolume (Distance, Gini, MaxTime), "
             "ref z_r = (1.1, 1.1, 1.1)\n";
-
+    alns_time = now();
     // ── Main loop ───────────────────────────────────────────────────────────────
     for (int i = 0; i < config.maxIterations; ++i) {
+
+       auto now_time = std::chrono::high_resolution_clock::now();
+        long long elapsed_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                now_time - startTime).count();
+
+        if (elapsed_ms >= config.maxTime) {
+            if (config.enableLogging) std::cout << "[TIME STOP] Reached maxTime = "
+                      << config.maxTime << " ms at iteration "
+                      << i << "\n";
+            break;
+        }
+
         Solution &s_new = solutionPool.acquire();
         s_new = s_current;
         int lsIntensity = 0;
         if (i <= 1200)  lsIntensity = config.localSearchIntensity * 1.65;
         if (1200 < i && i < config.maxIterations * 0.22) lsIntensity = config.localSearchIntensity;
         if (i >= config.maxIterations * 0.22 && i <config.maxIterations * 0.7) {
-            lsIntensity = config.localSearchIntensity *  0.65;
+            lsIntensity = config.localSearchIntensity ;
             // localSearch.setVehicleReductionFeq(3);
         }
-        if (i >= config.maxIterations * 0.7) lsIntensity = config.localSearchIntensity *  0.45;
+        if (i >= config.maxIterations * 0.7) lsIntensity = config.localSearchIntensity;
 
         int wIdx = (i / std::max(1, config.segmentIterations)) % weightVectors.size();
         const auto &w = weightVectors[wIdx];
@@ -330,10 +344,13 @@ std::vector<Solution> ALNSSolver::solve() {
         }
 
         // ── Local Search ────────────────────────────────────────────────────────
+        if (s_new.getTotalVehicles() - s_current.getTotalVehicles() <= 2 && i >= 3000) {
+            s_new = s_current;
+        }
         if (config.useLocalSearch && s_new.isFeasible()) {
             std::uniform_int_distribution<> dis_ls(0, 99);
             if (dis_ls(randomEngine) < lsIntensity) {
-                if (i >= config.maxIterations * 0.20) localSearch.setVehicleReductionFeq(3);
+                if (i >= config.maxIterations * 0.4) localSearch.setVehicleReductionFeq(3);
                 localSearch.run(s_new);
             }
         }
@@ -399,7 +416,7 @@ std::vector<Solution> ALNSSolver::solve() {
                     SA_SCALE * w.dist * (s_new.getTotalDistance() - s_current.getTotalDistance()) / distR +
                     SA_SCALE * w.gini * (s_new.getWorkloadGini() - s_current.getWorkloadGini()) / giniR +
                     SA_SCALE * w.time * (s_new.getMaxTime() - s_current.getMaxTime()) / timeR;
-
+                // std::cout << "Delta_objectives: " << delta_objectives << "\n";
             if (std::exp(-delta_objectives / currentTemperature) > dis(randomEngine)) {
                 s_current = s_new;
                 result = (result == "Rejected") ? "Accepted (SA)" : result + " & Accepted (SA)";
@@ -424,6 +441,8 @@ std::vector<Solution> ALNSSolver::solve() {
             totalStagnationEver_++;
         }
 
+
+
         t6 = now();
         stats.acceptance_us +=
                 std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count();
@@ -437,7 +456,7 @@ std::vector<Solution> ALNSSolver::solve() {
             currentTemperature = config.minTemperature;
 
         // ── Perturbation ────────────────────────────────────────────────────────
-        if (i > config.maxIterations * 0.18 && totalStagnationEver_ % 30 <= 1 && totalStagnationEver_ >= 20 && i - lastTimePerturbation >= 400
+        if (i > config.maxIterations * 0.18 && totalStagnationEver_ % 30 <= 4 && totalStagnationEver_ >= 20 && i - lastTimePerturbation >= 2000
             && perturbationCount_ <= 3) {
             lastTimePerturbation = i;
             ++perturbationCount_;
@@ -524,9 +543,9 @@ std::vector<Solution> ALNSSolver::solve() {
         }
 
         // ── Destroy intensity boost ──────────────────────────────────────────────
-        if (i > 4000)      perturbationBoost_ = 1.75;
-        else if (i > 2000) perturbationBoost_ = 1.65;
-        else                                   perturbationBoost_ = 1.00;
+        if (i > 4000)      perturbationBoost_ = 10;
+        else if (i > 1000) perturbationBoost_ = 1.5;
+        else                                   perturbationBoost_ = 1.75;
 
         // ── Segment boundary ─────────────────────────────────────────────────────
         if ((i + 1) % config.segmentIterations == 0) {

@@ -58,6 +58,8 @@ struct ALNSConfig {
   double coolingRate = 0.995;
   double minTemperature = 0.5;
 
+  long long maxTime = 1800; //(ms) ~ 30 phut
+
   // 7. HV-Based Convergence (Dừng sớm dựa trên Hypervolume)
   double hvImprovementThreshold = 0.001; // ε = 0.1% cải thiện tối thiểu
   int hvStagnationLimit = 5;

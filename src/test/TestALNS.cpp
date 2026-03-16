@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/r108_21.txt";
     // instancePath = "../data/solomon/c103C15.txt";
     // instancePath = "../data/solomon/c102_21.txt";
-    instancePath = "../data/solomon/c103_21.txt";
+    // instancePath = "../data/solomon/c103_21.txt";
     // instancePath = "../data/solomon/c107_21.txt";
     // instancePath = "../data/solomon/c108_21.txt";
     // instancePath = "../data/solomon/c201_21.txt";
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/r105C15.txt";
     // instancePath = "../data/solomon/r202_21.txt";
     // instancePath = "../data/solomon/r202C15.txt";
-    // instancePath = "../data/solomon/rc202_21.txt";
+    instancePath = "../data/solomon/rc202_21.txt";
     // instancePath = "../data/solomon/rc103_21.txt";
     // instancePath = "../data/solomon/rc203_21.txt";
     // instancePath = "../data/solomon/rc204_21.txt";
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 
     // --- Tham số cơ bản ---
     config.maxIterations = 25000;
-    config.segmentIterations = 150;
+    config.segmentIterations = 200;
     config.hvImprovementThreshold =
         0.005;                    // ε = 0.05% (sensitive to small gains)
     config.hvStagnationLimit = 20; //
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
     // --- Simulated Annealing ---
     config.startTemperature =
         200.0; // Increased from 200.0 - CRITICAL for exploration
-    config.coolingRate = 0.998; // Slower cooling from 0.995 - stay warm longer
+    config.coolingRate = 0.9992; // Slower cooling from 0.995 - stay warm longer
     config.minTemperature =
         0.05; // Lower from 0.1 - allow smaller jumps at the end
 

@@ -220,6 +220,10 @@ private:
   int maxSwapAttempts_    = 15;
   mutable int vehicleReductionFreq = 1;
 
+  std::vector<double> readyTimeById_;
+  std::vector<double> dueDateById_;
+  std::vector<double> serviceTimeById_;
+
   // --- KNN Cache ---
   std::unordered_map<int, std::vector<int>> knnCache_;
   void preprocessKNN();

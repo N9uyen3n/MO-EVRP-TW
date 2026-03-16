@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <numeric>
+#include <unordered_map>
 
 
 InefficientRouteRemoval::InefficientRouteRemoval(
@@ -27,17 +28,13 @@ double InefficientRouteRemoval::calculateRouteScore(
   // 1. RELATIVE SIZE: route nhỏ hơn average → dễ eliminate hơn
   double relativeSize = (avgCustomersPerRoute - numCustomers) /
                         std::max(1.0, avgCustomersPerRoute);
-  // score += 25.0 * relativeSize;
   score += 45.0 * relativeSize;
 
-
   // 2. RELATIVE EFFICIENCY: distance/customer so với average
-  // avgDistPerRoute giờ là ratio of means → distPerCust phải tính cùng đơn vị
   double distPerCust = route.getTotalDistance() / numCustomers;
   double relativeEff =
       (distPerCust - avgDistPerRoute) / std::max(1.0, avgDistPerRoute);
-  // score += 15.0 * relativeEff;
-  score += 7.0 * relativeSize;
+  score += 7.0 * relativeEff;
 
   // 3. WAIT TIME: vẫn giữ nhưng relative
   double avgWait = route.getTotalWaitTime() / numCustomers;
@@ -45,7 +42,7 @@ double InefficientRouteRemoval::calculateRouteScore(
       (avgWait - avgWaitPerRoute) / std::max(1.0, avgWaitPerRoute);
   score += 10.0 * relativeWait;
 
-  // 4. BOTTLENECK: soft penalty -> Tăng penalty để trừng phạt route dễ nghẽn
+  // 4. BOTTLENECK: soft penalty
   auto bottlenecks = route.getBottleneckNodes(0.15);
   double bottleneckRatio = (double)bottlenecks.size() / numCustomers;
   score -= std::min(15.0, 25.0 * bottleneckRatio);
@@ -68,8 +65,7 @@ double InefficientRouteRemoval::calculateRouteScore(
   double avgTWCoverage = twCoverage / numCustomers;
   score += 20.0 * avgTWCoverage;
 
-  // 7. ⭐ ENERGY PORTABILITY
-  // Customers gần depot → dễ redistribute không cần thêm station
+  // 7. ENERGY PORTABILITY
   double avgEnergyDemand = 0.0;
   double energyRate = instance->getVehicleEnergyRate();
   for (int custId : route.getCustomers()) {
@@ -83,11 +79,7 @@ double InefficientRouteRemoval::calculateRouteScore(
   double batteryCap = instance->getVehicleBattery();
   double portability = 1.0 - (avgEnergyDemand / std::max(1.0, batteryCap));
   portability = std::max(0.0, portability);
-
-  // ⭐ FIX weight: portability 30 → 15 (tránh bias quá mạnh về near-depot routes)
-  // Mục tiêu VR là xóa route nhỏ + không hiệu quả, không phải gần/xa depot.
-  // score += 15.0 * portability;
-  score += 10.0 * relativeSize;
+  score += 10.0 * portability;
 
   return score;
 }
@@ -112,11 +104,8 @@ std::vector<int> InefficientRouteRemoval::execute(Solution &solution,
       activeRoutes++;
       int n = r.getCustomers().size();
       totalCustomers += n;
-      // ⭐ FIX: tích lũy tổng distance và tổng customers riêng biệt
-      // để tính ratio of means thay vì mean of ratios.
-      // Mean of ratios bị bias về routes nhỏ khi kích thước routes chênh lệch nhiều.
-      totalDistPerCust += r.getTotalDistance(); // tổng distance (chưa chia n)
-      totalWaitPerCust += r.getTotalWaitTime(); // tổng waittime (chưa chia n)
+      totalDistPerCust += r.getTotalDistance();
+      totalWaitPerCust += r.getTotalWaitTime();
     }
   }
 
@@ -124,7 +113,6 @@ std::vector<int> InefficientRouteRemoval::execute(Solution &solution,
     return removedCustomers;
 
   double avgCust = (double)totalCustomers / activeRoutes;
-  // ⭐ FIX: ratio of means = total_dist / total_customers (không phải mean of dist/n)
   double avgDist = (totalCustomers > 0) ? totalDistPerCust / totalCustomers : 1.0;
   double avgWait = (totalCustomers > 0) ? totalWaitPerCust / totalCustomers : 1.0;
 
@@ -147,8 +135,7 @@ std::vector<int> InefficientRouteRemoval::execute(Solution &solution,
 
   // --- Tournament Selection ---
   std::vector<int> routesToRemove;
-  std::vector<bool> selected(routes.size(),
-                             false); // Use original route index size
+  std::vector<bool> selected(routes.size(), false);
 
   const int TOURNAMENT_SIZE = 3;
   std::uniform_int_distribution<int> randIdx(0, routeScores.size() - 1);
@@ -160,13 +147,10 @@ std::vector<int> InefficientRouteRemoval::execute(Solution &solution,
     int bestTournamentIdx = -1;
     double bestTournamentScore = -1e18;
 
-    // ⭐ FIX: sample TOURNAMENT_SIZE distinct candidates (không lặp index)
-    // Cũ: randIdx có thể chọn cùng candidate nhiều lần → tournament không đảm bảo diversity
     std::vector<int> sampledIndices;
     int maxTries = TOURNAMENT_SIZE * 4;
     while ((int)sampledIndices.size() < TOURNAMENT_SIZE && maxTries-- > 0) {
       int candidateIdx = randIdx(rng);
-      // Chỉ thêm nếu chưa sample lần này
       if (std::find(sampledIndices.begin(), sampledIndices.end(), candidateIdx)
           == sampledIndices.end()) {
         sampledIndices.push_back(candidateIdx);
@@ -186,8 +170,6 @@ std::vector<int> InefficientRouteRemoval::execute(Solution &solution,
       selected[bestTournamentIdx] = true;
       routesToRemove.push_back(bestTournamentIdx);
     } else {
-      // Fallback: if tournament fails (e.g. all selected), pick first
-      // unselected
       bool found = false;
       for (const auto &p : routeScores) {
         if (!selected[p.first]) {
@@ -198,8 +180,95 @@ std::vector<int> InefficientRouteRemoval::execute(Solution &solution,
         }
       }
       if (!found)
-        break; // No more unselected routes available
+        break;
     }
+  }
+
+  // =========================================================================
+  // [NEW] Neighbor Steal: sau khi chọn xong các route bị xóa, lấy thêm
+  // một số customers từ các route lân cận để mở rộng không gian repair.
+  //
+  // Lý do: khi một route "inefficient" bị xóa, repair operator chỉ nhận
+  // được customers của chính route đó. Nếu optimal solution yêu cầu
+  // redistribution giữa route bị xóa và route lân cận (ví dụ C33 cần
+  // đi cùng C19/C23/C25 từ route khác), repair không có đủ nguyên liệu.
+  //
+  // Cách hoạt động:
+  //   - Với mỗi customer trong route bị xóa, tìm customers ở route KHÁC
+  //     có min-distance ≤ STEAL_DIST_THRESHOLD.
+  //   - Steal tối đa stealBudget customers (ưu tiên gần nhất).
+  //   - Stolen customers được remove khỏi route gốc và thêm vào
+  //     removedCustomers để repair operator xử lý cùng.
+  // =========================================================================
+  // Số customers cần steal: ~30-40% of nodesToRemove, tối thiểu 1
+  // const int stealBudget = std::max(1, static_cast<int>(std::round(nodesToRemove * 0.35)));
+
+
+
+  // Collect tất cả customers bị destroy (để tính min-dist)
+  std::vector<int> destroyedCusts;
+  for (int routeIdx : routesToRemove) {
+    for (int cid : routes[routeIdx].getCustomers())
+      destroyedCusts.push_back(cid);
+  }
+  const int stealBudget = static_cast<int>(destroyedCusts.size() + 1);
+
+  // Build danh sách ứng viên steal từ các route KHÔNG bị destroy
+  struct StealCandidate {
+    int routeIdx;
+    int custId;
+    double minDistToDestroyed; // khoảng cách gần nhất tới bất kỳ destroyed cust
+  };
+  std::vector<StealCandidate> candidates;
+
+  std::vector<bool> isDestroyedRoute(routes.size(), false);
+  for (int ridx : routesToRemove)
+    isDestroyedRoute[ridx] = true;
+
+  for (int r = 0; r < static_cast<int>(routes.size()); ++r) {
+    if (isDestroyedRoute[r]) continue;
+    for (int cid : routes[r].getCustomers()) {
+      double minD = std::numeric_limits<double>::max();
+      for (int dc : destroyedCusts) {
+        double dist = instance->getDistance(cid, dc);
+        if (dist < minD) minD = dist;
+      }
+      candidates.push_back({r, cid, minD});
+    }
+  }
+
+  // Sort theo khoảng cách tăng dần → gần nhất được steal trước
+  std::sort(candidates.begin(), candidates.end(),
+            [](const StealCandidate &a, const StealCandidate &b) {
+              return a.minDistToDestroyed < b.minDistToDestroyed;
+            });
+
+  // Steal top-stealBudget candidates, tracking per-route removal positions
+  // Dùng map route → sorted positions (descending) để remove an toàn
+  std::unordered_map<int, std::vector<int>> stealPositions; // routeIdx → node positions
+  int stolen = 0;
+
+  for (const auto &cand : candidates) {
+    if (stolen >= stealBudget) break;
+
+    // Tìm vị trí của customer này trong route
+    const auto &nodes = routes[cand.routeIdx].getNodes();
+    for (int pos = 0; pos < static_cast<int>(nodes.size()); ++pos) {
+      if (nodes[pos] == cand.custId) {
+        stealPositions[cand.routeIdx].push_back(pos);
+        removedCustomers.push_back(cand.custId);
+        stolen++;
+        break;
+      }
+    }
+  }
+
+  // Apply steal removals: xóa theo position descending để tránh index shift
+  for (auto &[routeIdx, positions] : stealPositions) {
+    std::sort(positions.begin(), positions.end(), std::greater<int>());
+    for (int pos : positions)
+      routes[routeIdx].removeNode(pos);
+    routes[routeIdx].evaluate();
   }
 
   // Remove chosen routes descending to avoid index shift

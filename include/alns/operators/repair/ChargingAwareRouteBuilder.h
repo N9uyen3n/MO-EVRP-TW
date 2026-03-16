@@ -50,6 +50,7 @@ private:
     double load;
     std::vector<int> visited;
     double cost;
+    bool lastWasStation = false;
   };
 
   struct Segment {
@@ -84,6 +85,8 @@ private:
                                             std::vector<Route> &routes) const;
   void applyCandidate(const InsertCandidate &c,
                       std::vector<Route> &routes) const;
+  static constexpr int MAX_RELAY_STATIONS = 3;
+  static constexpr double LOOKAHEAD_WEIGHT = 0.15;
 };
 
 } // namespace alns

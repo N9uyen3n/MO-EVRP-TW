@@ -41,127 +41,109 @@ int main(int argc, char *argv[]) {
   std::string instancePath;
   std::string customRunName = "";
   unsigned int randomSeed = 0;
+  bool iraceMode = false;
 
-  if (argc > 1) {
-    instancePath = argv[1];
-  }
-  if (argc >= 3) {
-    customRunName = argv[2];
-  }
-  if (argc >= 4) {
-    try {
-      randomSeed = std::stoul(argv[3]);
-    } catch (...) {
-      std::cerr
-          << "[Warning] Invalid random seed provided. Using time-based seed.\n";
-      randomSeed = 0;
+  // 3. Cấu hình ALNS (ALNSConfig) - Move up to set values from CLI
+  alns::ALNSConfig config;
+
+  // --- Giá trị mặc định ---
+  config.maxIterations = 25000;
+  config.segmentIterations = 100;
+  config.hvImprovementThreshold = 0.001;
+  config.hvStagnationLimit = 5;
+  config.decayParameter = 0.85;
+  config.scoreDominating = 40.0;
+  config.scoreNonDominated = 25.0;
+  config.scoreDominated = 10.0;
+  config.scoreIdentical = 0.0;
+  config.minRemoval = 0.15;
+  config.maxRemoval = 0.5;
+  config.localSearchIntensity = 25;
+  config.startTemperature = 200.0;
+  config.coolingRate = 0.997;
+  config.minTemperature = 0.05;
+  
+  config.useLocalSearch = true;
+  config.useScatterSearch = true;
+  config.enableLogging = true;
+
+  // Parse command line arguments
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+    if (arg == "--irace") {
+      iraceMode = true;
+      config.enableLogging = false; // Tắt log file khi chạy irace
+    } else if (arg == "--instance" && i + 1 < argc) {
+      instancePath = argv[++i];
+    } else if (arg == "--seed" && i + 1 < argc) {
+      randomSeed = std::stoul(argv[++i]);
+    } else if (arg == "--maxIter" && i + 1 < argc) {
+      config.maxIterations = std::stoi(argv[++i]);
+    } else if (arg == "--decay" && i + 1 < argc) {
+      config.decayParameter = std::stod(argv[++i]);
+    } else if (arg == "--score1" && i + 1 < argc) {
+      config.scoreDominating = std::stod(argv[++i]);
+    } else if (arg == "--score2" && i + 1 < argc) {
+      config.scoreNonDominated = std::stod(argv[++i]);
+    } else if (arg == "--score3" && i + 1 < argc) {
+      config.scoreDominated = std::stod(argv[++i]);
+    } else if (arg == "--minRem" && i + 1 < argc) {
+      config.minRemoval = std::stod(argv[++i]);
+    } else if (arg == "--maxRem" && i + 1 < argc) {
+      config.maxRemoval = std::stod(argv[++i]);
+    } else if (arg == "--startTemp" && i + 1 < argc) {
+      config.startTemperature = std::stod(argv[++i]);
+    } else if (arg == "--cool" && i + 1 < argc) {
+      config.coolingRate = std::stod(argv[++i]);
+    } else if (arg == "--runName" && i + 1 < argc) {
+      customRunName = argv[++i];
+    } else if (instancePath.empty() && arg.find("--") != 0) {
+      // Hỗ trợ cách cũ: tham số đầu tiên là instance path nếu không dùng --instance
+      instancePath = arg;
     }
   }
 
-  if (argc == 1) {
-    // Đường dẫn mặc định
-    // instancePath = "../data/solomon/c101C5.txt";
-    // instancePath = "../data/solomon/c101C10.txt";
-    // instancePath = "../data/solomon/rc204C15.txt";
-    // instancePath = "../data/solomon/c103C5.txt";
-    // instancePath = "../data/solomon/c104C10.txt";
-    // instancePath = "../data/solomon/rc108C15.txt";
-    // instancePath = "../data/solomon/c208C15.txt";
-    // instancePath = "../data/solomon/c101_21.txt";
-    // instancePath = "../data/solomon/c102_21.txt";
-    // instancePath = "../data/solomon/r107_21.txt";
-    // instancePath = "../data/solomon/r105_21.txt";
-    // instancePath = "../data/solomon/c106C15.txt";
-    // instancePath = "../data/solomon/c104_21.txt";
-    // instancePath = "../data/solomon/r109_21.txt";
-    // instancePath = "../data/solomon/c103C15.txt";
+  if (instancePath.empty()) {
     instancePath = "../data/solomon/c102_21.txt";
-    // instancePath = "../data/solomon/c201_21.txt";
-    // instancePath = "../data/solomon/rc108C15.txt";
-    // instancePath = "../data/solomon/r201_21.txt";
-    // instancePath = "../data/solomon/rc108C15.txt";
-    // instancePath = "../data/solomon/rc103C15.txt";
-    // instancePath = "../data/solomon/rc204C15.txt";
-    // instancePath = "../data/solomon/r105C15.txt";
+    if (!iraceMode) {
+      std::cout << "[INFO] No instance file provided. Using default: "
+                << instancePath << "\n";
+    }
+  }
 
-    // instancePath = "../data/solomon/rc202C15.txt";
-
-    std::cout << "[INFO] No instance file provided. Using default: "
-              << instancePath << "\n";
+  if (!iraceMode) {
+    std::cout << "========================================\n";
+    std::cout << "       TESTING MO-ALNS EVRP SOLVER      \n";
+    std::cout << "========================================\n";
   }
 
   try {
     // 2. Parse Instance
-    std::cout << "[INFO] Loading instance from: " << instancePath << " ...\n";
+    if (!iraceMode)
+      std::cout << "[INFO] Loading instance from: " << instancePath << " ...\n";
     auto instance = Parser::parse(instancePath);
 
     if (!instance) {
-      std::cerr << "[ERROR] Failed to parse instance!\n";
+      if (!iraceMode)
+        std::cerr << "[ERROR] Failed to parse instance!\n";
       return 1;
     }
-    std::cout << "[INFO] Instance loaded successfully.\n";
-    std::cout << "       - Customers: " << instance->getCustomers().size()
-              << "\n";
-    std::cout << "       - Stations:  " << instance->getStations().size()
-              << "\n";
 
-    // 3. Cấu hình ALNS (ALNSConfig)
-    alns::ALNSConfig config;
-
-    // --- Tham số cơ bản ---
-    config.maxIterations = 30000;
-    config.segmentIterations = 100;
-    config.hvImprovementThreshold = 0.001; // ε = 0.1%
-    config.hvStagnationLimit = 5; // Dừng sau 5 segment không cải thiện HV
-
-    // --- Adaptive Weights ---
-    config.decayParameter = 0.85;
-    config.scoreDominating =
-        40.0; // Increased from 40.0 - reward good operators more
-    config.scoreNonDominated = 25.0; // Increased from 25.0
-    config.scoreDominated = 10.0;    // Increased from 10.0
-    config.scoreIdentical = 0.0;
-
-    // --- Destroy Params ---
-    config.minRemoval = 0.15;
-    config.maxRemoval =
-        0.5; // Increased from 0.4 - destroy more for better exploration
-
-    // --- Repair Params ---
-    config.regretK = 3;
-    config.noiseParameter = 0.5;
-
-    // --- Local Search & Scatter Search ---
-    config.useLocalSearch = true;
-    config.useScatterSearch = true;
-    config.localSearchIntensity = 25; // Increased from 20
-
-    // --- Scatter Search Params ---
-    config.scatterSearchConfig.maxScatterIters = 5;
-    config.scatterSearchConfig.alnsItersPerCombination = 50;
-
-    // --- Simulated Annealing ---
-    config.startTemperature =
-        200.0; // Increased from 200.0 - CRITICAL for exploration
-    config.coolingRate = 0.997; // Slower cooling from 0.995 - stay warm longer
-    config.minTemperature =
-        0.05; // Lower from 0.1 - allow smaller jumps at the end
-
-    config.enableLogging = true;
-
-    std::cout << "[INFO] ALNS Configured.\n";
+    if (!iraceMode) {
+      std::cout << "[INFO] Instance loaded successfully.\n";
+      std::cout << "       - Customers: " << instance->getCustomers().size()
+                << "\n";
+      std::cout << "       - Stations:  " << instance->getStations().size()
+                << "\n";
+      std::cout << "[INFO] ALNS Configured.\n";
+    }
 
     // ============================================================
     // [NEW] 4. TỰ ĐỘNG TẠO TÊN THƯ MỤC DỰA TRÊN TÊN FILE
     // ============================================================
 
-    // Tạo đối tượng path từ đường dẫn đầu vào
     fs::path pathObj(instancePath);
-
-    // Lấy tên file không có đuôi mở rộng (ví dụ: "c101C5.txt" -> "c101C5")
     std::string baseName = pathObj.stem().string();
-
-    // Tạo đường dẫn thư mục output: logs/<TênFile>/<CustomRunName> (nếu có)
     std::string outputDir = "logs/" + baseName;
     std::string runName = baseName;
 
@@ -170,22 +152,22 @@ int main(int argc, char *argv[]) {
       runName += "_" + customRunName;
     }
 
-    // Set config random seed
     config.randomSeed = randomSeed;
 
-    std::cout << "[INFO] Output Directory set to: " << outputDir << "\n";
-    if (randomSeed > 0) {
-      std::cout << "[INFO] Using Random Seed: " << randomSeed << "\n";
+    if (!iraceMode) {
+      std::cout << "[INFO] Output Directory set to: " << outputDir << "\n";
+      if (randomSeed > 0) {
+        std::cout << "[INFO] Using Random Seed: " << randomSeed << "\n";
+      }
     }
 
     // Khởi tạo Solver với đường dẫn động
     auto solver = std::make_unique<alns::ALNSSolver>(instance, config,
                                                      outputDir, runName);
 
-    // ============================================================
-
     // 5. Chạy thuật toán (Solve)
-    std::cout << "[INFO] Starting Solver...\n";
+    if (!iraceMode)
+      std::cout << "[INFO] Starting Solver...\n";
     auto startTime = std::chrono::high_resolution_clock::now();
 
     std::vector<Solution> paretoFront = solver->solve();
@@ -196,35 +178,52 @@ int main(int argc, char *argv[]) {
                              .count();
 
     // 6. Hiển thị kết quả
-    std::cout << "\n========================================\n";
-    std::cout << "           TEST COMPLETED               \n";
-    std::cout << "========================================\n";
-    std::cout << "Execution Time: " << duration << " ms\n";
-    std::cout << "Pareto Front Size: " << paretoFront.size() << "\n";
-    std::cout << "Results saved in: " << outputDir
-              << "\n"; // Nhắc người dùng nơi lưu file
-
-    if (!paretoFront.empty()) {
-      std::cout << "\n--- Best Solutions Found (Pareto Front) ---\n";
-      std::cout << std::fixed
-                << std::setprecision(2); // Set precision for cleaner output
-      int idx = 1;
-      for (const auto &sol : paretoFront) {
-        std::cout << "Solution #" << idx++ << ": "
-                  << "Veh=" << sol.getTotalVehicles()
-                  << ", Dist=" << sol.getTotalDistance()
-                  << ", Fairness=" << sol.getWorkloadGini()
-                  << ", MaxTime=" << sol.getMaxTime() << "\n";
+    if (iraceMode) {
+      // Chế độ irace: chỉ in ra giá trị mục tiêu (ví dụ: quãng đường của giải pháp đầu tiên)
+      // Nếu là đa mục tiêu, irace thường cần 1 giá trị duy nhất, ở đây ta lấy Best Distance.
+      if (!paretoFront.empty()) {
+        // Tìm giải pháp có quãng đường nhỏ nhất trong Pareto Front
+        double bestDist = paretoFront[0].getTotalDistance();
+        for (const auto &sol : paretoFront) {
+          if (sol.getTotalDistance() < bestDist)
+            bestDist = sol.getTotalDistance();
+        }
+        std::cout << std::fixed << std::setprecision(4) << bestDist << std::endl;
+      } else {
+        std::cout << "99999999" << std::endl; // Giá trị phạt nếu không tìm thấy KQ
       }
-
-      std::cout << "\n--- Details of Solution #1 ---\n";
-      printSolutionSummary(paretoFront[0]);
     } else {
-      std::cout << "[WARNING] No feasible solution found!\n";
+      std::cout << "\n========================================\n";
+      std::cout << "           TEST COMPLETED               \n";
+      std::cout << "========================================\n";
+      std::cout << "Execution Time: " << duration << " ms\n";
+      std::cout << "Pareto Front Size: " << paretoFront.size() << "\n";
+      std::cout << "Results saved in: " << outputDir << "\n";
+
+      if (!paretoFront.empty()) {
+        std::cout << "\n--- Best Solutions Found (Pareto Front) ---\n";
+        std::cout << std::fixed << std::setprecision(2);
+        int idx = 1;
+        for (const auto &sol : paretoFront) {
+          std::cout << "Solution #" << idx++ << ": "
+                    << "Veh=" << sol.getTotalVehicles()
+                    << ", Dist=" << sol.getTotalDistance()
+                    << ", Fairness=" << sol.getWorkloadGini()
+                    << ", MaxTime=" << sol.getMaxTime() << "\n";
+        }
+
+        std::cout << "\n--- Details of Solution #1 ---\n";
+        printSolutionSummary(paretoFront[0]);
+      } else {
+        std::cout << "[WARNING] No feasible solution found!\n";
+      }
     }
 
   } catch (const std::exception &e) {
-    std::cerr << "[EXCEPTION] " << e.what() << "\n";
+    if (!iraceMode)
+      std::cerr << "[EXCEPTION] " << e.what() << "\n";
+    else
+      std::cout << "99999999" << std::endl;
     return 1;
   }
 

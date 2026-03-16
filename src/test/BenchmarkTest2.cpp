@@ -13,6 +13,8 @@
 #include "../../include/io/Parser.h"
 
 // --- ALNS ---
+#include <algorithm>
+
 #include "../../include/alns/ALNSSolver.h"
 
 namespace fs = std::filesystem;
@@ -84,7 +86,7 @@ BenchmarkResult runInstance(const std::string &instancePath,
       const auto &bestSol = paretoFront[0];
       result.bestVehicles = bestSol.getTotalVehicles();
       result.bestDistance = bestSol.getTotalDistance();
-      result.bestWorkload = bestSol.getWorkloadVariance();
+      result.bestWorkload = bestSol.getWorkloadGini();
       result.bestMaxTime = bestSol.getMaxTime();
       result.feasible = bestSol.isFeasible();
 

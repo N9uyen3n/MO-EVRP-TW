@@ -4,6 +4,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <climits>
 
 // --- Core Includes ---
 #include "../core/Instance.h"
@@ -57,8 +58,9 @@ struct ALNSConfig {
   double startTemperature = 150.0;
   double coolingRate = 0.995;
   double minTemperature = 0.5;
+  double SAScale = 10.0;
 
-  long long maxTime = 1800; //(ms) ~ 30 phut
+  long long maxTime = 1800000; // ms - 30 phut
 
   // 7. HV-Based Convergence (Dừng sớm dựa trên Hypervolume)
   double hvImprovementThreshold = 0.001; // ε = 0.1% cải thiện tối thiểu
@@ -74,6 +76,13 @@ struct ALNSConfig {
 
   bool enableLogging = false;  // Mặc định là tắt
   unsigned int randomSeed = 0; // 0 means use random_device (time-based)
+
+// 9. Penalty Relaxation for Constraint Violation
+double lambdaTW = 10.0;       // Initial TW penalty coefficient
+double lambdaTW_max = 500.0;  // Maximum TW penalty coefficient (increased from 100)
+double lambdaPin = 5.0;       // Initial battery penalty coefficient
+double lambdaPin_max = 200.0; // Maximum battery penalty coefficient (increased from 50)
+bool usePenaltyRelaxation = true; // Enable penalty relaxation mechanism
 };
 
 // Lớp con trợ giúp để quản lý các toán tử và trọng số
@@ -90,6 +99,39 @@ struct OperatorPool {
   void updateWeights(double decay);
   // Reset điểm
   void resetScores();
+};
+
+// Diversity tracking for destroy operators
+struct DestroyOperatorDiversity {
+ // Track last N operator types used
+ std::vector<DestroyOperatorType> recentTypes;
+ const int DIVERSITY_WINDOW = 5;
+
+ // Track usage per segment
+ std::map<DestroyOperatorType, int> segmentUsage;
+
+ // Penalty factor per recent use (20% penalty)
+ const double TYPE_PENALTY = 0.2;
+
+ void recordUsage(DestroyOperatorType type) {
+  recentTypes.push_back(type);
+  if (static_cast<int>(recentTypes.size()) > DIVERSITY_WINDOW) {
+   recentTypes.erase(recentTypes.begin());
+  }
+ }
+
+ void resetSegment() {
+  segmentUsage.clear();
+ }
+
+ void incrementSegmentUsage(DestroyOperatorType type) {
+  segmentUsage[type]++;
+ }
+
+ int getSegmentUsage(DestroyOperatorType type) const {
+  auto it = segmentUsage.find(type);
+  return (it != segmentUsage.end()) ? it->second : 0;
+ }
 };
 
 class ALNSSolver : public Solver {
@@ -110,7 +152,7 @@ public:
                           double initialWeight);
   void addRepairOperator(std::shared_ptr<IRepairOperator> op,
                          double initialWeight);
-
+  double getHV();
 private:
   std::shared_ptr<Instance> instance;
   ALNSConfig config;
@@ -141,11 +183,28 @@ private:
   // Logger
   std::unique_ptr<logging::ILogger> logger;
 
-  // Các "bể" toán tử
+  // [OPT-5] MIN_WEIGHT floor + VR Mode boost
+  static constexpr double MIN_WEIGHT = 0.5; // Minimum weight floor
+  bool vrModeActive_ = false;          // Vehicle reduction mode
+  int vrModeStartIter_ = 20000;        // Start VR mode at iteration 15000
+  int vrModeMinWeight_ = 5;            // Minimum weight for VR operators
+
+  // Vehicle-specific stagnation tracking (BKS+1 problem)
+  int lastBestVehicles_ = INT_MAX;     // Best vehicle count found
+  int lastVehicleImprovementIter_ = 0; // Last iteration vehicles improved
+  int consecutiveVehicleReductionFailures_ = 0; // Failed VR attempts
+
+// Penalty Relaxation state
+double currentLambdaTW_ = 10.0;  // Current TW penalty coefficient
+double currentLambdaPin_ = 5.0;  // Current battery penalty coefficient
+int penaltyRelaxationStartIter_ = 0; // Start from iteration 0
+
+  // Operator pools
   OperatorPool destroyPool;
   OperatorPool repairPool;
 
-
+  // Diversity tracking for destroy operators
+  DestroyOperatorDiversity destroyDiversity;
 
   // Helper methods
   int calculateNodesToRemove();

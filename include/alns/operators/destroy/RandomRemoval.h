@@ -8,20 +8,22 @@
 #include <vector>
 
 /**
- * @brief Toán tử phá hủy ngẫu nhiên (Random Removal).
+ * @brief Random Removal destroy operator.
  *
- * Chọn ngẫu nhiên một số khách hàng từ tất cả các tuyến và gỡ bỏ.
- * Mục đích chính: đa dạng hóa (diversification) không gian tìm kiếm
- * bằng cách phá vỡ pattern mà các toán tử heuristic có thể bị mắc kẹt.
+ * Selects customers randomly from all routes for removal.
+ * Primary purpose: diversification of the search space.
  */
 class RandomRemoval : public IDestroyOperator {
 public:
-  explicit RandomRemoval(std::shared_ptr<Instance> instance);
+ explicit RandomRemoval(std::shared_ptr<Instance> instance);
 
-  std::string getName() const override;
-  std::vector<int> execute(Solution &solution, int nodesToRemove,
-                           std::mt19937 &rng) override;
+ std::string getName() const override;
+ std::vector<int> execute(Solution &solution, int nodesToRemove,
+                          std::mt19937 &rng) override;
+
+ // Diversity tracking
+ DestroyOperatorType getDestroyType() const override { return DestroyOperatorType::RANDOM; }
 
 private:
-  std::shared_ptr<Instance> instance;
+ std::shared_ptr<Instance> instance;
 };

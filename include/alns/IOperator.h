@@ -6,11 +6,32 @@
 #include <string>
 #include <memory>
 
+// Operator type classification for diversity tracking
+enum class DestroyOperatorType {
+    SPATIAL,           // ShawDestroy, RouteMergingDestroy - focus on spatial proximity
+    TEMPORAL,          // TimeSlackDestroy - focus on time windows
+    EFFICIENCY,        // InefficientRouteRemoval - score-based removal
+    VEHICLE_REDUCTION, // VehicleReductionAwareDestroy - VR-focused
+    RANDOM             // RandomRemoval, RandomRouteRemoval - pure diversification
+};
+
+enum class RepairOperatorType {
+    STATION_AWARE,     // SmartStationRepair, SmartTimeAwareStationRepair
+    PACKING,           // VehiclePackingRepair - dense route construction
+    CHARGING_AWARE,    // ChargingAwareRouteBuilder, GreedyEnergyInsertion
+    REGRET_BASED,      // RegretKRepair - look-ahead insertion
+    DISTANCE_OPTIMAL   // BestInsertionRepair - pure distance minimization
+};
+
 // Lớp cơ sở (Interface)
 class IOperator {
 public:
     virtual ~IOperator() = default;
     virtual std::string getName() const = 0;
+
+    // Diversity tracking methods
+    virtual DestroyOperatorType getDestroyType() const { return DestroyOperatorType::RANDOM; }
+    virtual RepairOperatorType getRepairType() const { return RepairOperatorType::DISTANCE_OPTIMAL; }
 };
 
 // Interface cho toán tử Phá vỡ (Destroy)

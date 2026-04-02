@@ -108,6 +108,9 @@ private:
   mutable std::vector<int>       nodeSequence;
   mutable std::vector<NodeState> states;
   mutable std::vector<double>    minBatteryReq;
+  mutable std::vector<double>    timeSlack_;
+  mutable std::vector<double>    cumWait_;
+  mutable std::vector<bool>      hasStation_;
 
   // ── Lazy-eval flags ───────────────────────────────────────────────────────
   mutable EvaluationResult evalResult;

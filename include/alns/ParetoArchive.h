@@ -62,6 +62,7 @@ public:
    * @return Giá trị Hypervolume đã chuẩn hóa. Max lý thuyết = 1.1^3 = 1.331.
    */
   double computeHypervolume() const;
+  double computeHypervolume2D() const;
 
   /**
    * @brief Initializes the fixed reference box using the initial solution.

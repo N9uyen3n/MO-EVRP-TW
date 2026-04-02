@@ -25,6 +25,9 @@ public:
     std::string getName() const override;
     std::vector<int> execute(Solution& solution, int nodesToRemove, std::mt19937& rng) override;
 
+ // Diversity tracking
+ DestroyOperatorType getDestroyType() const override { return DestroyOperatorType::SPATIAL; }
+
 private:
     std::shared_ptr<Instance> instance;
     

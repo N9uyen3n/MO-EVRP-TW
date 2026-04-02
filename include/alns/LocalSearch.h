@@ -5,6 +5,7 @@
 #include <random>
 #include <unordered_map>
 #include <vector>
+#include <array>
 
 enum class MoveType {
   NONE,
@@ -85,9 +86,46 @@ public:
   int getVehicleReductionFeq();
   void setVehicleReductionFeq(int number);
 
+  // [OPT-10] Set iteration context for adaptive thresholds
+  void setIterationContext(int currentIteration, int totalIterations);
+
+  // Intensified mode for BKS+1 problem
+  void setIntensifiedMode(bool mode);
+
+  // Public wrapper for intensified vehicle reduction
+
+
+bool runIntensifiedVehicleReduction(Solution &solution, int maxEjectionDepth);
+
+  // Force eliminate smallest route (BKS+1 desperate measure)
+  bool forceRouteElimination(Solution &solution);
 private:
   std::shared_ptr<Instance> instance;
   std::vector<int> stationIds;
+
+  // [OPT-10] Iteration tracking for adaptive thresholds
+  int currentIteration_ = 0;
+  int totalIterations_ = 25000;
+
+  // ── P0 diagnostic counters ──────────────────────────────
+  struct DiagCounters {
+    // Operator improvement frequency
+    std::array<long long, 8> opImproveCount{}; // index = VND k
+    std::array<long long, 8> opCallCount{};    // tổng lần gọi mỗi op
+
+    // searchTwoOptCrossing
+    long long crossingDetected = 0; // crossing tìm thấy
+    long long crossingTypeA = 0;    // pass twNext_ check
+    long long crossingApplied = 0;  // actually improved + applied
+
+    // segHasStation reject
+    long long stationSegTotal = 0;  // INTRA_TWO_OPT có station
+    long long stationSegReject = 0; // bị reject sau evaluateMove
+
+    void reset() { *this = DiagCounters{}; }
+    void print() const;
+  } diag_;
+
 
   // [CHANGE-5] activeMove removed — each operator now uses a local
   // MoveDescriptor to avoid shared mutable state between operators.
@@ -137,6 +175,8 @@ private:
   bool runChargingOptimization(Solution &solution);  // Phase 2: Station cleanup
   bool runVehicleReduction(Solution &solution);      // Phase 3: Merged reduction
 
+// NEW: Intensified vehicle reduction for late-stage ALNS
+
   // --- Operators (Distance) ---
   // [CHANGE-3/4] outBestMove param removed — first-improvement, apply immediately
   bool searchRelocate(Solution &solution,
@@ -162,7 +202,7 @@ private:
                               const LocalSearchWeights &weights);
   bool repositionStations(Solution &solution);
   bool searchStationSwap(Solution &solution);
-  bool optimizeChargingAmounts(Solution &solution);
+  bool eliminateRedundantStations(Solution &solution);
   int  removeRedundantStations(Route &route);
   bool removeRedundantStations(Solution &solution);
   bool searchStationInsertion(Solution &solution);
@@ -170,9 +210,15 @@ private:
   // --- Vehicle Reduction ---
   // [CHANGE-2] runElectricityFreeVehicleReduction merged into runSmartMultiRouteMerge
   bool runSmartMultiRouteMerge(Solution &solution);
+  bool tryTriRouteMerge(Solution &solution);
+  bool tryEmptySmallestRoute(Solution &solution);    // Phase 6: targeted smallest-route emptying
   bool tryEliminateSmallestRoute(Solution &solution);
   bool ejectionChain(Solution &solution);
   bool segmentCrossExchangeForVehicleReduction(Solution &solution);
+
+  // [OPT-10] Adaptive threshold calculation for vehicle reduction
+  int calculateVehicleReductionThreshold(int currentIteration, int totalIterations,
+                                         int currentNumRoutes, int bksVehicles) const;
 
   // --- Energy Boost Helpers ---
   int    findNearestStation(int nodeId) const;
@@ -205,20 +251,22 @@ private:
 
   // ========== CONSTANTS ==========
   static constexpr int    MAX_LS_ITERATIONS      = 20;
+  static constexpr int    MAX_EJECTION_DEPTH      = 5;
   static constexpr int    EARLY_STOP_THRESHOLD   = 7;
   static constexpr int    CHARGING_FREQUENCY     = 3;
   static constexpr int    MIN_NODES_TO_CHECK     = 3;
   static constexpr int    MAX_NODES_TO_CHECK     = 10;
   static constexpr int    MIN_SWAP_ATTEMPTS      = 2;
-  static constexpr int    MAX_SWAP_ATTEMPTS      = 10;
+  static constexpr int    MAX_SWAP_ATTEMPTS      = 15;
   static constexpr int    K_NEIGHBORS            = 40;
   static constexpr double GRANULARITY_FACTOR     = 1.5;
+static constexpr int    VEHICLE_REDUCTION_FREQ = 1;
 
   // --- Adaptive Sizing ---
   int noImprovementCount_ = 0;
   int maxNodesToCheck_    = 10;
   int maxSwapAttempts_    = 15;
-  mutable int vehicleReductionFreq = 1;
+  int vehicleReductionFreq_ = 5;  // Run every 5 LS iterations
 
   std::vector<double> readyTimeById_;
   std::vector<double> dueDateById_;
@@ -227,6 +275,10 @@ private:
   // --- KNN Cache ---
   std::unordered_map<int, std::vector<int>> knnCache_;
   void preprocessKNN();
+
+  // --- Station Replacement Cache (O(1) lookup instead of O(S)) ---
+  std::unordered_map<int, std::vector<int>> bestStationReplacements_;
+  void preprocessStationReplacements();
 
   // --- Granular Neighborhoods ---
   double avgDistance_       = 0.0;
@@ -240,4 +292,7 @@ private:
   // --- Node Caches ---
   std::vector<NodeType> nodeTypeById_;
   std::vector<double>   demandById_;
+
+  // Intensified mode for BKS+1 problem
+  bool isIntensifiedMode_ = false;
 };

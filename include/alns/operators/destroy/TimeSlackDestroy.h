@@ -22,6 +22,9 @@ public:
   void setExplorationFactor(double f) { explorationFactor_ = f; }
   std::string getName() const override { return "TimeSlackDestroy"; }
 
+ // Diversity tracking
+ ::DestroyOperatorType getDestroyType() const override { return ::DestroyOperatorType::TEMPORAL; }
+
 private:
   std::shared_ptr<Instance> instance_;
   double explorationFactor_;

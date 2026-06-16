@@ -82,8 +82,15 @@ void Route::addNode(int nodeId) {
 }
 
 void Route::removeNode(size_t position) {
-  if (position < 1 || position > nodeSequence.size() - 2)
+  if (position < 1 || position > nodeSequence.size() - 2) {
+    std::cerr << "[DEBUG removeNode] pos=" << position
+              << " size=" << nodeSequence.size()
+              << " seq=[";
+    for (size_t i = 0; i < nodeSequence.size(); ++i)
+      std::cerr << nodeSequence[i] << (i+1<nodeSequence.size()?",":"");
+    std::cerr << "]\n";
     throw std::out_of_range("Vi tri xoa node khong hop le. Khong the xoa depot.");
+  }
   nodeSequence.erase(nodeSequence.begin() + position);
   isDirty          = true;
   absorptionDirty_ = true;

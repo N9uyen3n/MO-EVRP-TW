@@ -101,10 +101,11 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/rc108C15.txt";
     // instancePath = "../data/solomon/rc103C15.txt";
     // instancePath = "../data/solomon/rc204C15.txt";
-    // instancePath = "../data/solomon/r105C15.txt";
+    instancePath = "../data/solomon/r105C15.txt";
+    // instancePath = "../data/solomon/r104_21.txt";
     // instancePath = "../data/solomon/r202_21.txt";
     // instancePath = "../data/solomon/r202C15.txt";
-    instancePath = "../data/solomon/rc202_21.txt";
+    // instancePath = "../data/solomon/rc202_21.txt";
     // instancePath = "../data/solomon/rc103_21.txt";
     // instancePath = "../data/solomon/rc203_21.txt";
     // instancePath = "../data/solomon/rc204_21.txt";
@@ -138,23 +139,26 @@ int main(int argc, char *argv[]) {
     alns::ALNSConfig config;
 
     // --- Tham số cơ bản ---
-    config.maxIterations = 25000;
+    config.maxIterations = 25000; // Do not Reduce this value lower than 25000
     config.segmentIterations = 200;
     config.hvImprovementThreshold =
-        0.005;                    // ε = 0.05% (sensitive to small gains)
-    config.hvStagnationLimit = 20; //
+        0.001;                     // ε = 0.05% (sensitive to small gains)
+    config.hvStagnationLimit = 20; //`
 
     // --- Adaptive Weights ---
     config.decayParameter = 0.85;
     config.scoreDominating = 40.0;
     config.scoreNonDominated = 25.0; // Increased from 25.0
     config.scoreDominated = 10.0;    // Increased from 10.0
-    config.scoreIdentical = 0.0;
+    config.scoreIdentical = 15.0; // Increased from 0.0 to encourage vehicle reduction operators
+
+    config.maxTime = 821000;
+    config.SAScale = 50;
 
     // --- Destroy Params ---
     config.minRemoval = 0.15;
     config.maxRemoval =
-        0.4; // Increased from 0.4 - destroy more for better exploration
+        0.55; // Increased from 0.4 - destroy more for better exploration
 
     // --- Repair Params ---
     // config.regretK = 2;
@@ -165,8 +169,7 @@ int main(int argc, char *argv[]) {
     // --- Local Search & Scatter Search ---
     config.useLocalSearch = true;
     config.useScatterSearch = false;
-    config.localSearchIntensity = 20; // Increased from 20
-
+    config.localSearchIntensity = 25; // Do not reduce this value lower than 20
     // --- Scatter Search Params ---
     // config.scatterSearchConfig.maxScatterIters = 5;
     // config.scatterSearchConfig.alnsItersPerCombination = 50;
@@ -174,7 +177,7 @@ int main(int argc, char *argv[]) {
     // --- Simulated Annealing ---
     config.startTemperature =
         200.0; // Increased from 200.0 - CRITICAL for exploration
-    config.coolingRate = 0.9992; // Slower cooling from 0.995 - stay warm longer
+    config.coolingRate = 0.9993; // Slower cooling from 0.995 - stay warm longer
     config.minTemperature =
         0.05; // Lower from 0.1 - allow smaller jumps at the end
 
@@ -193,7 +196,7 @@ int main(int argc, char *argv[]) {
     std::string baseName = pathObj.stem().string();
 
     // Tạo đường dẫn thư mục output: logs/<TênFile>/<CustomRunName> (nếu có)
-    std::string outputDir = "logs_testLS4/" + baseName;
+    std::string outputDir = "logs_testLS5/" + baseName;
     std::string runName = baseName;
 
     if (!customRunName.empty()) {
@@ -232,6 +235,7 @@ int main(int argc, char *argv[]) {
     std::cout << "========================================\n";
     std::cout << "Execution Time: " << duration << " ms\n";
     std::cout << "Pareto Front Size: " << paretoFront.size() << "\n";
+    std::cout << "HV " << solver->getHV() << "\n";
     std::cout << "Results saved in: " << outputDir
               << "\n"; // Nhắc người dùng nơi lưu file
 
@@ -266,7 +270,8 @@ int main(int argc, char *argv[]) {
 
       // === TABLE 2: Detailed Route Information for BEST Distance Solution ===
       // std::cout
-      //     << "\n--- Best Distance Solution (Solution #1) - Route Details ---\n";
+      //     << "\n--- Best Distance Solution (Solution #1) - Route Details
+      //     ---\n";
       // const auto &bestSol = paretoFront[0];
       // printSolutionSummary(bestSol);
 

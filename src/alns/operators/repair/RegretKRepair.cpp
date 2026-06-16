@@ -38,54 +38,42 @@ void createNewRoute(Solution &solution, int custId,
 }
 } // namespace
 
-std::vector<RegretKRepair::InsertionCost>
-RegretKRepair::findKBestInsertions(int custId, Solution &solution,
-                                   std::mt19937 &rng, int K) {
-  auto &routes = solution.getRoutes();
-  const double vehCap = instance->getVehicleCapacity();
-  std::vector<InsertionCost> results;
+std::vector<RegretKRepair::InsertionCost> RegretKRepair::findKBestInsertions(
+    int custId, Solution &solution, std::mt19937 &rng, int K) {
 
+  auto &routes = solution.getRoutes();
   double dem = instance->getNodeById(custId)->getDemand();
 
+  // ONE best insertion per route — pure deltaDistance, no packingBonus
+  std::map<int, InsertionCost> bestPerRoute;
+
   for (int r = 0; r < (int)routes.size(); ++r) {
-    double currentDem = routes[r].getTotalDemand();
-    if (currentDem + dem > vehCap)
+    if (routes[r].getTotalDemand() + dem > instance->getVehicleCapacity())
       continue;
 
-    // [THÔNG MINH 1]: KHUYẾN KHÍCH NHỒI CHẶT (Packing Bonus)
-    // Tỷ lệ lấp đầy càng cao, điểm cost càng được TRỪ đi nhiều.
-    // Thuật toán sẽ ưu tiên nhét khách vào xe đã đầy 90% thay vì xe đang trống 50%
-    double fillRate = (currentDem + dem) / vehCap;
-    double packingBonus = 2000.0 * fillRate;
-
     for (size_t pos = 1; pos < routes[r].getNodes().size(); ++pos) {
-      if (!routes[r].canPossiblyInsert(custId, pos))
-        continue;
-
+      if (!routes[r].canPossiblyInsert(custId, pos)) continue;
       InsertionResult res = routes[r].checkInsertionCost(custId, pos);
-      if (!res.isFeasible)
-        continue;
+      if (!res.isFeasible) continue;
 
-      // Chi phí đơn thuần = Khoảng cách tăng thêm - Điểm thưởng nhồi nhét
-      double cost = (wDist_ * res.deltaDistance) - packingBonus;
-
-      if (noiseParam > 0.0) {
-        std::uniform_real_distribution<double> nd(0.9, 1.1); // Noise biên độ hẹp
-        cost *= nd(rng);
-      }
-
-      results.push_back({r, (int)pos, cost, true});
+      double cost = res.deltaDistance;  // pure distance for regret
+      if (!bestPerRoute.count(r) || cost < bestPerRoute[r].cost)
+        bestPerRoute[r] = {r, (int)pos, cost, true};
     }
   }
 
-  if (results.empty()) return {};
+  // Collect, apply packingBonus for SELECTION (not regret), sort
+  std::vector<InsertionCost> results;
+  for (auto &[r, ic] : bestPerRoute) {
+    double fillRate = (routes[r].getTotalDemand() + dem) /
+                      instance->getVehicleCapacity();
+    ic.cost -= 2000.0 * fillRate;  // packingBonus for ordering only
+    results.push_back(ic);
+  }
 
   int topK = std::min(K, (int)results.size());
-  std::partial_sort(
-      results.begin(), results.begin() + topK, results.end(),
-      [](const InsertionCost &a, const InsertionCost &b) {
-        return a.cost < b.cost; // Cost âm càng sâu càng tốt
-      });
+  std::partial_sort(results.begin(), results.begin() + topK, results.end(),
+    [](const InsertionCost &a, const InsertionCost &b){ return a.cost < b.cost; });
   results.resize(topK);
   return results;
 }

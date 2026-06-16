@@ -196,55 +196,85 @@ void SmartStationRepair::execute(Solution &solution,
       }
       route.evaluate();
     } else {
-      // 3. Create new route if no insertion found
-      int newRouteId = solution.getNumRoutes();
-      auto vehicle = std::make_shared<Vehicle>(
-          newRouteId, instance->getVehicleCapacity(),
-          instance->getVehicleBattery(), instance->getVehicleEnergyRate());
-      Route newRoute(newRouteId, vehicle, instance);
-      newRoute.addNode(customerId, 1);
-      newRoute.evaluate();
+      // Phase 5: Exhaustive station search — try ALL stations (capped at 10)
+      // across ALL existing routes at ALL positions before creating new route.
+      bool stationInserted = false;
+      constexpr int MAX_STATIONS_TO_TRY = 10;
 
-      // ⭐ FIX: chỉ add route nếu feasible (AdaptiveInsertion cũng check này)
-      // Customer xa depot có thể tạo infeasible single-customer route (energy fail)
-      if (newRoute.isFeasible()) {
-        solution.addRoute(newRoute);
-      } else {
-        // FIX #2: Thu tat ca stations (sorted theo detour) thay vi chi getNearestStation
-        // Detour metric cho solo route [depot, station, cust, depot]:
-        //   pattern B: dist(0, st) + dist(st, cust)
-        //   pattern A: dist(0, cust) + dist(cust, st)
-        struct StDet { int id; double det; };
-        std::vector<StDet> sortedStats;
-        const auto& allStations = instance->getStations();
-        for (const auto& st : allStations) {
-          int sid = st->getId();
-          // Dung tong ca hai huong de la best for either pattern
-          double det = std::min(
-              instance->getDistance(0, sid) + instance->getDistance(sid, customerId),
-              instance->getDistance(0, customerId) + instance->getDistance(customerId, sid));
-          sortedStats.push_back({sid, det});
-        }
-        std::sort(sortedStats.begin(), sortedStats.end(),
-                  [](const StDet& a, const StDet& b){ return a.det < b.det; });
+      const auto& allStations = instance->getStations();
+      int stationsToTry = std::min(MAX_STATIONS_TO_TRY, (int)allStations.size());
 
-        for (const auto& [nearestStat, det] : sortedStats) {
-          Route withStat(newRouteId, vehicle, instance);
-          withStat.addNode(nearestStat, 1);
-          withStat.addNode(customerId, 2);
-          withStat.evaluate();
-          if (withStat.isFeasible()) {
-            solution.addRoute(withStat);
-            break;
+      for (int si = 0; si < stationsToTry && !stationInserted; ++si) {
+        int stationId = allStations[si]->getId();
+        for (int ri = 0; ri < (int)routes.size() && !stationInserted; ++ri) {
+          double custDemand = instance->getNodeById(customerId)->getDemand();
+          if (!routes[ri].quickCapacityCheck(custDemand)) continue;
+
+          const auto& rnodes = routes[ri].getNodes();
+          for (int pos = 1; pos < (int)rnodes.size() && !stationInserted; ++pos) {
+            // Try [station, customer] pattern
+            for (bool stFirst : {true, false}) {
+              Route testRoute = routes[ri];
+              if (stFirst) {
+                testRoute.addNode(customerId, pos);
+                testRoute.addNode(stationId, pos);
+              } else {
+                testRoute.addNode(customerId, pos);
+                testRoute.addNode(stationId, pos + 1);
+              }
+              testRoute.evaluate();
+              if (testRoute.isFeasible()) {
+                routes[ri] = testRoute;
+                stationInserted = true;
+                break;
+              }
+            }
           }
-          // Thy pattern [cust, station]
-          Route withStatAfter(newRouteId, vehicle, instance);
-          withStatAfter.addNode(customerId, 1);
-          withStatAfter.addNode(nearestStat, 2);
-          withStatAfter.evaluate();
-          if (withStatAfter.isFeasible()) {
-            solution.addRoute(withStatAfter);
-            break;
+        }
+      }
+
+      if (!stationInserted) {
+        // Only NOW create a new route
+        int newRouteId = solution.getNumRoutes();
+        auto vehicle = std::make_shared<Vehicle>(
+            newRouteId, instance->getVehicleCapacity(),
+            instance->getVehicleBattery(), instance->getVehicleEnergyRate());
+        Route newRoute(newRouteId, vehicle, instance);
+        newRoute.addNode(customerId, 1);
+        newRoute.evaluate();
+
+        if (newRoute.isFeasible()) {
+          solution.addRoute(newRoute);
+        } else {
+          struct StDet { int id; double det; };
+          std::vector<StDet> sortedStations;
+          for (const auto& st : allStations) {
+            int sid = st->getId();
+            double det = std::min(
+                instance->getDistance(0, sid) + instance->getDistance(sid, customerId),
+                instance->getDistance(0, customerId) + instance->getDistance(customerId, sid));
+            sortedStations.push_back({sid, det});
+          }
+          std::sort(sortedStations.begin(), sortedStations.end(),
+                    [](const StDet& a, const StDet& b){ return a.det < b.det; });
+
+          for (const auto& [nearestStat, det] : sortedStations) {
+            Route withStat(newRouteId, vehicle, instance);
+            withStat.addNode(nearestStat, 1);
+            withStat.addNode(customerId, 2);
+            withStat.evaluate();
+            if (withStat.isFeasible()) {
+              solution.addRoute(withStat);
+              break;
+            }
+            Route withStatAfter(newRouteId, vehicle, instance);
+            withStatAfter.addNode(customerId, 1);
+            withStatAfter.addNode(nearestStat, 2);
+            withStatAfter.evaluate();
+            if (withStatAfter.isFeasible()) {
+              solution.addRoute(withStatAfter);
+              break;
+            }
           }
         }
       }

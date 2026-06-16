@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cfloat>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -22,6 +23,8 @@ namespace fs = std::filesystem;
 // Struct để lưu kết quả benchmark
 struct BenchmarkResult {
   std::string instanceName;
+  int seed;
+  int runNumber;
   int customers;
   int stations;
   long long timeMs;
@@ -33,16 +36,40 @@ struct BenchmarkResult {
   bool feasible;
 };
 
-// Hàm chạy một instance và trả về kết quả
+// Struct để lưu thống kê tổng hợp
+struct InstanceStats {
+  std::string instanceName;
+  int totalRuns;
+  int feasibleRuns;
+  double avgTimeMs;
+  int minVehicles;
+  int maxVehicles;
+  double avgVehicles;
+  double minDistance;
+  double maxDistance;
+  double avgDistance;
+  double minWorkload;
+  double maxWorkload;
+  double avgWorkload;
+  double minMaxTime;
+  double maxMaxTime;
+  double avgMaxTime;
+};
+
+// Hàm chạy một instance với seed cụ thể và trả về kết quả
 BenchmarkResult runInstance(const std::string &instancePath,
-                            const alns::ALNSConfig &config) {
+                            alns::ALNSConfig config,
+                            int seed, int runNumber) {
   BenchmarkResult result;
 
   fs::path pathObj(instancePath);
   result.instanceName = pathObj.stem().string();
+  result.seed = seed;
+  result.runNumber = runNumber;
 
   std::cout << "\n========================================\n";
-  std::cout << "  Running: " << result.instanceName << "\n";
+  std::cout << "  Running: " << result.instanceName
+            << " (Seed=" << seed << ", Run=" << runNumber << ")\n";
   std::cout << "========================================\n";
 
   try {
@@ -60,13 +87,17 @@ BenchmarkResult runInstance(const std::string &instancePath,
     std::cout << "Customers: " << result.customers
               << ", Stations: " << result.stations << "\n";
 
-    // Setup output directory
-    std::string outputDir = "logs/benchmark_test2/" + result.instanceName;
-    std::string runName = result.instanceName;
+    // Setup output directory - phân biệt theo run number
+    std::string outputDir = "logs/benchmark_test2/" + result.instanceName +
+                           "/run_" + std::to_string(runNumber);
+    std::string runName = result.instanceName + "_run" + std::to_string(runNumber);
 
     // Create solver
     auto solver = std::make_unique<alns::ALNSSolver>(instance, config,
                                                      outputDir, runName);
+
+    // Set seed via config
+    config.randomSeed = seed;
 
     // Run solver
     std::cout << "Starting solver...\n";
@@ -107,9 +138,69 @@ BenchmarkResult runInstance(const std::string &instancePath,
   return result;
 }
 
-// Hàm ghi kết quả ra file CSV
-void writeResultsToCSV(const std::vector<BenchmarkResult> &results,
-                       const std::string &filename) {
+// Hàm tính thống kê tổng hợp cho một instance
+InstanceStats calculateInstanceStats(const std::string &instanceName,
+                                     const std::vector<BenchmarkResult> &results) {
+  InstanceStats stats;
+  stats.instanceName = instanceName;
+  stats.totalRuns = results.size();
+  stats.feasibleRuns = 0;
+
+  double sumTime = 0;
+  double sumVehicles = 0;
+  double sumDistance = 0;
+  double sumWorkload = 0;
+  double sumMaxTime = 0;
+
+  stats.minVehicles = INT_MAX;
+  stats.maxVehicles = 0;
+  stats.minDistance = DBL_MAX;
+  stats.maxDistance = 0;
+  stats.minWorkload = DBL_MAX;
+  stats.maxWorkload = 0;
+  stats.minMaxTime = DBL_MAX;
+  stats.maxMaxTime = 0;
+
+  for (const auto &r : results) {
+    if (r.feasible) {
+      stats.feasibleRuns++;
+      sumTime += r.timeMs;
+      sumVehicles += r.bestVehicles;
+      sumDistance += r.bestDistance;
+      sumWorkload += r.bestWorkload;
+      sumMaxTime += r.bestMaxTime;
+
+      stats.minVehicles = std::min(stats.minVehicles, r.bestVehicles);
+      stats.maxVehicles = std::max(stats.maxVehicles, r.bestVehicles);
+      stats.minDistance = std::min(stats.minDistance, r.bestDistance);
+      stats.maxDistance = std::max(stats.maxDistance, r.bestDistance);
+      stats.minWorkload = std::min(stats.minWorkload, r.bestWorkload);
+      stats.maxWorkload = std::max(stats.maxWorkload, r.bestWorkload);
+      stats.minMaxTime = std::min(stats.minMaxTime, r.bestMaxTime);
+      stats.maxMaxTime = std::max(stats.maxMaxTime, r.bestMaxTime);
+    }
+  }
+
+  if (stats.feasibleRuns > 0) {
+    stats.avgTimeMs = sumTime / stats.feasibleRuns;
+    stats.avgVehicles = sumVehicles / stats.feasibleRuns;
+    stats.avgDistance = sumDistance / stats.feasibleRuns;
+    stats.avgWorkload = sumWorkload / stats.feasibleRuns;
+    stats.avgMaxTime = sumMaxTime / stats.feasibleRuns;
+  } else {
+    stats.avgTimeMs = 0;
+    stats.avgVehicles = 0;
+    stats.avgDistance = 0;
+    stats.avgWorkload = 0;
+    stats.avgMaxTime = 0;
+  }
+
+  return stats;
+}
+
+// Hàm ghi kết quả chi tiết ra file CSV
+void writeDetailedResultsToCSV(const std::vector<BenchmarkResult> &results,
+                               const std::string &filename) {
   std::ofstream file(filename);
 
   if (!file.is_open()) {
@@ -118,37 +209,88 @@ void writeResultsToCSV(const std::vector<BenchmarkResult> &results,
   }
 
   // Header
-  file << "Instance,Customers,Stations,Time(ms),ParetoSize,Vehicles,Distance,"
-          "Workload,MaxTime,Feasible\n";
+  file << "Instance,Seed,Run,Customers,Stations,Time(ms),ParetoSize,Vehicles,"
+          "Distance,Workload,MaxTime,Feasible\n";
 
   // Data
   for (const auto &r : results) {
-    file << r.instanceName << "," << r.customers << "," << r.stations << ","
-         << r.timeMs << "," << r.paretoSize << "," << r.bestVehicles << ","
+    file << r.instanceName << "," << r.seed << "," << r.runNumber << ","
+         << r.customers << "," << r.stations << "," << r.timeMs << ","
+         << r.paretoSize << "," << r.bestVehicles << ","
          << std::fixed << std::setprecision(2) << r.bestDistance << ","
          << r.bestWorkload << "," << r.bestMaxTime << ","
          << (r.feasible ? "YES" : "NO") << "\n";
   }
 
   file.close();
-  std::cout << "\n[INFO] Results saved to: " << filename << "\n";
+  std::cout << "\n[INFO] Detailed results saved to: " << filename << "\n";
+}
+
+// Hàm ghi thống kê tổng hợp ra file CSV
+void writeSummaryResultsToCSV(const std::vector<InstanceStats> &stats,
+                               const std::string &filename) {
+  std::ofstream file(filename);
+
+  if (!file.is_open()) {
+    std::cerr << "[ERROR] Cannot open file: " << filename << "\n";
+    return;
+  }
+
+  // Header
+  file << "Instance,TotalRuns,FeasibleRuns,AvgTime(ms),MinVehicles,MaxVehicles,"
+          "AvgVehicles,MinDistance,MaxDistance,AvgDistance,MinWorkload,"
+          "MaxWorkload,AvgWorkload,MinMaxTime,MaxMaxTime,AvgMaxTime\n";
+
+  // Data
+  for (const auto &s : stats) {
+    file << s.instanceName << "," << s.totalRuns << "," << s.feasibleRuns << ","
+         << std::fixed << std::setprecision(2) << s.avgTimeMs << ","
+         << s.minVehicles << "," << s.maxVehicles << ","
+         << std::fixed << std::setprecision(2) << s.avgVehicles << ","
+         << std::fixed << std::setprecision(2) << s.minDistance << ","
+         << std::fixed << std::setprecision(2) << s.maxDistance << ","
+         << std::fixed << std::setprecision(2) << s.avgDistance << ","
+         << std::fixed << std::setprecision(2) << s.minWorkload << ","
+         << std::fixed << std::setprecision(2) << s.maxWorkload << ","
+         << std::fixed << std::setprecision(2) << s.avgWorkload << ","
+         << std::fixed << std::setprecision(2) << s.minMaxTime << ","
+         << std::fixed << std::setprecision(2) << s.maxMaxTime << ","
+         << std::fixed << std::setprecision(2) << s.avgMaxTime << "\n";
+  }
+
+  file.close();
+  std::cout << "[INFO] Summary results saved to: " << filename << "\n";
 }
 
 int main(int argc, char *argv[]) {
+  // Parse command line arguments
+  std::string dataDir = "../data/test3";
+  int numSeeds = 10;  // Mặc định chạy 10 lần với seed 1-10
+
+  if (argc >= 2) {
+    dataDir = argv[1];
+  }
+  if (argc >= 3) {
+    numSeeds = std::stoi(argv[2]);
+  }
+
   std::cout << "========================================\n";
-  std::cout << "   BENCHMARK: ../data/test2 Dataset    \n";
+  std::cout << "   BENCHMARK: Multi-Run Dataset        \n";
+  std::cout << "========================================\n";
+  std::cout << "Data Directory: " << dataDir << "\n";
+  std::cout << "Number of Seeds: " << numSeeds << " (1-" << numSeeds << ")\n";
   std::cout << "========================================\n";
 
   // Cấu hình ALNS
   alns::ALNSConfig config;
-  config.maxIterations = 2000;
-  config.segmentIterations = 50;
+  config.maxIterations = 22000;
+  config.segmentIterations = 200;
   config.hvImprovementThreshold = 0.001;
   config.hvStagnationLimit = 5;
   config.decayParameter = 0.8;
-  config.scoreDominating = 25.0;
-  config.scoreNonDominated = 10.0;
-  config.scoreDominated = 5.0;
+  config.scoreDominating = 40.0;
+  config.scoreNonDominated = 25.0;
+  config.scoreDominated = 10.0;
   config.scoreIdentical = 0.0;
   config.minRemoval = 0.1;
   config.maxRemoval = 0.4;
@@ -162,7 +304,7 @@ int main(int argc, char *argv[]) {
   config.scatterSearchConfig.maxScatterIters = 5;
   config.scatterSearchConfig.alnsItersPerCombination = 10;
 
-  config.startTemperature = 100.0;
+  config.startTemperature = 200.0;
   config.coolingRate = 0.995;
   config.minTemperature = 0.1;
   config.enableLogging = true;
@@ -171,8 +313,7 @@ int main(int argc, char *argv[]) {
             << ", localSearch=" << (config.useLocalSearch ? "ON" : "OFF")
             << "\n";
 
-  // Tìm tất cả file trong ../data/test2
-  std::string dataDir = "../data/test2";
+  // Tìm tất cả file trong thư mục
   std::vector<std::string> instanceFiles;
 
   try {
@@ -198,14 +339,26 @@ int main(int argc, char *argv[]) {
   std::cout << "[INFO] Found " << instanceFiles.size() << " instances in "
             << dataDir << "\n\n";
 
-  // Chạy benchmark cho tất cả instances
-  std::vector<BenchmarkResult> results;
+  // Chạy benchmark cho tất cả instances với nhiều seed
+  std::vector<BenchmarkResult> allResults;
+  std::map<std::string, std::vector<BenchmarkResult>> resultsByInstance;
 
   auto benchmarkStart = std::chrono::high_resolution_clock::now();
 
   for (const auto &instancePath : instanceFiles) {
-    BenchmarkResult result = runInstance(instancePath, config);
-    results.push_back(result);
+    fs::path pathObj(instancePath);
+    std::string instanceName = pathObj.stem().string();
+
+    std::cout << "\n========================================\n";
+    std::cout << "  Processing Instance: " << instanceName << "\n";
+    std::cout << "========================================\n";
+
+    // Chạy với seed từ 1 đến numSeeds
+    for (int seed = 1; seed <= numSeeds; seed++) {
+      BenchmarkResult result = runInstance(instancePath, config, seed, seed);
+      allResults.push_back(result);
+      resultsByInstance[instanceName].push_back(result);
+    }
   }
 
   auto benchmarkEnd = std::chrono::high_resolution_clock::now();
@@ -213,49 +366,70 @@ int main(int argc, char *argv[]) {
                             benchmarkEnd - benchmarkStart)
                             .count();
 
+  // Tính thống kê tổng hợp cho từng instance
+  std::vector<InstanceStats> summaryStats;
+  for (const auto &[instanceName, results] : resultsByInstance) {
+    InstanceStats stats = calculateInstanceStats(instanceName, results);
+    summaryStats.push_back(stats);
+  }
+
   // Tổng kết
   std::cout << "\n========================================\n";
   std::cout << "      BENCHMARK SUMMARY                 \n";
   std::cout << "========================================\n";
-  std::cout << "Total Instances: " << results.size() << "\n";
-  std::cout << "Total Time: " << totalTime << " seconds\n";
+  std::cout << "Total Instances: " << instanceFiles.size() << "\n";
+  std::cout << "Total Runs: " << allResults.size() << "\n";
+  std::cout << "Total Time: " << totalTime << " seconds ("
+            << (totalTime / 60.0) << " minutes)\n";
 
   int feasibleCount = 0;
   long long avgTime = 0;
-  for (const auto &r : results) {
+  for (const auto &r : allResults) {
     if (r.feasible)
       feasibleCount++;
     avgTime += r.timeMs;
   }
-  avgTime /= results.size();
+  avgTime /= allResults.size();
 
-  std::cout << "Feasible Solutions: " << feasibleCount << "/" << results.size()
+  std::cout << "Feasible Solutions: " << feasibleCount << "/" << allResults.size()
             << "\n";
-  std::cout << "Average Time per Instance: " << avgTime << " ms\n";
+  std::cout << "Average Time per Run: " << avgTime << " ms\n";
 
-  // Ghi kết quả ra file CSV
-  std::string csvFilename = "benchmark_test2_results.csv";
-  writeResultsToCSV(results, csvFilename);
+  // Ghi kết quả chi tiết ra file CSV
+  std::string detailedCsvFilename = "benchmark_test2_detailed.csv";
+  writeDetailedResultsToCSV(allResults, detailedCsvFilename);
 
-  // In bảng kết quả
-  std::cout << "\n--- Results Table ---\n";
+  // Ghi thống kê tổng hợp ra file CSV
+  std::string summaryCsvFilename = "benchmark_test2_summary.csv";
+  writeSummaryResultsToCSV(summaryStats, summaryCsvFilename);
+
+  // In bảng thống kê tổng hợp
+  std::cout << "\n--- Summary Statistics Table ---\n";
   std::cout << std::left << std::setw(20) << "Instance" << std::setw(8)
-            << "Cust" << std::setw(10) << "Time(ms)" << std::setw(6) << "Veh"
-            << std::setw(12) << "Distance" << std::setw(10) << "Feasible"
-            << "\n";
-  std::cout << std::string(76, '-') << "\n";
+            << "Runs" << std::setw(8) << "Feas" << std::setw(10)
+            << "AvgTime" << std::setw(8) << "MinV" << std::setw(8)
+            << "MaxV" << std::setw(8) << "AvgV" << std::setw(10)
+            << "MinDist" << std::setw(10) << "MaxDist" << std::setw(10)
+            << "AvgDist" << "\n";
+  std::cout << std::string(118, '-') << "\n";
 
-  for (const auto &r : results) {
-    std::cout << std::left << std::setw(20) << r.instanceName << std::setw(8)
-              << r.customers << std::setw(10) << r.timeMs << std::setw(6)
-              << r.bestVehicles << std::setw(12) << std::fixed
-              << std::setprecision(2) << r.bestDistance << std::setw(10)
-              << (r.feasible ? "YES" : "NO") << "\n";
+  for (const auto &s : summaryStats) {
+    std::cout << std::left << std::setw(20) << s.instanceName << std::setw(8)
+              << s.totalRuns << std::setw(8) << s.feasibleRuns << std::setw(10)
+              << std::fixed << std::setprecision(0) << s.avgTimeMs << std::setw(8)
+              << s.minVehicles << std::setw(8) << s.maxVehicles << std::setw(8)
+              << std::fixed << std::setprecision(2) << s.avgVehicles << std::setw(10)
+              << std::fixed << std::setprecision(2) << s.minDistance << std::setw(10)
+              << std::fixed << std::setprecision(2) << s.maxDistance << std::setw(10)
+              << std::fixed << std::setprecision(2) << s.avgDistance << "\n";
   }
 
   std::cout << "\n========================================\n";
   std::cout << "  Benchmark completed successfully!    \n";
   std::cout << "========================================\n";
+  std::cout << "Detailed results: " << detailedCsvFilename << "\n";
+  std::cout << "Summary results: " << summaryCsvFilename << "\n";
+  std::cout << "Log directory: logs/benchmark_test2/\n";
 
   return 0;
 }

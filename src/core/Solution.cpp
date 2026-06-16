@@ -417,3 +417,20 @@ long long Solution::getHash() const {
   }
   return hash;
 }
+
+// [OPT-11] Solution hint methods
+void Solution::setHint(const SolutionHint &hint) {
+  hint_ = hint;
+}
+
+const SolutionHint &Solution::getHint() const {
+  return hint_;
+}
+
+void Solution::clearHint() {
+  hint_.clear();
+}
+
+bool Solution::hasValidHint() const {
+  return hint_.isValid;
+}

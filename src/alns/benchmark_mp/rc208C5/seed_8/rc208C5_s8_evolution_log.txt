@@ -1,0 +1,1605 @@
+--- ALNS Solution Evolution Log ---
+(Logs all accepted non-dominated/dominating solutions)
+
+----------------------------------------
+[Iteration: 150 | Result: Accepted (SA)]
+[Operators: EnergyCriticalRemoval / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 200 | Result: Dominating]
+[Operators: EnergyCriticalRemoval / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 186.27, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      186.27
+   Total Time:          406.04
+   Total Energy Cons:   186.27
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    3 |   S19 |    Station |    42.06 |    58.46 |    77.75 |  1000.00 |    42.06
+    8 |   C32 |   Customer |    68.46 |    79.00 |    67.75 |   990.00 |     0.00
+    2 |    S3 |    Station |   139.03 |   169.36 |    77.75 |   990.00 |    77.75
+    5 |   C37 |   Customer |   177.36 |   187.36 |    69.75 |   980.00 |     0.00
+    7 |   C41 |   Customer |   197.26 |   207.26 |    59.85 |   960.00 |     0.00
+    6 |   C96 |   Customer |   228.47 |   238.47 |    38.64 |   934.00 |     0.00
+    4 |   C66 |   Customer |   260.49 |   393.00 |    16.61 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 250 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 300 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 350 | Result: Accepted (SA)]
+[Operators: TimeSlackDestroy / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 184.28, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      184.28
+   Total Time:          406.04
+   Total Energy Cons:   184.28
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    3 |   S19 |    Station |   184.56 |   202.03 |    74.46 |   974.00 |    44.79
+    8 |   C32 |   Customer |   212.03 |   222.03 |    64.46 |   964.00 |     0.00
+    5 |   C37 |   Customer |   278.49 |   288.49 |     8.00 |   954.00 |     0.00
+    2 |    S3 |    Station |   296.49 |   324.30 |    71.31 |   954.00 |    71.31
+    7 |   C41 |   Customer |   331.37 |   341.37 |    64.24 |   934.00 |     0.00
+    4 |   C66 |   Customer |   383.00 |   393.00 |    22.61 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 400 | Result: Accepted (SA)]
+[Operators: Random Removal / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 174.89, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      174.89
+   Total Time:          406.04
+   Total Energy Cons:   174.89
+--- Node Sequence (Count: 11) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   200.98 |    61.37 |   954.00 |    27.43
+    5 |   C37 |   Customer |   208.98 |   218.98 |    53.37 |   944.00 |     0.00
+    3 |   S19 |    Station |   272.35 |   280.15 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   290.15 |   300.15 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   310.15 |   340.47 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   377.14 |   393.00 |    41.08 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 450 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 177.47, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      177.47
+   Total Time:          406.04
+   Total Energy Cons:   177.47
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    2 |    S3 |    Station |    36.24 |    50.37 |    77.75 |  1000.00 |    36.24
+    5 |   C37 |   Customer |    58.37 |    69.00 |    69.75 |   990.00 |     0.00
+    7 |   C41 |   Customer |    78.90 |    88.90 |    53.77 |   970.00 |     0.00
+    6 |   C96 |   Customer |   110.11 |   152.00 |    32.56 |   944.00 |     0.00
+    3 |   S19 |    Station |   184.56 |   214.88 |    77.75 |   944.00 |    77.75
+    8 |   C32 |   Customer |   224.88 |   234.88 |    67.75 |   934.00 |     0.00
+    4 |   C66 |   Customer |   281.41 |   393.00 |    21.22 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 500 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 174.89, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      174.89
+   Total Time:          406.04
+   Total Energy Cons:   174.89
+--- Node Sequence (Count: 11) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   200.98 |    61.37 |   954.00 |    27.43
+    5 |   C37 |   Customer |   208.98 |   218.98 |    53.37 |   944.00 |     0.00
+    3 |   S19 |    Station |   272.35 |   280.15 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   290.15 |   300.15 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   310.15 |   340.47 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   377.14 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 550 | Result: Dominating]
+[Operators: TimeSlackDestroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 600 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 196.72, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      196.72
+   Total Time:          406.04
+   Total Energy Cons:   196.72
+--- Node Sequence (Count: 14) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    2 |    S3 |    Station |    36.24 |    50.37 |    77.75 |  1000.00 |    36.24
+    7 |   C41 |   Customer |    57.44 |    83.00 |    70.68 |   980.00 |     0.00
+    2 |    S3 |    Station |    90.07 |    90.07 |    27.37 |   980.00 |     0.00
+    5 |   C37 |   Customer |    98.07 |   108.07 |    19.37 |   970.00 |     0.00
+    2 |    S3 |    Station |   116.07 |   135.28 |    60.63 |   970.00 |    49.26
+    6 |   C96 |   Customer |   163.35 |   173.35 |    32.56 |   944.00 |     0.00
+    3 |   S19 |    Station |   205.91 |   213.71 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   223.71 |   233.71 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   243.71 |   274.03 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   310.71 |   393.00 |    41.08 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 650 | Result: Accepted (SA)]
+[Operators: TimeSlackDestroy / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 177.62, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      177.62
+   Total Time:          406.04
+   Total Energy Cons:   177.62
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    2 |    S3 |    Station |    36.24 |    50.37 |    77.75 |  1000.00 |    36.24
+    5 |   C37 |   Customer |    58.37 |    69.00 |    69.75 |   990.00 |     0.00
+    7 |   C41 |   Customer |    78.90 |    88.90 |    53.77 |   970.00 |     0.00
+    6 |   C96 |   Customer |   110.11 |   152.00 |    32.56 |   944.00 |     0.00
+    3 |   S19 |    Station |   184.56 |   192.36 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   202.36 |   212.36 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   222.36 |   252.68 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   289.35 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 700 | Result: Accepted (SA)]
+[Operators: Random Removal / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 750 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 800 | Result: Dominating]
+[Operators: VehicleReductionAwareDestroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 177.47, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      177.47
+   Total Time:          406.04
+   Total Energy Cons:   177.47
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    2 |    S3 |    Station |    36.24 |    50.37 |    77.75 |  1000.00 |    36.24
+    5 |   C37 |   Customer |    58.37 |    69.00 |    69.75 |   990.00 |     0.00
+    7 |   C41 |   Customer |    78.90 |    88.90 |    53.77 |   970.00 |     0.00
+    6 |   C96 |   Customer |   110.11 |   152.00 |    32.56 |   944.00 |     0.00
+    3 |   S19 |    Station |   184.56 |   214.88 |    77.75 |   944.00 |    77.75
+    8 |   C32 |   Customer |   224.88 |   234.88 |    67.75 |   934.00 |     0.00
+    4 |   C66 |   Customer |   281.41 |   393.00 |    21.22 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 850 | Result: Accepted (SA)]
+[Operators: TimeSlackDestroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 264.38, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      264.38
+   Total Time:          406.04
+   Total Energy Cons:   264.38
+--- Node Sequence (Count: 13) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    5 |   C37 |   Customer |    40.61 |    69.00 |    37.14 |   990.00 |     0.00
+    2 |    S3 |    Station |    77.00 |    87.44 |    55.92 |   990.00 |    26.78
+    7 |   C41 |   Customer |    94.51 |   104.51 |    48.85 |   970.00 |     0.00
+    3 |   S19 |    Station |   153.36 |   172.11 |    48.08 |   970.00 |    48.08
+    6 |   C96 |   Customer |   204.67 |   214.67 |    15.52 |   944.00 |     0.00
+    1 |    S0 |    Station |   230.19 |   246.60 |    42.06 |   944.00 |    42.06
+    3 |   S19 |    Station |   288.66 |   296.46 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   306.46 |   316.46 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   326.46 |   346.33 |    50.95 |   934.00 |    50.95
+    4 |   C66 |   Customer |   383.00 |   393.00 |    14.27 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 900 | Result: Dominating]
+[Operators: TimeSlackDestroy / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 950 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1000 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1050 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1100 | Result: Accepted (SA)]
+[Operators: Random Removal / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 179.91, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      179.91
+   Total Time:          406.04
+   Total Energy Cons:   179.91
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    2 |    S3 |    Station |   180.07 |   192.78 |    66.75 |   974.00 |    32.59
+    5 |   C37 |   Customer |   200.78 |   210.78 |    58.75 |   964.00 |     0.00
+    7 |   C41 |   Customer |   220.68 |   230.68 |    48.85 |   944.00 |     0.00
+    3 |   S19 |    Station |   279.53 |   309.85 |    77.75 |   944.00 |    77.75
+    8 |   C32 |   Customer |   319.85 |   329.85 |    67.75 |   934.00 |     0.00
+    4 |   C66 |   Customer |   376.38 |   393.00 |    21.22 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1150 | Result: Accepted (SA)]
+[Operators: Random Removal / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1200 | Result: Rejected]
+[Operators: EnergyCriticalRemoval / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 174.89, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      174.89
+   Total Time:          406.04
+   Total Energy Cons:   174.89
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   200.98 |    61.37 |   954.00 |    27.43
+    5 |   C37 |   Customer |   208.98 |   218.98 |    53.37 |   944.00 |     0.00
+    3 |   S19 |    Station |   272.35 |   280.15 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   290.15 |   300.15 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   310.15 |   340.47 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   377.14 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1300 | Result: Accepted (SA)]
+[Operators: Random Removal / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 177.47, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      177.47
+   Total Time:          406.04
+   Total Energy Cons:   177.47
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    2 |    S3 |    Station |    36.24 |    50.37 |    77.75 |  1000.00 |    36.24
+    5 |   C37 |   Customer |    58.37 |    69.00 |    69.75 |   990.00 |     0.00
+    7 |   C41 |   Customer |    78.90 |    88.90 |    53.77 |   970.00 |     0.00
+    6 |   C96 |   Customer |   110.11 |   152.00 |    32.56 |   944.00 |     0.00
+    3 |   S19 |    Station |   184.56 |   214.88 |    77.75 |   944.00 |    77.75
+    8 |   C32 |   Customer |   224.88 |   234.88 |    67.75 |   934.00 |     0.00
+    4 |   C66 |   Customer |   281.41 |   393.00 |    21.22 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1350 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 177.47, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      177.47
+   Total Time:          406.04
+   Total Energy Cons:   177.47
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    2 |    S3 |    Station |    36.24 |    50.37 |    77.75 |  1000.00 |    36.24
+    5 |   C37 |   Customer |    58.37 |    69.00 |    69.75 |   990.00 |     0.00
+    7 |   C41 |   Customer |    78.90 |    88.90 |    53.77 |   970.00 |     0.00
+    6 |   C96 |   Customer |   110.11 |   152.00 |    32.56 |   944.00 |     0.00
+    3 |   S19 |    Station |   184.56 |   214.88 |    77.75 |   944.00 |    77.75
+    8 |   C32 |   Customer |   224.88 |   234.88 |    67.75 |   934.00 |     0.00
+    4 |   C66 |   Customer |   281.41 |   393.00 |    21.22 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1400 | Result: Dominating]
+[Operators: Random Removal / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1450 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1500 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1550 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1600 | Result: Accepted (SA)]
+[Operators: TimeSlackDestroy / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1650 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1700 | Result: Accepted (SA)]
+[Operators: Random Removal / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 198.48, WorkloadGini: 0.00, MaxTime: 422.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      198.48
+   Total Time:          422.04
+   Total Energy Cons:   198.48
+--- Node Sequence (Count: 13) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    2 |    S3 |    Station |   180.07 |   192.78 |    66.75 |   974.00 |    32.59
+    5 |   C37 |   Customer |   200.78 |   210.78 |    58.75 |   964.00 |     0.00
+    7 |   C41 |   Customer |   220.68 |   230.68 |    48.85 |   944.00 |     0.00
+    3 |   S19 |    Station |   279.53 |   287.33 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   297.33 |   307.33 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   317.33 |   333.73 |    42.06 |   934.00 |    42.06
+    1 |    S0 |    Station |   375.79 |   385.96 |    26.08 |   934.00 |    26.08
+    4 |   C66 |   Customer |   399.00 |   409.00 |    13.04 |   918.00 |     0.00
+    1 |    S0 |    Station |   422.04 |   422.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   422.04 |   422.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1750 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1800 | Result: Accepted (SA)]
+[Operators: EnergyCriticalRemoval / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 185.09, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      185.09
+   Total Time:          406.04
+   Total Energy Cons:   185.09
+--- Node Sequence (Count: 11) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   190.28 |    33.94 |   954.00 |     0.00
+    5 |   C37 |   Customer |   198.28 |   208.28 |    25.94 |   944.00 |     0.00
+    2 |    S3 |    Station |   216.28 |   231.02 |    55.71 |   944.00 |    37.77
+    3 |   S19 |    Station |   286.73 |   316.47 |    76.26 |   944.00 |    76.26
+    8 |   C32 |   Customer |   326.47 |   336.47 |    66.26 |   934.00 |     0.00
+    4 |   C66 |   Customer |   383.00 |   393.00 |    19.73 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1900 | Result: Dominating]
+[Operators: VehicleReductionAwareDestroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 177.73, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      177.73
+   Total Time:          406.04
+   Total Energy Cons:   177.73
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    7 |   C41 |   Customer |    30.81 |    83.00 |    46.94 |   980.00 |     0.00
+    2 |    S3 |    Station |    90.07 |   101.93 |    70.29 |   980.00 |    30.42
+    5 |   C37 |   Customer |   109.93 |   119.93 |    62.29 |   970.00 |     0.00
+    6 |   C96 |   Customer |   149.67 |   159.67 |    32.56 |   944.00 |     0.00
+    3 |   S19 |    Station |   192.22 |   222.55 |    77.75 |   944.00 |    77.75
+    8 |   C32 |   Customer |   232.55 |   242.55 |    67.75 |   934.00 |     0.00
+    4 |   C66 |   Customer |   289.08 |   393.00 |    21.22 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 1950 | Result: Rejected]
+[Operators: EnergyCriticalRemoval / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 191.19, WorkloadGini: 0.00, MaxTime: 411.90, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      191.19
+   Total Time:          411.90
+   Total Energy Cons:   191.19
+--- Node Sequence (Count: 11) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    3 |   S19 |    Station |   184.56 |   184.56 |    29.67 |   974.00 |     0.00
+    8 |   C32 |   Customer |   194.56 |   204.56 |    19.67 |   964.00 |     0.00
+    3 |   S19 |    Station |   214.56 |   234.72 |    61.37 |   964.00 |    51.70
+    5 |   C37 |   Customer |   288.09 |   298.09 |     8.00 |   954.00 |     0.00
+    2 |    S3 |    Station |   306.09 |   330.16 |    61.74 |   954.00 |    61.74
+    7 |   C41 |   Customer |   337.24 |   347.24 |    54.67 |   934.00 |     0.00
+    4 |   C66 |   Customer |   388.87 |   398.87 |    13.04 |   918.00 |     0.00
+    0 |    D0 |      Depot |   411.90 |   411.90 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2000 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 179.87, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      179.87
+   Total Time:          406.04
+   Total Energy Cons:   179.87
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    3 |   S19 |    Station |    42.06 |    58.46 |    77.75 |  1000.00 |    42.06
+    8 |   C32 |   Customer |    68.46 |    79.00 |    67.75 |   990.00 |     0.00
+    5 |   C37 |   Customer |   135.46 |   145.46 |     8.00 |   980.00 |     0.00
+    2 |    S3 |    Station |   153.46 |   183.78 |    77.75 |   980.00 |    77.75
+    7 |   C41 |   Customer |   190.86 |   200.86 |    70.68 |   960.00 |     0.00
+    6 |   C96 |   Customer |   222.07 |   232.07 |    49.47 |   934.00 |     0.00
+    4 |   C66 |   Customer |   254.09 |   393.00 |    27.44 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2050 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 11) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2100 | Result: Rejected]
+[Operators: TimeSlackDestroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 185.23, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      185.23
+   Total Time:          406.04
+   Total Energy Cons:   185.23
+--- Node Sequence (Count: 11) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    2 |    S3 |    Station |   180.07 |   180.07 |    34.15 |   974.00 |     0.00
+    5 |   C37 |   Customer |   188.07 |   198.07 |    26.15 |   964.00 |     0.00
+    2 |    S3 |    Station |   206.07 |   220.80 |    55.92 |   964.00 |    37.76
+    7 |   C41 |   Customer |   227.87 |   237.87 |    48.85 |   944.00 |     0.00
+    3 |   S19 |    Station |   286.72 |   294.52 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   304.52 |   314.52 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   324.52 |   346.33 |    55.92 |   934.00 |    55.92
+    4 |   C66 |   Customer |   383.00 |   393.00 |    19.25 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2150 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2200 | Result: Accepted (SA)]
+[Operators: TimeSlackDestroy / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2250 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2300 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2400 | Result: Dominating]
+[Operators: EnergyCriticalRemoval / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 174.89, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      174.89
+   Total Time:          406.04
+   Total Energy Cons:   174.89
+--- Node Sequence (Count: 11) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   200.98 |    61.37 |   954.00 |    27.43
+    5 |   C37 |   Customer |   208.98 |   218.98 |    53.37 |   944.00 |     0.00
+    3 |   S19 |    Station |   272.35 |   280.15 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   290.15 |   300.15 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   310.15 |   340.47 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   377.14 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2450 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2500 | Result: Accepted (SA)]
+[Operators: EnergyCriticalRemoval / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2550 | Result: Accepted (SA)]
+[Operators: Random Removal / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2600 | Result: Accepted (SA)]
+[Operators: EnergyCriticalRemoval / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2650 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2750 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2800 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2850 | Result: Accepted (SA)]
+[Operators: Random Removal / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2900 | Result: Rejected]
+[Operators: TimeSlackDestroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 185.23, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      185.23
+   Total Time:          406.04
+   Total Energy Cons:   185.23
+--- Node Sequence (Count: 11) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    2 |    S3 |    Station |   180.07 |   180.07 |    34.15 |   974.00 |     0.00
+    5 |   C37 |   Customer |   188.07 |   198.07 |    26.15 |   964.00 |     0.00
+    2 |    S3 |    Station |   206.07 |   220.80 |    55.92 |   964.00 |    37.76
+    7 |   C41 |   Customer |   227.87 |   237.87 |    48.85 |   944.00 |     0.00
+    3 |   S19 |    Station |   286.72 |   294.52 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   304.52 |   314.52 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   324.52 |   346.33 |    55.92 |   934.00 |    55.92
+    4 |   C66 |   Customer |   383.00 |   393.00 |    19.25 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 2950 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3000 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3050 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3100 | Result: Accepted (SA)]
+[Operators: Random Removal / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3150 | Result: Accepted (SA)]
+[Operators: Random Removal / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3200 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 174.74, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      174.74
+   Total Time:          406.04
+   Total Energy Cons:   174.74
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   200.98 |    61.37 |   954.00 |    27.43
+    5 |   C37 |   Customer |   208.98 |   218.98 |    53.37 |   944.00 |     0.00
+    3 |   S19 |    Station |   272.35 |   302.67 |    77.75 |   944.00 |    77.75
+    8 |   C32 |   Customer |   312.67 |   322.67 |    67.75 |   934.00 |     0.00
+    4 |   C66 |   Customer |   369.20 |   393.00 |    21.22 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3250 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Regret-3 Repair (Smart Packing)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 185.09, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      185.09
+   Total Time:          406.04
+   Total Energy Cons:   185.09
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   190.28 |    33.94 |   954.00 |     0.00
+    5 |   C37 |   Customer |   198.28 |   208.28 |    25.94 |   944.00 |     0.00
+    2 |    S3 |    Station |   216.28 |   231.02 |    55.71 |   944.00 |    37.77
+    3 |   S19 |    Station |   286.73 |   316.47 |    76.26 |   944.00 |    76.26
+    8 |   C32 |   Customer |   326.47 |   336.47 |    66.26 |   934.00 |     0.00
+    4 |   C66 |   Customer |   383.00 |   393.00 |    19.73 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3300 | Result: Accepted (SA)]
+[Operators: EnergyCriticalRemoval / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3350 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 185.23, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      185.23
+   Total Time:          406.04
+   Total Energy Cons:   185.23
+--- Node Sequence (Count: 13) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    1 |    S0 |    Station |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    2 |    S3 |    Station |   180.07 |   180.07 |    34.15 |   974.00 |     0.00
+    5 |   C37 |   Customer |   188.07 |   198.07 |    26.15 |   964.00 |     0.00
+    2 |    S3 |    Station |   206.07 |   220.80 |    55.92 |   964.00 |    37.76
+    7 |   C41 |   Customer |   227.87 |   237.87 |    48.85 |   944.00 |     0.00
+    3 |   S19 |    Station |   286.72 |   294.52 |    20.00 |   944.00 |    20.00
+    8 |   C32 |   Customer |   304.52 |   314.52 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   324.52 |   346.33 |    55.92 |   934.00 |    55.92
+    4 |   C66 |   Customer |   383.00 |   393.00 |    19.25 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3400 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / Adaptive Insertion]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 179.92, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      179.92
+   Total Time:          406.04
+   Total Energy Cons:   179.92
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    5 |   C37 |   Customer |   193.11 |   203.11 |    31.11 |   944.00 |     0.00
+    2 |    S3 |    Station |   211.11 |   223.83 |    55.71 |   944.00 |    32.60
+    3 |   S19 |    Station |   279.54 |   309.86 |    77.75 |   944.00 |    77.75
+    8 |   C32 |   Customer |   319.86 |   329.86 |    67.75 |   934.00 |     0.00
+    4 |   C66 |   Customer |   376.39 |   393.00 |    21.22 |   918.00 |     0.00
+    1 |    S0 |    Station |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |     0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3450 | Result: Dominating]
+[Operators: Random Removal / Greedy Energy Insertion (Enhanced)]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3500 | Result: Accepted (SA)]
+[Operators: VehicleReductionAwareDestroy / ChargingAwareRouteBuilder]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+
+----------------------------------------
+[Iteration: 3550 | Result: Accepted (SA)]
+[Operators: Route Merging Destroy / Smart Station Repair]
+----------------------------------------
+Solution (Vehicles: 1, Distance: 167.98, WorkloadGini: 0.00, MaxTime: 406.04, Feasible: true)
+--- Route ID: 1 --- Feasible: YES
+   Total Distance:      167.98
+   Total Time:          406.04
+   Total Energy Cons:   167.98
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    6 |   C96 |   Customer |    15.52 |   152.00 |    62.23 |   974.00 |     0.00
+    7 |   C41 |   Customer |   173.21 |   183.21 |    41.01 |   954.00 |     0.00
+    2 |    S3 |    Station |   190.28 |   206.09 |    74.46 |   954.00 |    40.52
+    5 |   C37 |   Customer |   214.09 |   224.09 |    66.46 |   944.00 |     0.00
+    8 |   C32 |   Customer |   280.55 |   290.55 |    10.00 |   934.00 |     0.00
+    3 |   S19 |    Station |   300.55 |   330.87 |    77.75 |   934.00 |    77.75
+    4 |   C66 |   Customer |   367.55 |   393.00 |    41.08 |   918.00 |     0.00
+    0 |    D0 |      Depot |   406.04 |   406.04 |    -0.00 |   918.00 |     0.00
+
+
+

@@ -62,7 +62,9 @@ int main(int argc, char *argv[]) {
   config.startTemperature = 200.0;
   config.coolingRate = 0.997;
   config.minTemperature = 0.05;
-  
+  config.SAScale = 10.0;
+  config.maxTime = 285000; // thoi gian toi da chay 285 s 285000 ms
+
   config.useLocalSearch = true;
   config.useScatterSearch = true;
   config.enableLogging = true;
@@ -79,6 +81,10 @@ int main(int argc, char *argv[]) {
       randomSeed = std::stoul(argv[++i]);
     } else if (arg == "--maxIter" && i + 1 < argc) {
       config.maxIterations = std::stoi(argv[++i]);
+    } else if (arg == "--hvIt" && i + 1 < argc) {
+      config.hvImprovementThreshold = std::stod(argv[++i]);
+    } else if (arg == "--hvLs" && i + 1 < argc) {
+      config.hvStagnationLimit = std::stoi(argv[++i]);
     } else if (arg == "--decay" && i + 1 < argc) {
       config.decayParameter = std::stod(argv[++i]);
     } else if (arg == "--score1" && i + 1 < argc) {
@@ -95,6 +101,8 @@ int main(int argc, char *argv[]) {
       config.startTemperature = std::stod(argv[++i]);
     } else if (arg == "--cool" && i + 1 < argc) {
       config.coolingRate = std::stod(argv[++i]);
+    } else if (arg == "--sa scale" && i + 1 < argc) {
+      config.SAScale = std::stod(argv[++i]);
     } else if (arg == "--runName" && i + 1 < argc) {
       customRunName = argv[++i];
     } else if (instancePath.empty() && arg.find("--") != 0) {
@@ -104,7 +112,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (instancePath.empty()) {
-    instancePath = "../data/solomon/c102_21.txt";
+    instancePath = "../data/solomon/c103C15.txt";
     if (!iraceMode) {
       std::cout << "[INFO] No instance file provided. Using default: "
                 << instancePath << "\n";
@@ -144,7 +152,7 @@ int main(int argc, char *argv[]) {
 
     fs::path pathObj(instancePath);
     std::string baseName = pathObj.stem().string();
-    std::string outputDir = "logs/" + baseName;
+    std::string outputDir = "logs_test/" + baseName;
     std::string runName = baseName;
 
     if (!customRunName.empty()) {
@@ -179,19 +187,29 @@ int main(int argc, char *argv[]) {
 
     // 6. Hiển thị kết quả
     if (iraceMode) {
-      // Chế độ irace: chỉ in ra giá trị mục tiêu (ví dụ: quãng đường của giải pháp đầu tiên)
-      // Nếu là đa mục tiêu, irace thường cần 1 giá trị duy nhất, ở đây ta lấy Best Distance.
+
       if (!paretoFront.empty()) {
-        // Tìm giải pháp có quãng đường nhỏ nhất trong Pareto Front
-        double bestDist = paretoFront[0].getTotalDistance();
+
+        // tìm NV nhỏ nhất trong Pareto front
+        int bestNV = paretoFront[0].getTotalVehicles();
         for (const auto &sol : paretoFront) {
-          if (sol.getTotalDistance() < bestDist)
-            bestDist = sol.getTotalDistance();
+          if (sol.getTotalVehicles() < bestNV)
+            bestNV = sol.getTotalVehicles();
         }
-        std::cout << std::fixed << std::setprecision(4) << bestDist << std::endl;
-      } else {
-        std::cout << "99999999" << std::endl; // Giá trị phạt nếu không tìm thấy KQ
+
+        // lấy HV của toàn Pareto front
+        double hv = solver->getHV();
+
+        // encode cost (priority NV -> HV)
+        double cost = bestNV * 1000.0 - hv;
+
+        std::cout << std::fixed << std::setprecision(6)
+                  << cost << std::endl;
       }
+      else {
+        std::cout << "99999999" << std::endl;
+      }
+
     } else {
       std::cout << "\n========================================\n";
       std::cout << "           TEST COMPLETED               \n";
@@ -199,6 +217,8 @@ int main(int argc, char *argv[]) {
       std::cout << "Execution Time: " << duration << " ms\n";
       std::cout << "Pareto Front Size: " << paretoFront.size() << "\n";
       std::cout << "Results saved in: " << outputDir << "\n";
+      std::cout << "HV: " << solver->getHV() << "\n";
+
 
       if (!paretoFront.empty()) {
         std::cout << "\n--- Best Solutions Found (Pareto Front) ---\n";
@@ -211,6 +231,7 @@ int main(int argc, char *argv[]) {
                     << ", Fairness=" << sol.getWorkloadGini()
                     << ", MaxTime=" << sol.getMaxTime() << "\n";
         }
+
 
         std::cout << "\n--- Details of Solution #1 ---\n";
         printSolutionSummary(paretoFront[0]);

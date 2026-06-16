@@ -1,5 +1,27 @@
 #include "../../../../include/alns/operators/repair/ChargingAwareRouteBuilder.h"
 
+// ============================================================================
+// CHANGES REQUIRING .h UPDATES — ChargingAwareRouteBuilder.h
+// ============================================================================
+//
+// [H-1] InnerState: thêm field mới
+//   struct InnerState {
+//     ...
+//     bool lastWasStation = false;  // [FEATURE-1] ngăn relay-chain liên tiếp
+//   };
+//
+// [H-2] Thêm 2 hằng số vào class (private static constexpr):
+//   static constexpr int   MAX_RELAY_STATIONS = 2;
+//       // Số trạm relay tối đa thử cho mỗi (innerState, custId) pair.
+//       // = 2 đủ để bắt trạm tốt nhất & nhì mà không bùng beam quá mức.
+//
+//   static constexpr double LOOKAHEAD_WEIGHT = 0.15;
+//       // Trọng số lookahead penalty trong pruneScore (Feature-2).
+//       // Nhỏ (0.1–0.2) để không lấn át coverage objective chính.
+//       // Tăng lên ~0.25 nếu muốn ưu tiên station gần cluster tiếp mạnh hơn.
+//
+// ============================================================================
+
 #include "core/Customer.h"
 #include "core/Route.h"
 #include "core/Solution.h"
@@ -146,40 +168,155 @@ ChargingAwareRouteBuilder::generateSegmentsFrom(
         const double energyToCust = distToCust * energyRate;
         const double battAtCust = innerState.battery - energyToCust;
 
-        if (battAtCust < 0.0)
-          continue;
-
-        const double arrivalAtCust =
-            innerState.time + instance_->getTime(innerState.position, custId);
-        if (arrivalAtCust > cust->getDueDate())
-          continue;
-
-        const double newLoad = innerState.load - cust->getDemand();
-        if (newLoad < 0.0)
-          continue;
-
-        bool canReachAny = false;
-        for (int exitId : exitAnchors) {
-          if (battAtCust >=
-              instance_->getDistance(custId, exitId) * energyRate) {
-            canReachAny = true;
-            break;
+        // ── Direct arc (unchanged path) ──────────────────────────────────────
+        if (battAtCust >= 0.0) {
+          const double arrivalAtCust =
+              innerState.time + instance_->getTime(innerState.position, custId);
+          if (arrivalAtCust <= cust->getDueDate()) {
+            const double newLoad = innerState.load - cust->getDemand();
+            if (newLoad >= 0.0) {
+              bool canReachAny = false;
+              for (int exitId : exitAnchors) {
+                if (battAtCust >=
+                    instance_->getDistance(custId, exitId) * energyRate) {
+                  canReachAny = true;
+                  break;
+                }
+              }
+              if (canReachAny) {
+                const double serviceStart =
+                    std::max(arrivalAtCust, cust->getReadyTime());
+                InnerState newInner;
+                newInner.position = custId;
+                newInner.battery = battAtCust;
+                newInner.time = serviceStart + cust->getServiceTime();
+                newInner.load = newLoad;
+                newInner.visited = innerState.visited;
+                newInner.visited.push_back(custId);
+                newInner.cost = innerState.cost + distToCust;
+                nextInnerBeam.push_back(std::move(newInner));
+              }
+            }
           }
         }
-        if (!canReachAny)
-          continue;
 
-        const double serviceStart =
-            std::max(arrivalAtCust, cust->getReadyTime());
-        InnerState newInner;
-        newInner.position = custId;
-        newInner.battery = battAtCust;
-        newInner.time = serviceStart + cust->getServiceTime();
-        newInner.load = newLoad;
-        newInner.visited = innerState.visited;
-        newInner.visited.push_back(custId);
-        newInner.cost = innerState.cost + distToCust;
-        nextInnerBeam.push_back(std::move(newInner));
+        // ── [FEATURE-1] Multi-Station Relay: pos → station → custId ──────────
+        // Chỉ kích hoạt khi:
+        //   (a) battery không đủ để đi thẳng TỚI custId, HOẶC
+        //   (b) battery đủ tới custId nhưng không đủ thoát ra EXIT nào sau đó
+        // Giới hạn: không relay nếu innerState đã relay ở bước này
+        //           (tránh chuỗi station-station vô hạn trong inner beam).
+        // Cap: thử tối đa MAX_RELAY_STATIONS trạm có detour nhỏ nhất.
+        {
+          const bool needRelay = (battAtCust < 0.0) ||
+                                 [&]() {
+                                   if (battAtCust < 0.0) return false;
+                                   for (int exitId : exitAnchors)
+                                     if (battAtCust >= instance_->getDistance(
+                                                           custId, exitId) *
+                                                           energyRate)
+                                       return false;
+                                   return true;
+                                 }();
+
+          // Chỉ relay nếu chưa relay ở step này (lastWasStation flag)
+          if (needRelay && !innerState.lastWasStation) {
+            const double newLoad = innerState.load - cust->getDemand();
+            if (newLoad >= 0.0) {
+              // Tìm top-MAX_RELAY_STATIONS stations theo tổng detour
+              // pos→station + station→cust (không dùng dist trực tiếp để
+              // phản ánh chi phí thực khi ghé trạm trên đường)
+              struct RelayCand { int sid; double detour; };
+              std::vector<RelayCand> relayCands;
+              relayCands.reserve(stationIds_.size());
+              const double directDist =
+                  instance_->getDistance(innerState.position, custId);
+              for (int sid : stationIds_) {
+                // Chỉ xét station không phải anchor hiện tại (tránh vòng)
+                if (sid == innerState.position) continue;
+                double det =
+                    instance_->getDistance(innerState.position, sid) +
+                    instance_->getDistance(sid, custId) - directDist;
+                relayCands.push_back({sid, det});
+              }
+              int nCands = std::min(MAX_RELAY_STATIONS,
+                                    static_cast<int>(relayCands.size()));
+              std::partial_sort(
+                  relayCands.begin(), relayCands.begin() + nCands,
+                  relayCands.end(),
+                  [](const RelayCand &a, const RelayCand &b) {
+                    return a.detour < b.detour;
+                  });
+
+              for (int ri = 0; ri < nCands; ++ri) {
+                int sid = relayCands[ri].sid;
+                auto stNode = instance_->getNodeById(sid);
+
+                // Leg 1: pos → station
+                const double distToSt =
+                    instance_->getDistance(innerState.position, sid);
+                const double battAfterSt =
+                    innerState.battery - distToSt * energyRate;
+                if (battAfterSt < 0.0) continue;
+
+                const double arrSt =
+                    innerState.time +
+                    instance_->getTime(innerState.position, sid);
+                if (arrSt > stNode->getDueDate()) continue;
+
+                // Charge to full at station
+                const double chargeNeeded = Q_MAX - battAfterSt;
+                double chargeTime = 0.0;
+                if (stNode->getType() == NodeType::STATION) {
+                  chargeTime =
+                      chargeNeeded *
+                      std::static_pointer_cast<Station>(stNode)
+                          ->getChargingRate();
+                }
+                const double depSt =
+                    std::max(arrSt, stNode->getReadyTime()) + chargeTime;
+
+                // Leg 2: station → custId
+                const double distStCust =
+                    instance_->getDistance(sid, custId);
+                const double battAtCust2 =
+                    Q_MAX - distStCust * energyRate;
+                if (battAtCust2 < 0.0) continue;
+
+                const double arrCust2 =
+                    depSt + instance_->getTime(sid, custId);
+                if (arrCust2 > cust->getDueDate()) continue;
+
+                // Can we escape from custId?
+                bool canEscape = false;
+                for (int exitId : exitAnchors) {
+                  if (battAtCust2 >= instance_->getDistance(custId, exitId) *
+                                         energyRate) {
+                    canEscape = true;
+                    break;
+                  }
+                }
+                if (!canEscape) continue;
+
+                const double svcStart2 =
+                    std::max(arrCust2, cust->getReadyTime());
+                InnerState relayState;
+                relayState.position = custId;
+                relayState.battery = battAtCust2;
+                relayState.time = svcStart2 + cust->getServiceTime();
+                relayState.load = newLoad;
+                relayState.visited = innerState.visited;
+                relayState.visited.push_back(custId);
+                // cost tính đủ cả hai leg (không tính chargeTime vì cost là
+                // khoảng cách, không phải thời gian)
+                relayState.cost =
+                    innerState.cost + distToSt + distStCust;
+                relayState.lastWasStation = true; // ngăn relay-chain
+                nextInnerBeam.push_back(std::move(relayState));
+              }
+            }
+          }
+        }
       }
 
       if (!innerState.visited.empty()) {
@@ -349,7 +486,45 @@ Route ChargingAwareRouteBuilder::buildOneRoute(
           std::max(1.0, static_cast<double>(os.coveredCusts.size()));
       const double bonus =
           os.coveredCusts.count(targetCust) ? TARGET_BONUS : 0.0;
-      os.pruneScore = baseScore - bonus;
+
+      // ── [FEATURE-2] Distance-Driven Charging lookahead ───────────────────
+      // Khi outerState kết thúc tại một STATION (không phải depot), ước tính
+      // "chất lượng của segment tiếp theo" bằng min-distance từ station đó đến
+      // các remaining customers chưa covered.
+      //
+      // Trực giác: station S tốt là station mà các customer gần nhất với S là
+      // những customer còn lại — tức là S nằm "trên đường" đến cluster tiếp,
+      // không phải chỉ "tiện đường" so với cluster vừa qua.
+      //
+      // lookahead = (trọng số nhỏ) × min_dist(station → remaining_customers)
+      // → station tốt hơn cho segment tiếp → lookaheadPenalty nhỏ hơn
+      //   → pruneScore nhỏ hơn → được ưu tiên giữ lại trong beam.
+      double lookaheadPenalty = 0.0;
+      {
+        // Chỉ tính lookahead khi anchor hiện tại là station (không phải depot)
+        const bool isStation = [&]() {
+          for (int sid : stationIds_)
+            if (sid == os.currentAnchor) return true;
+          return false;
+        }();
+
+        if (isStation && !remaining.empty()) {
+          // Tìm min distance từ station tới các customer còn lại
+          double minDistToRemaining = std::numeric_limits<double>::max();
+          for (int rid : remaining) {
+            if (os.coveredCusts.count(rid)) continue; // đã covered
+            double d = instance_->getDistance(os.currentAnchor, rid);
+            if (d < minDistToRemaining) minDistToRemaining = d;
+          }
+          if (minDistToRemaining < std::numeric_limits<double>::max()) {
+            // Normalize: chia cho avgDistance để scale tương đương baseScore
+            // Hệ số LOOKAHEAD_WEIGHT nhỏ để không lấn át coverage objective
+            lookaheadPenalty = LOOKAHEAD_WEIGHT * minDistToRemaining;
+          }
+        }
+      }
+
+      os.pruneScore = baseScore - bonus + lookaheadPenalty;
     }
 
     std::partial_sort(

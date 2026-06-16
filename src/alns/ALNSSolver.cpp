@@ -13,34 +13,36 @@
 #include "../../include/core/Vehicle.h"
 
 // --- Operators: Destroy ---
-#include "../../include/alns/operators/destroy/InefficientRouteRemoval.h"
 #include "../../include/alns/operators/destroy/RandomRemoval.h"
-#include "../../include/alns/operators/destroy/RandomRouteRemoval.h"
 #include "../../include/alns/operators/destroy/RouteMergingDestroy.h"
-#include "../../include/alns/operators/destroy/ShawDestroy.h"
-#include "../../include/alns/operators/destroy/TargetedStationRemoval.h"
-#include "../../include/alns/operators/destroy/UnifiedCostDestroy.h"
-
+// #include "../../include/alns/operators/destroy/TargetedStationRemoval.h"  //
+// Removed per upgrade guide
+#include "../../include/alns/operators/destroy/EnergyCriticalRemoval.h"
 #include "../../include/alns/operators/destroy/TimeSlackDestroy.h"
+#include "../../include/alns/operators/destroy/UnifiedCostDestroy.h"
+#include "../../include/alns/operators/destroy/VehicleReductionAwareDestroy.h"
 
 // --- Operators: Repair ---
 #include "../../include/alns/operators/repair/AdaptiveInsertion.h"
 #include "../../include/alns/operators/repair/ChargingAwareRouteBuilder.h"
 #include "../../include/alns/operators/repair/GreedyEnergyInsertion.h"
-#include "../../include/alns/operators/repair/ParetoFocusRepair.h"
+// #include "../../include/alns/operators/repair/ParetoFocusRepair.h"  //
+// Removed per upgrade guide
 #include "../../include/alns/operators/repair/RegretKRepair.h"
+// #include "../../include/alns/operators/repair/SmartTimeAwareStationRepair.h"
+// // Removed per upgrade guide
 #include "../../include/alns/operators/repair/SmartStationRepair.h"
-#include "../../include/alns/operators/repair/SmartTimeAwareStationRepair.h"
+#include "../../include/alns/operators/repair/VehiclePackingRepair.h"
 
 #include <algorithm>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <numeric>
 #include <random>
 #include <stdexcept>
-#include <climits>
 
 namespace alns {
 // ******************************************************************
@@ -114,64 +116,61 @@ ALNSSolver::ALNSSolver(std::shared_ptr<Instance> instance, ALNSConfig config,
   this->logger->logConfig(this->config);
   this->currentTemperature = config.startTemperature;
 
-  // ĐĂNG KÝ CÁC TOÁN TỬ TRỌNG TÂM DISTANCE
-  // addDestroyOperator(std::make_shared<UnifiedCostDestroy>(instance, 3),
-  //                    2.0); // Cost-based (distance/time)
-  addDestroyOperator(std::make_shared<ShawDestroy>(instance, 6),
-                     3.0); // Tăng cường Shaw phá cụm
-  addDestroyOperator(std::make_shared<InefficientRouteRemoval>(instance), 4.0);
+  // ── Destroy Operators
+  // ─────────────────────────────────────────────────────── Phase 0: Cleaned
+  // operator set — concentrated adaptive weight signal
+  // addDestroyOperator(std::make_shared<ShawDestroy>(instance, 6), 3.0);
+  // //
+  // addDestroyOperator(std::make_shared<InefficientRouteRemoval>(instance), 4.0);
+  addDestroyOperator(std::make_shared<EnergyCriticalRemoval>(instance, 0.3),
+                     2.5);
+  // addDestroyOperator(std::make_shared<UnifiedCostDestroy>(instance, 3), 2.0);
+  // // single registration only
+  addDestroyOperator(std::make_shared<RouteMergingDestroy>(instance), 3.0);
+  addDestroyOperator(std::make_shared<TimeSlackDestroy>(instance, 2.0), 2.5);
+  addDestroyOperator(std::make_shared<RandomRemoval>(instance),
+                     2.0); // Phase 0: weight reduced 4.0→2.0
+  // addDestroyOperator(std::make_shared<RandomRouteRemoval>(instance), 3.0);
+  // Phase 3 (after rewrite): VehicleReductionAwareDestroy re-enabled
+  addDestroyOperator(std::make_shared<VehicleReductionAwareDestroy>(instance),
+                     3.5);
 
-  addDestroyOperator(std::make_shared<RouteMergingDestroy>(instance),
-                     3.0); // Focus distance (giảm mớ merge xe)
-  // addDestroyOperator(std::make_shared<TargetedStationRemoval>(instance),
-  //                    1.0); // Giảm bớt station removal
-  addDestroyOperator(std::make_shared<TimeSlackDestroy>(instance, 2.0),
-                     2.5); // TimeSlackDestroy
-  addDestroyOperator(std::make_shared<RandomRemoval>(instance), 4.0);
-
-  addDestroyOperator(std::make_shared<RandomRouteRemoval>(instance), 3.0);
-
+  // ── Repair Operators
+  // ────────────────────────────────────────────────────────
   addRepairOperator(std::make_shared<ChargingAwareRouteBuilder>(instance), 2.0);
   addRepairOperator(std::make_shared<AdaptiveInsertion>(instance), 2.0);
-  // addRepairOperator(std::make_shared<RegretKRepair>(instance, config.regretK,
-  // config.noiseParameter), 2.0);
-  // addRepairOperator(std::make_shared<RegretKRepair>(instance, config.regretK
-  // + 1, config.noiseParameter), 2.0);
-
   addRepairOperator(std::make_shared<GreedyEnergyInsertion>(instance), 1.5);
   addRepairOperator(std::make_shared<SmartStationRepair>(instance), 2.5);
-  // addRepairOperator(
-  // std::make_shared<SmartTimeAwareStationRepair>(instance), 2.5); // 2.5: cạnh
-  // tranh công bằng với SSR, chống death spiral
-
-  // // // Tăng cường Pareto (Đa mục tiêu, bao gồm distance)
-  // addRepairOperator(std::make_shared<ParetoFocusRepair>(instance), 1.5);
+  addRepairOperator(std::make_shared<RegretKRepair>(instance, 3), 2.5);
+  // Phase 4 (after rewrite): VehiclePackingRepair re-enabled
+  // addRepairOperator(std::make_shared<VehiclePackingRepair>(instance), 2.0);
 }
 
 ALNSSolver::~ALNSSolver() = default;
 
-  void ALNSSolver::addDestroyOperator(std::shared_ptr<IDestroyOperator> op,
-                                      double initialWeight) {
-    destroyPool.operators.push_back(op);
-    destroyPool.weights.push_back(initialWeight);
-    destroyPool.initialWeights.push_back(initialWeight); // ← thêm
-    destroyPool.scores.push_back(0.0);
-    destroyPool.usages.push_back(0);
-  }
+void ALNSSolver::addDestroyOperator(std::shared_ptr<IDestroyOperator> op,
+                                    double initialWeight) {
+  destroyPool.operators.push_back(op);
+  destroyPool.weights.push_back(initialWeight);
+  destroyPool.initialWeights.push_back(initialWeight); // ← thêm
+  destroyPool.scores.push_back(0.0);
+  destroyPool.usages.push_back(0);
+}
 
-  void ALNSSolver::addRepairOperator(std::shared_ptr<IRepairOperator> op,
-                                     double initialWeight) {
-    repairPool.operators.push_back(op);
-    repairPool.weights.push_back(initialWeight);
-    repairPool.initialWeights.push_back(initialWeight); // ← thêm
-    repairPool.scores.push_back(0.0);
-    repairPool.usages.push_back(0);
-  }
+void ALNSSolver::addRepairOperator(std::shared_ptr<IRepairOperator> op,
+                                   double initialWeight) {
+  repairPool.operators.push_back(op);
+  repairPool.weights.push_back(initialWeight);
+  repairPool.initialWeights.push_back(initialWeight); // ← thêm
+  repairPool.scores.push_back(0.0);
+  repairPool.usages.push_back(0);
+}
 
 int ALNSSolver::calculateNodesToRemove() {
   if (totalCustomers == 0 || config.maxRemoval <= 0.0)
     return 0;
-  int min_num = static_cast<int>(totalCustomers * config.minRemoval * perturbationBoost_);
+  int min_num =
+      static_cast<int>(totalCustomers * config.minRemoval * perturbationBoost_);
   int max_num = static_cast<int>(totalCustomers * config.maxRemoval *
                                  perturbationBoost_); // Apply boost
   min_num = std::max(1, min_num);
@@ -186,1184 +185,657 @@ int ALNSSolver::calculateNodesToRemove() {
 // ** 3. MAIN SOLVE LOOP
 // ******************************************************************
 std::vector<Solution> ALNSSolver::solve() {
-    auto startTime = std::chrono::high_resolution_clock::now();
 
-    // ── Initial Solution ────────────────────────────────────────────────────────
-    auto initialSolutions = generateInitialSolution();
-    if (initialSolutions.empty()) {
-        std::cerr << "[ERROR] Could not find any feasible initial solution!\n";
-        return {};
+  // ── Initial Solution
+  // ────────────────────────────────────────────────────────
+  auto initialSolutions = generateInitialSolution();
+  if (initialSolutions.empty()) {
+    std::cerr << "[ERROR] Could not find any feasible initial solution!\n";
+    return {};
+  }
+
+  auto startTime = std::chrono::high_resolution_clock::now();
+
+  s_current = initialSolutions.front();
+  double bestCost = s_current.getTotalDistance();
+  for (const auto &sol : initialSolutions) {
+    if (sol.isFeasible() && sol.getTotalDistance() < bestCost) {
+      bestCost = sol.getTotalDistance();
+      s_current = sol;
+    }
+  }
+
+  archive.initializeReferenceBox(s_current);
+  for (auto &sol : initialSolutions) {
+    if (sol.isFeasible())
+      archive.tryAdd(sol);
+  }
+
+  currentTemperature = config.startTemperature;
+
+  // ── Stagnation counters
+  // ─────────────────────────────────────────────────────
+  int iterationsWithoutImprovement = 0;
+  int totalStagnationEver_ = 0;
+  int perturbationCount_ = 0;
+  int lastTimePerturbation = 0;
+  int lastMinVeh = s_current.getNumRoutes();
+
+  // ── FRV state ──────────────────────────────────────────────────────────────
+  // aggressiveMergeAttempted_[v]: đã thử ít nhất 1 lần tại level v
+  // frvBestDistAtFail_[v]:        archiveBestDist khi FRV fail → soft-retry nếu
+  // dist cải thiện >1.5% frvRetryCount_[v]:            số lần retry → scale
+  // attempts frvLastTriggerIter_:          cooldown guard giữa 2 lần fire
+  std::vector<bool> aggressiveMergeAttempted_(50, false);
+  std::vector<double> frvBestDistAtFail_(50, 1e18);
+  std::vector<int> frvRetryCount_(50, 0);
+  int frvLastTriggerIter_ = -9999;
+  const int frvRetriggerInterval = 150; // [Fix 2] giảm 400→150
+
+  // ── Profiling
+  // ───────────────────────────────────────────────────────────────
+  struct TimingStats {
+    long long destroy_us = 0, repair_us = 0, evaluate_us = 0, ls_us = 0,
+              acceptance_us = 0;
+  } stats;
+  auto now = std::chrono::high_resolution_clock::now;
+  decltype(now()) t1, t2, t3, t4, t5, t6;
+
+  std::uniform_real_distribution<> dis(0.0, 1.0);
+
+  // ── MOEA/D weight vectors
+  // ───────────────────────────────────────────────────
+  struct WeightVector {
+    double dist, gini, time;
+  };
+  static const std::vector<WeightVector> weightVectors = {
+      {1.00, 0.00, 0.00}, {0.00, 1.00, 0.00}, {0.00, 0.00, 1.00},
+      {0.50, 0.50, 0.00}, {0.30, 0.60, 0.10}, {0.00, 0.60, 0.40},
+      {0.60, 0.25, 0.15}, {0.10, 0.65, 0.25}, {0.20, 0.30, 0.50},
+      {0.33, 0.34, 0.33},
+  };
+
+  std::cout << "[HV] Using 3D Hypervolume (Distance, Gini, MaxTime), "
+               "ref z_r = (1.1, 1.1, 1.1)\n";
+  int per = 2;
+  // ── Main loop
+  // ───────────────────────────────────────────────────────────────
+  for (int i = 0; i < config.maxIterations; ++i) {
+    auto now_time = std::chrono::high_resolution_clock::now();
+    long long elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(now_time -
+                                                              startTime)
+            .count();
+
+    if (elapsed_ms >= config.maxTime) {
+      if (config.enableLogging)
+        std::cout << "[TIME STOP] Reached maxTime = " << config.maxTime
+                  << " ms at iteration " << i << "\n";
+      break;
     }
 
-    s_current = initialSolutions.front();
-    double bestCost = s_current.getTotalDistance();
-    for (const auto &sol: initialSolutions) {
-        if (sol.isFeasible() && sol.getTotalDistance() < bestCost) {
-            bestCost = sol.getTotalDistance();
-            s_current = sol;
-        }
+    Solution &s_new = solutionPool.acquire();
+    s_new = s_current;
+    int lsIntensity = 0;
+    if (i <= 2000)
+      lsIntensity = config.localSearchIntensity * 1.5;
+    if (2000 < i && i < config.maxIterations * 0.22)
+      lsIntensity = config.localSearchIntensity * 1.2;
+    if (i >= config.maxIterations * 0.25 && i < config.maxIterations * 0.7) {
+      lsIntensity = config.localSearchIntensity;
+      // localSearch.setVehicleReductionFeq(3);
     }
 
-    archive.initializeReferenceBox(s_current);
-    for (auto &sol: initialSolutions) {
-        if (sol.isFeasible()) archive.tryAdd(sol);
+    if (s_new.getNumRoutes() <= 5 && i >= 7000) {
+      lsIntensity = config.localSearchIntensity * 0.85;
+      per = 1;
+    }
+    if (s_new.getNumRoutes() <= 5 && i >= 10000)  lsIntensity = config.localSearchIntensity * 0.5;
+    if (i >= config.maxIterations * 0.7)
+      lsIntensity = config.localSearchIntensity * 0.45;
+
+    int wIdx =
+        (i / std::max(1, config.segmentIterations)) % weightVectors.size();
+    const auto &w = weightVectors[wIdx];
+
+    // ── Destroy ─────────────────────────────────────────────────────────────
+    t1 = now();
+    int n_to_remove = calculateNodesToRemove();
+    int destroy_op_idx = destroyPool.select(randomEngine);
+    auto destroy_op = std::static_pointer_cast<IDestroyOperator>(
+        destroyPool.operators[destroy_op_idx]);
+
+    if (auto tsd = std::dynamic_pointer_cast<TimeSlackDestroy>(destroy_op)) {
+      double factor = (totalStagnationEver_ > 30) ? 4.0 : 3.0;
+      tsd->setExplorationFactor(factor);
     }
 
-    currentTemperature = config.startTemperature;
+    std::vector<int> unserved_custs =
+        destroy_op->execute(s_new, n_to_remove, randomEngine);
+    destroyPool.usages[destroy_op_idx]++;
 
-    // ── Stagnation counters ─────────────────────────────────────────────────────
-    int iterationsWithoutImprovement = 0;
-    int totalStagnationEver_ = 0;
-    int perturbationCount_ = 0;
-      int lastTimePerturbation = 0;
-    int lastMinVeh = s_current.getNumRoutes();
+    t2 = now();
+    stats.destroy_us +=
+        std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
 
-    // ── FRV state ──────────────────────────────────────────────────────────────
-    // aggressiveMergeAttempted_[v]: đã thử ít nhất 1 lần tại level v
-    // frvBestDistAtFail_[v]:        archiveBestDist khi FRV fail → soft-retry nếu dist cải thiện >1.5%
-    // frvRetryCount_[v]:            số lần retry → scale attempts
-    // frvLastTriggerIter_:          cooldown guard giữa 2 lần fire
-    std::vector<bool>   aggressiveMergeAttempted_(50, false);
-    std::vector<double> frvBestDistAtFail_(50, 1e18);
-    std::vector<int>    frvRetryCount_(50, 0);
-    int                 frvLastTriggerIter_  = -9999;
-    const int           frvRetriggerInterval = 150; // [Fix 2] giảm 400→150
+    // ── Repair ──────────────────────────────────────────────────────────────
+    int repair_op_idx = repairPool.select(randomEngine);
+    auto repair_op = std::static_pointer_cast<IRepairOperator>(
+        repairPool.operators[repair_op_idx]);
 
-    // ── Profiling ───────────────────────────────────────────────────────────────
-    struct TimingStats {
-        long long destroy_us = 0, repair_us = 0, evaluate_us = 0,
-                ls_us = 0, acceptance_us = 0;
-    } stats;
-    auto now = std::chrono::high_resolution_clock::now;
-    decltype(now()) t1, t2, t3, t4, t5, t6, alns_time;
+    if (auto adaptive =
+            std::dynamic_pointer_cast<AdaptiveInsertion>(repair_op)) {
+      adaptive->setWeightHint(w.dist, w.gini, w.time);
+      bool vrMode = (w.dist < 0.7);
+      adaptive->setVehicleReductionMode(vrMode);
+    }
 
-    std::uniform_real_distribution<> dis(0.0, 1.0);
+    repair_op->execute(s_new, unserved_custs, randomEngine);
+    repairPool.usages[repair_op_idx]++;
 
-    // ── MOEA/D weight vectors ───────────────────────────────────────────────────
-    struct WeightVector {
-        double dist, gini, time;
-    };
-    static const std::vector<WeightVector> weightVectors = {
-        {1.00, 0.00, 0.00},
-        {0.00, 1.00, 0.00},
-        {0.00, 0.00, 1.00},
-        {0.70, 0.30, 0.00},
-        {0.50, 0.50, 0.00},
-        {0.30, 0.60, 0.10},
-        {0.00, 0.60, 0.40},
-        {0.60, 0.25, 0.15},
-        {0.10, 0.65, 0.25},
-        {0.20, 0.30, 0.50},
-        {0.33, 0.34, 0.33},
-    };
+    t3 = now();
+    stats.repair_us +=
+        std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
 
-    std::cout << "[HV] Using 3D Hypervolume (Distance, Gini, MaxTime), "
-            "ref z_r = (1.1, 1.1, 1.1)\n";
-    alns_time = now();
-    // ── Main loop ───────────────────────────────────────────────────────────────
-    for (int i = 0; i < config.maxIterations; ++i) {
+    // ── Evaluate ────────────────────────────────────────────────────────────
+    s_new.evaluateRoutes();
 
-       auto now_time = std::chrono::high_resolution_clock::now();
-        long long elapsed_ms =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                now_time - startTime).count();
+    t4 = now();
+    stats.evaluate_us +=
+        std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
 
-        if (elapsed_ms >= config.maxTime) {
-            if (config.enableLogging) std::cout << "[TIME STOP] Reached maxTime = "
-                      << config.maxTime << " ms at iteration "
-                      << i << "\n";
-            break;
+    std::string result = "Rejected";
+    bool improved = false;
+
+    if (!s_new.isFeasible()) {
+      destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
+      repairPool.scores[repair_op_idx] += config.scoreIdentical;
+      goto end_iteration;
+    }
+
+    // ── Local Search ────────────────────────────────────────────────────────
+    if (config.useLocalSearch && s_new.isFeasible()) {
+      std::uniform_int_distribution<> dis_ls(0, 99);
+      if (dis_ls(randomEngine) < lsIntensity) {
+        if (i >= config.maxIterations * 0.25) {
+          localSearch.setVehicleReductionFeq(2);
         }
-
-        Solution &s_new = solutionPool.acquire();
-        s_new = s_current;
-        int lsIntensity = 0;
-        if (i <= 1200)  lsIntensity = config.localSearchIntensity * 1.65;
-        if (1200 < i && i < config.maxIterations * 0.22) lsIntensity = config.localSearchIntensity;
-        if (i >= config.maxIterations * 0.22 && i <config.maxIterations * 0.7) {
-            lsIntensity = config.localSearchIntensity ;
-            // localSearch.setVehicleReductionFeq(3);
+        localSearch.setIterationContext(i, config.maxIterations);
+        localSearch.run(s_new);
+          localSearch.runIntensifiedVehicleReduction(s_new, 5);
+        if (i >= config.maxIterations * 0.7) {
+          localSearch.runIntensifiedVehicleReduction(s_new, 3);
         }
-        if (i >= config.maxIterations * 0.7) lsIntensity = config.localSearchIntensity;
+      }
+    }
 
-        int wIdx = (i / std::max(1, config.segmentIterations)) % weightVectors.size();
-        const auto &w = weightVectors[wIdx];
+    t5 = now();
+    stats.ls_us +=
+        std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count();
 
-        // ── Destroy ─────────────────────────────────────────────────────────────
-        t1 = now();
-        int n_to_remove = calculateNodesToRemove();
-        int destroy_op_idx = destroyPool.select(randomEngine);
-        auto destroy_op = std::static_pointer_cast<IDestroyOperator>(
-            destroyPool.operators[destroy_op_idx]);
+    s_new.evaluateRoutes();
+    if (!s_new.isFeasible())
+      goto end_iteration;
 
-        if (auto tsd = std::dynamic_pointer_cast<TimeSlackDestroy>(destroy_op)) {
-            double factor = (totalStagnationEver_ > 30) ? 4.0 : 3.0;
-            tsd->setExplorationFactor(factor);
+    // ── Acceptance ──────────────────────────────────────────────────────────
+    if (s_new.dominates(s_current)) {
+      archive.tryAdd(s_new);
+      s_current = s_new;
+      destroyPool.scores[destroy_op_idx] += config.scoreDominating;
+      repairPool.scores[repair_op_idx] += config.scoreDominating;
+      improved = true;
+      result = "Dominating";
+    } else {
+      AddResult add_res = archive.tryAdd(s_new);
+      if (add_res == AddResult::DOMINATING ||
+          add_res == AddResult::NON_DOMINATED) {
+        destroyPool.scores[destroy_op_idx] += config.scoreNonDominated;
+        repairPool.scores[repair_op_idx] += config.scoreNonDominated;
+        improved = true;
+        result = "Non-Dominated";
+      }
+
+      // ── SA acceptance ──────────────────────────────────────────────────
+      double minGini = 1e18, maxGini = -1e18;
+      double minTime = 1e18, maxTime = -1e18;
+      double minDist = 1e18, maxDist = -1e18;
+
+      auto &front = archive.getFront();
+      if (!front.empty()) {
+        for (const auto &sol : front) {
+          minDist = std::min(minDist, sol.getTotalDistance());
+          maxDist = std::max(maxDist, sol.getTotalDistance());
+          minGini = std::min(minGini, sol.getWorkloadGini());
+          maxGini = std::max(maxGini, sol.getWorkloadGini());
+          minTime = std::min(minTime, sol.getMaxTime());
+          maxTime = std::max(maxTime, sol.getMaxTime());
         }
+      } else {
+        minDist =
+            std::min(s_current.getTotalDistance(), s_new.getTotalDistance());
+        maxDist =
+            std::max(s_current.getTotalDistance(), s_new.getTotalDistance());
+        minGini =
+            std::min(s_current.getWorkloadGini(), s_new.getWorkloadGini());
+        maxGini =
+            std::max(s_current.getWorkloadGini(), s_new.getWorkloadGini());
+        minTime = std::min(s_current.getMaxTime(), s_new.getMaxTime());
+        maxTime = std::max(s_current.getMaxTime(), s_new.getMaxTime());
+      }
 
-        std::vector<int> unserved_custs =
-                destroy_op->execute(s_new, n_to_remove, randomEngine);
-        destroyPool.usages[destroy_op_idx]++;
+      double distR = std::max(1.0, maxDist - minDist);
+      double giniR = std::max(0.01, maxGini - minGini);
+      double timeR = std::max(1.0, maxTime - minTime);
 
-        t2 = now();
-        stats.destroy_us +=
-                std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+      const double SA_SCALE = config.SAScale;
+      const double veh_penalty = 10000.0;
 
-        // ── Repair ──────────────────────────────────────────────────────────────
-        int repair_op_idx = repairPool.select(randomEngine);
-        auto repair_op = std::static_pointer_cast<IRepairOperator>(
-            repairPool.operators[repair_op_idx]);
+      double delta_objectives =
+          veh_penalty *
+              (s_new.getTotalVehicles() - s_current.getTotalVehicles()) +
+          SA_SCALE * w.dist *
+              (s_new.getTotalDistance() - s_current.getTotalDistance()) /
+              distR +
+          SA_SCALE * w.gini *
+              (s_new.getWorkloadGini() - s_current.getWorkloadGini()) / giniR +
+          SA_SCALE * w.time * (s_new.getMaxTime() - s_current.getMaxTime()) /
+              timeR;
 
-        if (auto adaptive = std::dynamic_pointer_cast<AdaptiveInsertion>(repair_op)) {
-            adaptive->setWeightHint(w.dist, w.gini, w.time);
-            bool vrMode = (w.dist < 0.7);
-            adaptive->setVehicleReductionMode(vrMode);
+      if (std::exp(-delta_objectives / currentTemperature) >
+          dis(randomEngine)) {
+        s_current = s_new;
+        result = (result == "Rejected") ? "Accepted (SA)"
+                                        : result + " & Accepted (SA)";
+        if (result == "Accepted (SA)") {
+          destroyPool.scores[destroy_op_idx] += config.scoreDominated;
+          repairPool.scores[repair_op_idx] += config.scoreDominated;
         }
-
-        repair_op->execute(s_new, unserved_custs, randomEngine);
-        repairPool.usages[repair_op_idx]++;
-
-        t3 = now();
-        stats.repair_us +=
-                std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
-
-        // ── Evaluate ────────────────────────────────────────────────────────────
-        s_new.evaluateRoutes();
-
-        t4 = now();
-        stats.evaluate_us +=
-                std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
-
-        std::string result = "Rejected";
-        bool improved = false;
-
-        if (!s_new.isFeasible()) {
-            destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
-            repairPool.scores[repair_op_idx] += config.scoreIdentical;
-            goto end_iteration;
+      } else {
+        if (result == "Rejected") {
+          destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
+          repairPool.scores[repair_op_idx] += config.scoreIdentical;
         }
+      }
+    }
 
-        // ── Local Search ────────────────────────────────────────────────────────
-        if (s_new.getTotalVehicles() - s_current.getTotalVehicles() <= 2 && i >= 3000) {
-            s_new = s_current;
-        }
-        if (config.useLocalSearch && s_new.isFeasible()) {
-            std::uniform_int_distribution<> dis_ls(0, 99);
-            if (dis_ls(randomEngine) < lsIntensity) {
-                if (i >= config.maxIterations * 0.4) localSearch.setVehicleReductionFeq(3);
-                localSearch.run(s_new);
+    // ── Stagnation tracking ─────────────────────────────────────────────────
+    if (improved) {
+      iterationsWithoutImprovement = 0;
+      totalStagnationEver_ = 0;
+    } else {
+      iterationsWithoutImprovement++;
+      totalStagnationEver_++;
+    }
+
+    t6 = now();
+    stats.acceptance_us +=
+        std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count();
+
+    if (i % 50 == 0) {
+      logger->logEvolutionStep(i, destroy_op->getName(), repair_op->getName(),
+                               result, s_new);
+    }
+
+  end_iteration:
+    currentTemperature *= config.coolingRate;
+    if (currentTemperature < config.minTemperature)
+      currentTemperature = config.minTemperature;
+
+    // ── Perturbation ────────────────────────────────────────────────────────
+    if (i > config.maxIterations * 0.18 && totalStagnationEver_ % 30 <= 4 &&
+        totalStagnationEver_ >= 20 &&
+        i - lastTimePerturbation >= 3000 &&
+        perturbationCount_ <= per) {
+      lastTimePerturbation = i;
+      ++perturbationCount_;
+
+      double referenceDist = 1e18;
+      for (const auto &sol : archive.getFront())
+        referenceDist = std::min(referenceDist, sol.getTotalDistance());
+      if (referenceDist >= 1e18)
+        referenceDist = s_current.getTotalDistance();
+
+      const double TARGET_ACCEPT_PROB = 0.50;
+      const double TARGET_WORSE_FACTOR =
+          0.08; // Phase 7: 0.05→0.08 (accept slightly worse after perturbation)
+      double targetDelta = referenceDist * TARGET_WORSE_FACTOR;
+      double reheatTemp = -targetDelta / std::log(TARGET_ACCEPT_PROB);
+      reheatTemp = std::clamp(reheatTemp, config.minTemperature * 10.0,
+                              config.startTemperature);
+      currentTemperature = reheatTemp;
+
+      auto &front = archive.getFront();
+      if (!front.empty()) {
+        int strategy = (perturbationCount_ - 1) % 4;
+        const Solution *jumpTarget = nullptr;
+
+        if (strategy == 0) {
+          int minVeh = INT_MAX;
+          double minDist = 1e18;
+          for (const auto &sol : front) {
+            int v = sol.getTotalVehicles();
+            double d = sol.getTotalDistance();
+            if (v < minVeh || (v == minVeh && d < minDist)) {
+              minVeh = v;
+              minDist = d;
+              jumpTarget = &sol;
             }
-        }
-
-        t5 = now();
-        stats.ls_us +=
-                std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count();
-
-        s_new.evaluateRoutes();
-        if (!s_new.isFeasible()) goto end_iteration;
-
-        // ── Acceptance ──────────────────────────────────────────────────────────
-        if (s_new.dominates(s_current)) {
-            archive.tryAdd(s_new);
-            s_current = s_new;
-            destroyPool.scores[destroy_op_idx] += config.scoreDominating;
-            repairPool.scores[repair_op_idx] += config.scoreDominating;
-            improved = true;
-            result = "Dominating";
+          }
+        } else if (strategy == 1) {
+          double minDist = 1e18;
+          for (const auto &sol : front) {
+            if (sol.getTotalDistance() < minDist) {
+              minDist = sol.getTotalDistance();
+              jumpTarget = &sol;
+            }
+          }
         } else {
-            AddResult add_res = archive.tryAdd(s_new);
-            if (add_res == AddResult::DOMINATING ||
-                add_res == AddResult::NON_DOMINATED) {
-                destroyPool.scores[destroy_op_idx] += config.scoreNonDominated;
-                repairPool.scores[repair_op_idx] += config.scoreNonDominated;
-                improved = true;
-                result = "Non-Dominated";
-            }
-
-            // ── SA acceptance ──────────────────────────────────────────────────
-            double minGini = 1e18, maxGini = -1e18;
-            double minTime = 1e18, maxTime = -1e18;
-            double minDist = 1e18, maxDist = -1e18;
-
-            auto &front = archive.getFront();
-            if (!front.empty()) {
-                for (const auto &sol: front) {
-                    minDist = std::min(minDist, sol.getTotalDistance());
-                    maxDist = std::max(maxDist, sol.getTotalDistance());
-                    minGini = std::min(minGini, sol.getWorkloadGini());
-                    maxGini = std::max(maxGini, sol.getWorkloadGini());
-                    minTime = std::min(minTime, sol.getMaxTime());
-                    maxTime = std::max(maxTime, sol.getMaxTime());
-                }
-            } else {
-                minDist = std::min(s_current.getTotalDistance(), s_new.getTotalDistance());
-                maxDist = std::max(s_current.getTotalDistance(), s_new.getTotalDistance());
-                minGini = std::min(s_current.getWorkloadGini(), s_new.getWorkloadGini());
-                maxGini = std::max(s_current.getWorkloadGini(), s_new.getWorkloadGini());
-                minTime = std::min(s_current.getMaxTime(), s_new.getMaxTime());
-                maxTime = std::max(s_current.getMaxTime(), s_new.getMaxTime());
-            }
-
-            double distR = std::max(1.0, maxDist - minDist);
-            double giniR = std::max(0.01, maxGini - minGini);
-            double timeR = std::max(1.0, maxTime - minTime);
-
-            const double SA_SCALE = 10.0;
-            const double veh_penalty = 10000.0;
-
-            double delta_objectives =
-                    veh_penalty * (s_new.getTotalVehicles() - s_current.getTotalVehicles()) +
-                    SA_SCALE * w.dist * (s_new.getTotalDistance() - s_current.getTotalDistance()) / distR +
-                    SA_SCALE * w.gini * (s_new.getWorkloadGini() - s_current.getWorkloadGini()) / giniR +
-                    SA_SCALE * w.time * (s_new.getMaxTime() - s_current.getMaxTime()) / timeR;
-                // std::cout << "Delta_objectives: " << delta_objectives << "\n";
-            if (std::exp(-delta_objectives / currentTemperature) > dis(randomEngine)) {
-                s_current = s_new;
-                result = (result == "Rejected") ? "Accepted (SA)" : result + " & Accepted (SA)";
-                if (result == "Accepted (SA)") {
-                    destroyPool.scores[destroy_op_idx] += config.scoreDominated;
-                    repairPool.scores[repair_op_idx] += config.scoreDominated;
-                }
-            } else {
-                if (result == "Rejected") {
-                    destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
-                    repairPool.scores[repair_op_idx] += config.scoreIdentical;
-                }
-            }
+          std::uniform_int_distribution<int> randIdx(
+              0, static_cast<int>(front.size()) - 1);
+          jumpTarget = &front[randIdx(randomEngine)];
         }
 
-        // ── Stagnation tracking ─────────────────────────────────────────────────
-        if (improved) {
+        if (jumpTarget)
+          s_current = *jumpTarget;
+
+        for (size_t idx = 0; idx < destroyPool.weights.size(); ++idx)
+          destroyPool.weights[idx] = std::max(destroyPool.weights[idx],
+                                              destroyPool.initialWeights[idx]);
+        for (size_t idx = 0; idx < repairPool.weights.size(); ++idx)
+          repairPool.weights[idx] =
+              std::max(repairPool.weights[idx], repairPool.initialWeights[idx]);
+        if (config.enableLogging) {
+          std::cout << "[Perturbation #" << perturbationCount_ << "] Iter=" << i
+                    << " | Strategy=" << strategy
+                    << " | Jump: " << jumpTarget->getTotalVehicles() << " veh, "
+                    << std::fixed << std::setprecision(2)
+                    << jumpTarget->getTotalDistance() << " dist"
+                    << " | T_reheat=" << reheatTemp
+                    << " (totalStagnation=" << totalStagnationEver_ << ")\n";
+        }
+        // std::cout << "[Perturbation #" << perturbationCount_
+        //         << "] Iter=" << i
+        //         << " | Strategy=" << strategy
+        //         << " | Jump: " << jumpTarget->getTotalVehicles()
+        //         << " veh, " << std::fixed << std::setprecision(2)
+        //         << jumpTarget->getTotalDistance() << " dist"
+        //         << " | T_reheat=" << reheatTemp
+        //         << " (totalStagnation=" << totalStagnationEver_ << ")\n";
+      }
+
+      // Reset counters sau perturbation
+      iterationsWithoutImprovement = 0;
+      hvStagnationCount_ = 0;
+      previousHV_ = 0.0;
+      // totalStagnationEver_ KHÔNG reset
+
+      // [Fix 2] Unblock FRV sau perturbation — vừa reheat + jump sang
+      // cấu trúc mới → window tốt nhất để thử giảm xe.
+      // Reset cooldown để FRV eligible ở segment boundary tiếp theo.
+      if (perturbationCount_ <= 8) {
+        frvLastTriggerIter_ = i - frvRetriggerInterval;
+      }
+    }
+
+    // ── Mild reheating ───────────────────────────────────────────────────────
+    else if (totalStagnationEver_ == 50 || totalStagnationEver_ == 100) {
+      currentTemperature =
+          std::min(currentTemperature * 1.25, config.startTemperature * 0.85);
+    }
+
+    // ── Destroy intensity boost (Phase 2: Inverted — aggressive in late game)
+    // ─
+    {
+      double progress = static_cast<double>(i) / config.maxIterations;
+      if (progress < 0.3)
+        perturbationBoost_ = 1.0; // Early: conservative
+      else if (progress < 0.6)
+        perturbationBoost_ = 1.2; // Mid: moderate
+      else
+        perturbationBoost_ = 1.5; // Late: aggressive escape
+    }
+
+    // ── Segment boundary ─────────────────────────────────────────────────────
+    if ((i + 1) % config.segmentIterations == 0) {
+      int nextWIdx = ((i + 1) / std::max(1, config.segmentIterations)) %
+                     weightVectors.size();
+      const auto &nextW = weightVectors[nextWIdx];
+
+      auto &front = archive.getFront();
+      if (front.size() > 1) {
+        double minDist = front[0].getTotalDistance(), maxDist = minDist;
+        double minGini = front[0].getWorkloadGini(), maxGini = minGini;
+        double minTime = front[0].getMaxTime(), maxTime = minTime;
+        for (const auto &sol : front) {
+          minDist = std::min(minDist, sol.getTotalDistance());
+          maxDist = std::max(maxDist, sol.getTotalDistance());
+          minGini = std::min(minGini, sol.getWorkloadGini());
+          maxGini = std::max(maxGini, sol.getWorkloadGini());
+          minTime = std::min(minTime, sol.getMaxTime());
+          maxTime = std::max(maxTime, sol.getMaxTime());
+        }
+        double distR = std::max(1e-6, maxDist - minDist);
+        double giniR = std::max(1e-6, maxGini - minGini);
+        double timeR = std::max(1e-6, maxTime - minTime);
+
+        double bestScalar = std::numeric_limits<double>::max();
+        const Solution *bestSol = nullptr;
+        for (const auto &sol : front) {
+          double scalar =
+              nextW.dist * (sol.getTotalDistance() - minDist) / distR +
+              nextW.gini * (sol.getWorkloadGini() - minGini) / giniR +
+              nextW.time * (sol.getMaxTime() - minTime) / timeR;
+          if (scalar < bestScalar) {
+            bestScalar = scalar;
+            bestSol = &sol;
+          }
+        }
+        if (bestSol) {
+          bool actualJump =
+              std::abs(bestSol->getTotalDistance() -
+                       s_current.getTotalDistance()) > 1e-6 ||
+              bestSol->getTotalVehicles() != s_current.getTotalVehicles();
+          s_current = *bestSol;
+          if (actualJump)
             iterationsWithoutImprovement = 0;
-            totalStagnationEver_ = 0;
+        }
+      }
+
+      auto now_progress = std::chrono::high_resolution_clock::now();
+      long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              now_progress - startTime)
+                              .count();
+      logger->logProgress(i + 1, time_ms, archive);
+      logger->logOperatorSegment(i + 1, destroyPool, repairPool);
+      destroyPool.updateWeights(config.decayParameter);
+      repairPool.updateWeights(config.decayParameter);
+      destroyPool.resetScores();
+      repairPool.resetScores();
+
+      // [OPT-5] Apply MIN_WEIGHT floor
+      for (size_t idx = 0; idx < destroyPool.weights.size(); ++idx) {
+        destroyPool.weights[idx] =
+            std::max(MIN_WEIGHT, destroyPool.weights[idx]);
+      }
+      for (size_t idx = 0; idx < repairPool.weights.size(); ++idx) {
+        repairPool.weights[idx] = std::max(MIN_WEIGHT, repairPool.weights[idx]);
+      }
+
+      // [OPT-5] VR Mode activation
+      if (i >= vrModeStartIter_ && !vrModeActive_) {
+        vrModeActive_ = true;
+        std::cout << "[VR-MODE] Activated at iteration " << i << "\n";
+      }
+      if (vrModeActive_) {
+        // Boost VR operators weight
+        for (size_t idx = 0; idx < destroyPool.weights.size(); ++idx) {
+          if (destroyPool.operators[idx]->getName().find("VehicleReduction") !=
+                  std::string::npos ||
+              destroyPool.operators[idx]->getName().find("RouteMerging") !=
+                  std::string::npos) {
+            destroyPool.weights[idx] =
+                std::max(static_cast<double>(vrModeMinWeight_),
+                         destroyPool.weights[idx]);
+          }
+        }
+        for (size_t idx = 0; idx < repairPool.weights.size(); ++idx) {
+          if (repairPool.operators[idx]->getName().find("VehiclePacking") !=
+              std::string::npos) {
+            repairPool.weights[idx] = std::max(
+                static_cast<double>(vrModeMinWeight_), repairPool.weights[idx]);
+          }
+        }
+      }
+
+      // ── HV convergence check ───────────────────────────────────────────────
+      if (archive.getSize() > 0) {
+        int currentMinVeh = INT_MAX;
+        double archiveBestDist = std::numeric_limits<double>::max();
+        for (const auto &sol : archive.getFront()) {
+          currentMinVeh = std::min(currentMinVeh, sol.getTotalVehicles());
+          archiveBestDist = std::min(archiveBestDist, sol.getTotalDistance());
+        }
+
+        if (currentMinVeh < lastMinVeh) {
+          if (config.enableLogging) {
+            std::cout << "[VEH-Improve] New min vehicles: " << currentMinVeh
+                      << " (was " << lastMinVeh
+                      << "). Resetting HV tracking.\n";
+          }
+          // std::cout << "[VEH-Improve] New min vehicles: " << currentMinVeh
+          //         << " (was " << lastMinVeh << "). Resetting HV tracking.\n";
+          lastMinVeh = currentMinVeh;
+          hvStagnationCount_ = 0;
+          previousHV_ = 0.0;
+          totalStagnationEver_ = 0;
+
+          // Reset FRV state cho level mới
+          if (currentMinVeh < (int)aggressiveMergeAttempted_.size()) {
+            aggressiveMergeAttempted_[currentMinVeh] = false;
+            frvBestDistAtFail_[currentMinVeh] = 1e18;
+            frvRetryCount_[currentMinVeh] = 0;
+          }
+
+          for (size_t idx = 0; idx < repairPool.weights.size(); ++idx)
+            repairPool.weights[idx] = std::max(repairPool.weights[idx],
+                                               repairPool.initialWeights[idx]);
+          for (size_t idx = 0; idx < destroyPool.weights.size(); ++idx)
+            destroyPool.weights[idx] = std::max(
+                destroyPool.weights[idx], destroyPool.initialWeights[idx]);
         } else {
-            iterationsWithoutImprovement++;
-            totalStagnationEver_++;
-        }
+          // double currentHV    = archive.computeHypervolume();
+          double currentHV = archive.computeHypervolume2D();
+          double hvImprovement = 0.0;
 
-
-
-        t6 = now();
-        stats.acceptance_us +=
-                std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count();
-
-        logger->logEvolutionStep(i, destroy_op->getName(), repair_op->getName(),
-                                 result, s_new);
-
-    end_iteration:
-        currentTemperature *= config.coolingRate;
-        if (currentTemperature < config.minTemperature)
-            currentTemperature = config.minTemperature;
-
-        // ── Perturbation ────────────────────────────────────────────────────────
-        if (i > config.maxIterations * 0.18 && totalStagnationEver_ % 30 <= 4 && totalStagnationEver_ >= 20 && i - lastTimePerturbation >= 2000
-            && perturbationCount_ <= 3) {
-            lastTimePerturbation = i;
-            ++perturbationCount_;
-
-            double referenceDist = 1e18;
-            for (const auto &sol: archive.getFront())
-                referenceDist = std::min(referenceDist, sol.getTotalDistance());
-            if (referenceDist >= 1e18) referenceDist = s_current.getTotalDistance();
-
-            const double TARGET_ACCEPT_PROB = 0.50;
-            const double TARGET_WORSE_FACTOR = 0.05;
-            double targetDelta = referenceDist * TARGET_WORSE_FACTOR;
-            double reheatTemp = -targetDelta / std::log(TARGET_ACCEPT_PROB);
-            reheatTemp = std::clamp(reheatTemp,
-                                    config.minTemperature * 10.0,
-                                    config.startTemperature);
-            currentTemperature = reheatTemp;
-
-            auto &front = archive.getFront();
-            if (!front.empty()) {
-                int strategy = (perturbationCount_ - 1) % 3;
-                const Solution *jumpTarget = nullptr;
-
-                if (strategy == 0) {
-                    int minVeh = INT_MAX;
-                    double minDist = 1e18;
-                    for (const auto &sol: front) {
-                        int v = sol.getTotalVehicles();
-                        double d = sol.getTotalDistance();
-                        if (v < minVeh || (v == minVeh && d < minDist)) {
-                            minVeh = v; minDist = d; jumpTarget = &sol;
-                        }
-                    }
-                } else if (strategy == 1) {
-                    double minDist = 1e18;
-                    for (const auto &sol: front) {
-                        if (sol.getTotalDistance() < minDist) {
-                            minDist = sol.getTotalDistance(); jumpTarget = &sol;
-                        }
-                    }
-                } else {
-                    std::uniform_int_distribution<int> randIdx(
-                        0, static_cast<int>(front.size()) - 1);
-                    jumpTarget = &front[randIdx(randomEngine)];
-                }
-
-                if (jumpTarget) s_current = *jumpTarget;
-
-                for (size_t idx = 0; idx < destroyPool.weights.size(); ++idx)
-                    destroyPool.weights[idx] = std::max(destroyPool.weights[idx],
-                                                        destroyPool.initialWeights[idx]);
-                for (size_t idx = 0; idx < repairPool.weights.size(); ++idx)
-                    repairPool.weights[idx] = std::max(repairPool.weights[idx],
-                                                       repairPool.initialWeights[idx]);
-
-                std::cout << "[Perturbation #" << perturbationCount_
-                        << "] Iter=" << i
-                        << " | Strategy=" << strategy
-                        << " | Jump: " << jumpTarget->getTotalVehicles()
-                        << " veh, " << std::fixed << std::setprecision(2)
-                        << jumpTarget->getTotalDistance() << " dist"
-                        << " | T_reheat=" << reheatTemp
-                        << " (totalStagnation=" << totalStagnationEver_ << ")\n";
-            }
-
-            // Reset counters sau perturbation
-            iterationsWithoutImprovement = 0;
+          if (previousHV_ == 0.0 && currentHV > 1e-9) {
+            hvImprovement = 1.0;
+            previousHV_ = currentHV;
             hvStagnationCount_ = 0;
-            previousHV_ = 0.0;
-            // totalStagnationEver_ KHÔNG reset
-
-            // [Fix 2] Unblock FRV sau perturbation — vừa reheat + jump sang
-            // cấu trúc mới → window tốt nhất để thử giảm xe.
-            // Reset cooldown để FRV eligible ở segment boundary tiếp theo.
-            if (perturbationCount_ <= 8) {
-                frvLastTriggerIter_ = i - frvRetriggerInterval;
+          } else if (currentHV <= 1e-9) {
+            if (archive.getSize() >= 2)
+              hvStagnationCount_++;
+          } else {
+            hvImprovement = (currentHV - previousHV_) / previousHV_;
+            if (currentHV >
+                previousHV_ * (1.0 + config.hvImprovementThreshold)) {
+              hvStagnationCount_ = 0;
+              previousHV_ = currentHV;
+            } else {
+              hvStagnationCount_++;
             }
+          }
+
+          if (config.enableLogging) {
+            std::cout << "[HV] Seg " << (i + 1) << ": HV=" << std::fixed
+                      << std::setprecision(2) << currentHV
+                      << " (best=" << previousHV_ << ")"
+                      << " | Delta=" << std::setprecision(4)
+                      << (hvImprovement * 100.0) << "%"
+                      << " | Stag=" << hvStagnationCount_ << "/"
+                      << config.hvStagnationLimit
+                      << " | Archive=" << archive.getSize()
+                      << " | minVeh=" << currentMinVeh
+                      << " | bestDist=" << std::setprecision(2)
+                      << archiveBestDist << " | totalStag="
+                      << totalStagnationEver_
+                      // << " | bestDist=" << delta_objectives
+                      << "\n";
+          }
+          // std::cout << "[HV] Seg " << (i + 1)
+          //         << ": HV=" << std::fixed << std::setprecision(2) <<
+          //         currentHV
+          //         << " (best=" << previousHV_ << ")"
+          //         << " | Delta=" << std::setprecision(4) << (hvImprovement *
+          //         100.0) << "%"
+          //         << " | Stag=" << hvStagnationCount_ << "/" <<
+          //         config.hvStagnationLimit
+          //         << " | Archive=" << archive.getSize()
+          //         << " | minVeh=" << currentMinVeh
+          //         << " | bestDist=" << std::setprecision(2) <<
+          //         archiveBestDist
+          //         << " | totalStag=" << totalStagnationEver_
+          //         // << " | bestDist=" << delta_objectives
+          //         << "\n";
+
+          if (hvStagnationCount_ >= config.hvStagnationLimit) {
+            std::cout << "[HV-Stop] Converged at segment " << (i + 1) << " ("
+                      << hvStagnationCount_ << " segments stagnant).\n";
+            break;
+          }
         }
-
-        // ── Mild reheating ───────────────────────────────────────────────────────
-        else if (totalStagnationEver_ == 50 || totalStagnationEver_ == 100) {
-            currentTemperature = std::min(currentTemperature * 1.25,
-                                           config.startTemperature * 0.85);
-        }
-
-        // ── Destroy intensity boost ──────────────────────────────────────────────
-        if (i > 4000)      perturbationBoost_ = 10;
-        else if (i > 1000) perturbationBoost_ = 1.5;
-        else                                   perturbationBoost_ = 1.75;
-
-        // ── Segment boundary ─────────────────────────────────────────────────────
-        if ((i + 1) % config.segmentIterations == 0) {
-            int nextWIdx = ((i + 1) / std::max(1, config.segmentIterations))
-                           % weightVectors.size();
-            const auto &nextW = weightVectors[nextWIdx];
-
-            auto &front = archive.getFront();
-            if (front.size() > 1) {
-                double minDist = front[0].getTotalDistance(), maxDist = minDist;
-                double minGini = front[0].getWorkloadGini(), maxGini = minGini;
-                double minTime = front[0].getMaxTime(), maxTime = minTime;
-                for (const auto &sol: front) {
-                    minDist = std::min(minDist, sol.getTotalDistance());
-                    maxDist = std::max(maxDist, sol.getTotalDistance());
-                    minGini = std::min(minGini, sol.getWorkloadGini());
-                    maxGini = std::max(maxGini, sol.getWorkloadGini());
-                    minTime = std::min(minTime, sol.getMaxTime());
-                    maxTime = std::max(maxTime, sol.getMaxTime());
-                }
-                double distR = std::max(1e-6, maxDist - minDist);
-                double giniR = std::max(1e-6, maxGini - minGini);
-                double timeR = std::max(1e-6, maxTime - minTime);
-
-                double bestScalar = std::numeric_limits<double>::max();
-                const Solution *bestSol = nullptr;
-                for (const auto &sol: front) {
-                    double scalar =
-                            nextW.dist * (sol.getTotalDistance() - minDist) / distR +
-                            nextW.gini * (sol.getWorkloadGini() - minGini) / giniR +
-                            nextW.time * (sol.getMaxTime() - minTime) / timeR;
-                    if (scalar < bestScalar) {
-                        bestScalar = scalar; bestSol = &sol;
-                    }
-                }
-                if (bestSol) {
-                    bool actualJump =
-                            std::abs(bestSol->getTotalDistance() - s_current.getTotalDistance()) > 1e-6 ||
-                            bestSol->getTotalVehicles() != s_current.getTotalVehicles();
-                    s_current = *bestSol;
-                    if (actualJump) iterationsWithoutImprovement = 0;
-                }
-            }
-
-            auto now_progress = std::chrono::high_resolution_clock::now();
-            long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now_progress - startTime).count();
-            logger->logProgress(i + 1, time_ms, archive);
-            logger->logOperatorSegment(i + 1, destroyPool, repairPool);
-            destroyPool.updateWeights(config.decayParameter);
-            repairPool.updateWeights(config.decayParameter);
-            destroyPool.resetScores();
-            repairPool.resetScores();
-
-            // ── HV convergence check ───────────────────────────────────────────────
-            if (archive.getSize() > 0) {
-                int currentMinVeh = INT_MAX;
-                double archiveBestDist = std::numeric_limits<double>::max();
-                for (const auto &sol: archive.getFront()) {
-                    currentMinVeh   = std::min(currentMinVeh,   sol.getTotalVehicles());
-                    archiveBestDist = std::min(archiveBestDist, sol.getTotalDistance());
-                }
-
-                if (currentMinVeh < lastMinVeh) {
-                    std::cout << "[VEH-Improve] New min vehicles: " << currentMinVeh
-                            << " (was " << lastMinVeh << "). Resetting HV tracking.\n";
-                    lastMinVeh         = currentMinVeh;
-                    hvStagnationCount_ = 0;
-                    previousHV_        = 0.0;
-                    totalStagnationEver_ = 0;
-
-                    // Reset FRV state cho level mới
-                    if (currentMinVeh < (int)aggressiveMergeAttempted_.size()) {
-                        aggressiveMergeAttempted_[currentMinVeh] = false;
-                        frvBestDistAtFail_[currentMinVeh]        = 1e18;
-                        frvRetryCount_[currentMinVeh]            = 0;
-                    }
-
-                    for (size_t idx = 0; idx < repairPool.weights.size(); ++idx)
-                        repairPool.weights[idx] = std::max(repairPool.weights[idx],
-                                                           repairPool.initialWeights[idx]);
-                    for (size_t idx = 0; idx < destroyPool.weights.size(); ++idx)
-                        destroyPool.weights[idx] = std::max(destroyPool.weights[idx],
-                                                            destroyPool.initialWeights[idx]);
-                } else {
-                    double currentHV    = archive.computeHypervolume();
-                    double hvImprovement = 0.0;
-
-                    if (previousHV_ == 0.0 && currentHV > 1e-9) {
-                        hvImprovement      = 1.0;
-                        previousHV_        = currentHV;
-                        hvStagnationCount_ = 0;
-                    } else if (currentHV <= 1e-9) {
-                        if (archive.getSize() >= 2) hvStagnationCount_++;
-                    } else {
-                        hvImprovement = (currentHV - previousHV_) / previousHV_;
-                        if (currentHV > previousHV_ * (1.0 + config.hvImprovementThreshold)) {
-                            hvStagnationCount_ = 0;
-                            previousHV_        = currentHV;
-                        } else {
-                            hvStagnationCount_++;
-                        }
-                    }
-
-                    std::cout << "[HV] Seg " << (i + 1)
-                            << ": HV=" << std::fixed << std::setprecision(2) << currentHV
-                            << " (best=" << previousHV_ << ")"
-                            << " | Delta=" << std::setprecision(4) << (hvImprovement * 100.0) << "%"
-                            << " | Stag=" << hvStagnationCount_ << "/" << config.hvStagnationLimit
-                            << " | Archive=" << archive.getSize()
-                            << " | minVeh=" << currentMinVeh
-                            << " | bestDist=" << std::setprecision(2) << archiveBestDist
-                            << " | totalStag=" << totalStagnationEver_
-                            << "\n";
-
-                    if (hvStagnationCount_ >= config.hvStagnationLimit) {
-                        std::cout << "[HV-Stop] Converged at segment " << (i + 1)
-                                << " (" << hvStagnationCount_ << " segments stagnant).\n";
-                        break;
-                    }
-
-                    // ── FRV Trigger ──────────────────────────────────────────────
-                    // [Fix 1] Soft retry: fire lại nếu archive cải thiện >1.5% từ lần fail cuối
-                    // [Fix 3] Multi-seed: thử min-dist + min-gini
-                    if (config.trigger){
-                        bool notTriedYet = !aggressiveMergeAttempted_[currentMinVeh];
-                        bool improvedSinceLastFail =
-                            aggressiveMergeAttempted_[currentMinVeh] &&
-                            archiveBestDist < frvBestDistAtFail_[currentMinVeh] * 0.985;
-
-                        bool frvCondition =
-                            (i >= (int)(config.maxIterations * 0.12))        &&
-                            (totalStagnationEver_ >= 30)                      &&
-                            (i - frvLastTriggerIter_ >= frvRetriggerInterval) &&
-                            (currentMinVeh > 2)                               &&
-                            (currentMinVeh < (int)aggressiveMergeAttempted_.size()) &&
-                            (notTriedYet || improvedSinceLastFail);
-
-                        if (frvCondition) {
-                            frvLastTriggerIter_ = i;
-                            int targetVeh = currentMinVeh - 1;
-
-                            // [Fix 3] Multi-seed: min-dist + min-gini (cấu trúc route khác nhau)
-                            std::vector<const Solution*> frvSeeds;
-                            {
-                                const Solution *s1 = nullptr, *s2 = nullptr;
-                                double minD = 1e18, minG = 1e18;
-                                for (const auto &sol : archive.getFront()) {
-                                    if (sol.getTotalVehicles() != currentMinVeh) continue;
-                                    if (sol.getTotalDistance()  < minD) { minD = sol.getTotalDistance();  s1 = &sol; }
-                                    if (sol.getWorkloadGini()   < minG) { minG = sol.getWorkloadGini();   s2 = &sol; }
-                                }
-                                if (s1) frvSeeds.push_back(s1);
-                                if (s2 && s2 != s1) frvSeeds.push_back(s2);
-                            }
-
-                            if (!frvSeeds.empty()) {
-                                // [Fix 1+3] Scale attempts theo retry count
-                                int retryN       = frvRetryCount_[currentMinVeh];
-                                double distPerVeh = archiveBestDist / std::max(1, currentMinVeh);
-                                int baseAttempts  = (distPerVeh > 100.0) ? 80 : 120;
-                                int frvAttempts   = std::min(baseAttempts * (1 + retryN), 400);
-
-                                std::cout << "[FRV-Trigger] Iter=" << i
-                                          << " stag=" << totalStagnationEver_
-                                          << " | " << currentMinVeh << " -> " << targetVeh
-                                          << " veh | attempts=" << frvAttempts
-                                          << " retry=" << retryN
-                                          << " seeds=" << frvSeeds.size()
-                                          << (improvedSinceLastFail ? " [soft-retry]" : "")
-                                          << "\n";
-
-                                bool frvSuccess = false;
-                                // for (const auto *seed : frvSeeds) {
-                                //     Solution candidate = *seed;
-                                //     if (localSearch.forceReduceVehicles(candidate, targetVeh,
-                                //                                         frvAttempts, randomEngine)) {
-                                //         candidate.evaluateRoutes();
-                                //         if (candidate.isFeasible() &&
-                                //             candidate.getTotalVehicles() <= targetVeh) {
-                                //             archive.tryAdd(candidate);
-                                //             s_current = candidate;
-                                //             totalStagnationEver_ = totalStagnationEver_ / 2;
-                                //             hvStagnationCount_   = 0;
-                                //             previousHV_          = 0.0;
-                                //             lastMinVeh           = candidate.getTotalVehicles();
-                                //             // Reset FRV state cho level mới
-                                //             if (lastMinVeh < (int)aggressiveMergeAttempted_.size()) {
-                                //                 aggressiveMergeAttempted_[lastMinVeh] = false;
-                                //                 frvBestDistAtFail_[lastMinVeh]        = 1e18;
-                                //                 frvRetryCount_[lastMinVeh]            = 0;
-                                //             }
-                                //             std::cout << "[FRV-Success] " << currentMinVeh
-                                //                       << " -> " << candidate.getTotalVehicles()
-                                //                       << " veh | dist=" << std::fixed << std::setprecision(2)
-                                //                       << candidate.getTotalDistance() << "\n";
-                                //             frvSuccess = true;
-                                //             break;
-                                //         }
-                                //     }
-                                // }
-
-                                if (!frvSuccess) {
-                                    // [Fix 1] Ghi nhận dist tại thời điểm fail → soft-retry sau
-                                    aggressiveMergeAttempted_[currentMinVeh] = true;
-                                    frvBestDistAtFail_[currentMinVeh]        = archiveBestDist;
-                                    frvRetryCount_[currentMinVeh]++;
-                                    std::cout << "[FRV-Exhausted] " << currentMinVeh
-                                              << " veh | " << frvAttempts * (int)frvSeeds.size()
-                                              << " attempts failed."
-                                              << " Retry if dist < " << std::fixed << std::setprecision(2)
-                                              << archiveBestDist * 0.985 << "\n";
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        solutionPool.release(s_new);
+      }
     }
 
-    // ── Profiling output ────────────────────────────────────────────────────────
-    auto endTime = std::chrono::high_resolution_clock::now();
-    long long total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        endTime - startTime).count();
+    solutionPool.release(s_new);
+  }
 
-    long long total_us = stats.destroy_us + stats.repair_us + stats.evaluate_us +
-                         stats.ls_us + stats.acceptance_us;
-    if (total_us == 0) total_us = 1;
+  // ── Profiling output
+  // ────────────────────────────────────────────────────────
+  auto endTime = std::chrono::high_resolution_clock::now();
+  long long total_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime)
+          .count();
 
-    std::cout << "\n=== ALNS Iteration Breakdown ===\n"
-            << std::fixed << std::setprecision(2)
-            << "Destroy     " << std::setw(10) << stats.destroy_us / 1000.0
-            << " ms  " << std::setw(6) << (100.0 * stats.destroy_us / total_us) << "%\n"
+  long long total_us = stats.destroy_us + stats.repair_us + stats.evaluate_us +
+                       stats.ls_us + stats.acceptance_us;
+  if (total_us == 0)
+    total_us = 1;
+
+  std::cout << "\n=== ALNS Iteration Breakdown ===\n"
+            << std::fixed << std::setprecision(2) << "Destroy     "
+            << std::setw(10) << stats.destroy_us / 1000.0 << " ms  "
+            << std::setw(6) << (100.0 * stats.destroy_us / total_us) << "%\n"
             << "Repair      " << std::setw(10) << stats.repair_us / 1000.0
-            << " ms  " << std::setw(6) << (100.0 * stats.repair_us / total_us) << "%\n"
+            << " ms  " << std::setw(6) << (100.0 * stats.repair_us / total_us)
+            << "%\n"
             << "Evaluate    " << std::setw(10) << stats.evaluate_us / 1000.0
-            << " ms  " << std::setw(6) << (100.0 * stats.evaluate_us / total_us) << "%\n"
+            << " ms  " << std::setw(6) << (100.0 * stats.evaluate_us / total_us)
+            << "%\n"
             << "LocalSearch " << std::setw(10) << stats.ls_us / 1000.0
-            << " ms  " << std::setw(6) << (100.0 * stats.ls_us / total_us) << "%\n"
+            << " ms  " << std::setw(6) << (100.0 * stats.ls_us / total_us)
+            << "%\n"
             << "Acceptance  " << std::setw(10) << stats.acceptance_us / 1000.0
-            << " ms  " << std::setw(6) << (100.0 * stats.acceptance_us / total_us) << "%\n"
+            << " ms  " << std::setw(6)
+            << (100.0 * stats.acceptance_us / total_us) << "%\n"
             << "================================\n"
             << "Perturbations fired: " << perturbationCount_ << "\n\n";
 
-    // ── Scatter Search ──────────────────────────────────────────────────────────
-    if (config.useScatterSearch && archive.getSize() >= 2) {
-        std::cout << "[SS] Starting Scatter Search intensification...\n";
-        int newSols = scatterSearch_->run(archive, *this);
-        std::cout << "[SS] Done. Added " << newSols << " solution(s).\n";
-        destroyPool.resetScores();
-        repairPool.resetScores();
-    }
+  // ── Scatter Search
+  // ──────────────────────────────────────────────────────────
+  if (config.useScatterSearch && archive.getSize() >= 2) {
+    std::cout << "[SS] Starting Scatter Search intensification...\n";
+    int newSols = scatterSearch_->run(archive, *this);
+    std::cout << "[SS] Done. Added " << newSols << " solution(s).\n";
+    destroyPool.resetScores();
+    repairPool.resetScores();
+  }
 
-    logger->logFinalFront(archive);
-    logger->logSummary(total_ms, config.maxIterations, archive.getSize());
-    std::cout << "ALNS Finished. Total perturbations: " << perturbationCount_ << "\n";
-    return archive.getFront();
+  logger->logFinalFront(archive);
+  logger->logSummary(total_ms, config.maxIterations, archive.getSize());
+  std::cout << "ALNS Finished. Total perturbations: " << perturbationCount_
+            << "\n";
+  return archive.getFront();
 }
-
-
-// std::vector<Solution> ALNSSolver::solve() {
-//   auto startTime = std::chrono::high_resolution_clock::now();
-//
-//   auto initialSolutions = generateInitialSolution();
-//   if (initialSolutions.empty()) {
-//     std::cerr << "[ERROR] Could not find any feasible initial solution!"
-//               << std::endl;
-//     return {};
-//   }
-//
-//   // Find the absolute best among the initials to act as s_current
-//   s_current = initialSolutions.front();
-//   double bestCost = s_current.getTotalDistance();
-//   for (const auto &sol : initialSolutions) {
-//     if (sol.isFeasible() && sol.getTotalDistance() < bestCost) {
-//       bestCost = sol.getTotalDistance();
-//       s_current = sol;
-//     }
-//   }
-//
-//   this->archive.initializeReferenceBox(s_current);
-//   for (auto &sol : initialSolutions) {
-//     if (sol.isFeasible()) {
-//       this->archive.tryAdd(sol);
-//     }
-//   }
-//
-//   Solution s_best = s_current;
-//   currentTemperature = config.startTemperature;
-//   int iterationsWithoutImprovement = 0;
-//   int totalStagnationEver_ = 0; // Đếm số iter không cải tiến liên tục, chỉ
-//   // reset khi thật sự có improved
-//   int lastMinVeh =
-//       INT_MAX; // Track global minimum vehicles to prevent premature stop
-//
-//   std::cout << "[HV] Using 3D Hypervolume (Distance, Gini, MaxTime) with "
-//                "adaptive normalization, ref z_r = (1.1, 1.1, 1.1)"
-//             << std::endl;
-//
-//   // --- PROFILING SETUP ---
-//   struct TimingStats {
-//     long long destroy_us = 0;
-//     long long repair_us = 0;
-//     long long evaluate_us = 0;
-//     long long ls_us = 0;
-//     long long acceptance_us = 0;
-//   } stats;
-//   auto now = std::chrono::high_resolution_clock::now;
-//   decltype(now()) t1, t2, t3, t4, t5, t6;
-//   // --- END PROFILING SETUP ---
-//
-//   std::uniform_real_distribution<> dis(0.0, 1.0);
-//
-//   // MOEA/D-style weight vectors: declared at outer scope so both the SA
-//   // acceptance block AND the segment-boundary archive jump can access them.
-//   struct WeightVector {
-//     double dist, gini, time;
-//   };
-//   static const std::vector<WeightVector> weightVectors = {
-//       {1.00, 0.00, 0.00}, // pure distance
-//       {0.00, 1.00, 0.00}, // pure gini
-//       {0.00, 0.00, 1.00}, // pure maxtime
-//       {0.50, 0.50, 0.00}, // dist + gini
-//       {0.50, 0.00, 0.50}, // dist + maxtime
-//       {0.00, 0.60, 0.40}, // gini + maxtime
-//       {0.60, 0.25, 0.15}, // dist-heavy
-//       {0.10, 0.65, 0.25}, // gini-heavy
-//       {0.20, 0.30, 0.50}, // maxtime-heavy
-//       {0.33, 0.34, 0.33}, // balanced
-//   };
-//
-//   for (int i = 0; i < config.maxIterations; ++i) {
-//     Solution &s_new = solutionPool.acquire();
-//     s_new = this->s_current;
-//
-//     // Compute current weight vector early (needed for repair hint + SA)
-//     int wIdx =
-//         (i / std::max(1, config.segmentIterations)) % weightVectors.size();
-//     const auto &w = weightVectors[wIdx];
-//
-//     t1 = now(); // Start Destroy
-//
-//     int n_to_remove = calculateNodesToRemove();
-//     int destroy_op_idx = destroyPool.select(randomEngine);
-//     auto destroy_op = std::static_pointer_cast<IDestroyOperator>(
-//         destroyPool.operators[destroy_op_idx]);
-//
-//     if (auto tsd = std::dynamic_pointer_cast<TimeSlackDestroy>(destroy_op)) {
-//       double factor = (totalStagnationEver_ > 3000) ? 1.5 : 3.0;
-//       tsd->setExplorationFactor(factor);
-//     }
-//
-//     std::vector<int> unserved_custs =
-//         destroy_op->execute(s_new, n_to_remove, randomEngine);
-//     destroyPool.usages[destroy_op_idx]++;
-//
-//     t2 = now(); // Start Repair
-//     stats.destroy_us +=
-//         std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-//
-//     int repair_op_idx = repairPool.select(randomEngine);
-//
-//     auto repair_op = std::static_pointer_cast<IRepairOperator>(
-//         repairPool.operators[repair_op_idx]);
-//     // Wire weight hint if operator is AdaptiveInsertion (Fix 2)
-//     if (auto adaptive =
-//             std::dynamic_pointer_cast<AdaptiveInsertion>(repair_op)) {
-//       adaptive->setWeightHint(w.dist, w.gini, w.time);
-//       adaptive->setVehicleReductionMode(true);
-//     }
-//     repair_op->execute(s_new, unserved_custs, randomEngine);
-//     repairPool.usages[repair_op_idx]++;
-//
-//     t3 = now(); // Start Evaluate
-//     stats.repair_us +=
-//         std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
-//
-//     s_new.evaluateRoutes();
-//
-//     t4 = now(); // Start Local Search
-//     stats.evaluate_us +=
-//         std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
-//
-//     std::string result = "Rejected";
-//     bool improved = false; // Track whether this iteration improved
-//
-//     if (!s_new.isFeasible()) {
-//       destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
-//       repairPool.scores[repair_op_idx] += config.scoreIdentical;
-//       // Không đếm infeasible vào stagnation — tránh perturbation quá sớm
-//       goto end_iteration;
-//     }
-//
-//     if (config.useLocalSearch) {
-//       std::uniform_int_distribution<> dis_ls(0, 99);
-//       if (dis_ls(randomEngine) < config.localSearchIntensity) {
-//         localSearch.run(s_new);
-//       }
-//     }
-//
-//     t5 = now(); // Start Acceptance
-//     stats.ls_us +=
-//         std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count();
-//
-//     // ⭐ BUG FIX: Re-check feasibility AFTER LocalSearch.
-//     // LocalSearch (e.g., route merging/vehicle reduction) can make the
-//     // solution infeasible by losing customers. Without this re-check,
-//     // an infeasible solution (e.g., 1 vehicle for 100 customers) can
-//     // enter the Pareto archive and dominate everything.
-//     s_new.evaluateRoutes();
-//     if (!s_new.isFeasible()) {
-//       goto end_iteration;
-//     }
-//
-//     if (s_new.dominates(s_current)) {
-//       // Dominating: update current, score, add to archive
-//       archive.tryAdd(s_new);
-//       s_current = s_new;
-//       destroyPool.scores[destroy_op_idx] += config.scoreDominating;
-//       repairPool.scores[repair_op_idx] += config.scoreDominating;
-//       improved = true;
-//       result = "Dominating";
-//     } else {
-//       // Non-dominating: try archive first, then apply SA
-//       AddResult add_res = archive.tryAdd(s_new);
-//       if (add_res == AddResult::DOMINATING ||
-//           add_res == AddResult::NON_DOMINATED) {
-//         destroyPool.scores[destroy_op_idx] += config.scoreNonDominated;
-//         repairPool.scores[repair_op_idx] += config.scoreNonDominated;
-//         improved = true;
-//         result = "Non-Dominated";
-//         // Do NOT force s_current = s_new. Let SA decide independently.
-//       }
-//
-//       // weightVectors: wIdx and w already computed at top of loop iteration.
-//
-//       // Delta normalization using the range from the archive
-//       double minGini = 1e18, maxGini = -1e18;
-//       double minTime = 1e18, maxTime = -1e18;
-//       double minDist = 1e18, maxDist = -1e18;
-//
-//       auto &front = archive.getFront();
-//       if (!front.empty()) {
-//         for (const auto &sol : front) {
-//           minDist = std::min(minDist, sol.getTotalDistance());
-//           maxDist = std::max(maxDist, sol.getTotalDistance());
-//           minGini = std::min(minGini, sol.getWorkloadGini());
-//           maxGini = std::max(maxGini, sol.getWorkloadGini());
-//           minTime = std::min(minTime, sol.getMaxTime());
-//           maxTime = std::max(maxTime, sol.getMaxTime());
-//         }
-//       } else {
-//         // Fallback if archive is empty (should ideally not happen)
-//         minDist =
-//             std::min(s_current.getTotalDistance(), s_new.getTotalDistance());
-//         maxDist =
-//             std::max(s_current.getTotalDistance(), s_new.getTotalDistance());
-//         minGini =
-//             std::min(s_current.getWorkloadGini(), s_new.getWorkloadGini());
-//         maxGini =
-//             std::max(s_current.getWorkloadGini(), s_new.getWorkloadGini());
-//         minTime = std::min(s_current.getMaxTime(), s_new.getMaxTime());
-//         maxTime = std::max(s_current.getMaxTime(), s_new.getMaxTime());
-//       }
-//
-//       double distR = std::max(1.0, maxDist - minDist);
-//       double giniR = std::max(0.001, maxGini - minGini);
-//       double timeR = std::max(1.0, maxTime - minTime);
-//
-//       // ⭐ Fix delta scale: sau khi normalize bằng range, delta ∈ [0,1].
-//       // Dùng factor 100.0 cố định → tất cả objectives về cùng scale [0,100].
-//       // KHÔNG nhân baseDist: distR đã normalize, nhân thêm baseDist gây
-//       // phóng đại 14x khi distR nhỏ (archive homogeneous) → SA reject gần hết.
-//       // veh_penalty = 2000: đủ mạnh để SA hầu như không accept +1 NV,
-//       // nhưng không phụ thuộc vào baseDist (tránh instability cross-instances).
-//       const double SA_SCALE = 100.0;
-//       const double veh_penalty = 5000.0;
-//
-//       double delta_objectives =
-//           veh_penalty *
-//               (s_new.getTotalVehicles() - s_current.getTotalVehicles()) +
-//           SA_SCALE * w.dist *
-//               (s_new.getTotalDistance() - s_current.getTotalDistance()) /
-//               distR +
-//           SA_SCALE * w.gini *
-//               (s_new.getWorkloadGini() - s_current.getWorkloadGini()) / giniR +
-//           SA_SCALE * w.time * (s_new.getMaxTime() - s_current.getMaxTime()) /
-//               timeR;
-//
-//       if (std::exp(-delta_objectives / currentTemperature) >
-//           dis(randomEngine)) {
-//         s_current = s_new;
-//         if (result == "Rejected") {
-//           destroyPool.scores[destroy_op_idx] += config.scoreDominated;
-//           repairPool.scores[repair_op_idx] += config.scoreDominated;
-//           result = "Accepted (SA)";
-//         } else {
-//           result += " & Accepted (SA)";
-//         }
-//       } else {
-//         if (result == "Rejected") {
-//           destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
-//           repairPool.scores[repair_op_idx] += config.scoreIdentical;
-//         }
-//       }
-//     }
-//
-//     // [FIX Bug 1] Only increment stagnation counter when no improvement
-//     if (improved) {
-//       iterationsWithoutImprovement = 0;
-//       // totalStagnationEver_ = 0;
-//     } else {
-//       iterationsWithoutImprovement++;
-//       totalStagnationEver_++;
-//     }
-//
-//     t6 = now();
-//     stats.acceptance_us +=
-//         std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count();
-//
-//     logger->logEvolutionStep(i, destroy_op->getName(), repair_op->getName(),
-//                              result, s_new);
-//
-//   end_iteration:
-//     currentTemperature *= config.coolingRate;
-//     if (currentTemperature < config.minTemperature) {
-//       currentTemperature = config.minTemperature;
-//     }
-//
-//     // ⭐ PERTURBATION MECHANISM: Escape local optima when stagnated
-//     // Phase 2: Strong perturbation at 1000+ iterations (check BEFORE Phase 1)
-//     if (iterationsWithoutImprovement > 0 &&
-//         iterationsWithoutImprovement % 1000 == 0) {
-//       // Aggressive reheating - HARD SET rather than max()
-//       currentTemperature = config.startTemperature * 0.5;
-//
-//       // Jump to BEST solution from Pareto archive for diversification (min veh,
-//       // then min dist)
-//       auto &front = archive.getFront();
-//       if (!front.empty()) {
-//         const Solution *bestSol = nullptr;
-//         int minVeh = INT_MAX;
-//         double minDist = 1e18;
-//         for (const auto &sol : front) {
-//           int v = sol.getTotalVehicles();
-//           double d = sol.getTotalDistance();
-//           if (v < minVeh || (v == minVeh && d < minDist)) {
-//             minVeh = v;
-//             minDist = d;
-//             bestSol = &sol;
-//           }
-//         }
-//         if (bestSol)
-//           s_current = *bestSol;
-//
-//         // ⭐ Weight reset: giúp operator bị death spiral sống lại sau
-//         // perturbation
-//         // for (auto &w : repairPool.weights)
-//         //   w = std::max(w, 2.0);
-//         // for (auto &w : destroyPool.weights)
-//         //   w = std::max(w, 2.0);
-//         // Sau perturbation — reset về initial weights
-//         destroyPool.weights = {2.0, 2.0, 4.0, 4.0, 2.5, 2.0, 2.0};
-//         repairPool.weights  = {2.0, 2.0, 1.5, 2.0};
-//
-//         std::cout << "[Perturbation] Iter " << i
-//                   << ": Jumping to BEST archive solution [" << minVeh
-//                   << " veh, " << minDist << " dist] (stagnated "
-//                   << iterationsWithoutImprovement << " iters), Temp reset to "
-//                   << currentTemperature << std::endl;
-//       }
-//       // Reset counter so next phase boundary fires fresh after jump
-//       iterationsWithoutImprovement = 0;
-//
-//       // ⭐ BUG FIX: Phục hồi watermark HV sau perturbation để tránh
-//       // death spiral của HV stagnation do archive thu gọn tạm thời.
-//       hvStagnationCount_ = 0;
-//       previousHV_ = 0.0;
-//     }
-//     // Phase 1: Mild reheating mỗi 500 iter stagnation tổng cộng
-//     // Dùng totalStagnationEver_ (không bị reset bởi segment boundary jump)
-//     // thay vì iterationsWithoutImprovement (bị reset mỗi 200 iter).
-//     else if (totalStagnationEver_ > 0 && totalStagnationEver_ % 500 == 0 &&
-//              totalStagnationEver_ < 3000) {
-//       currentTemperature =
-//           std::min(currentTemperature * 1.25, config.startTemperature * 0.9);
-//     }
-//
-//     // Adaptive RegretK noise reduction based on stagnation progress
-//     double maxStagnation =
-//         config.hvStagnationLimit * config.segmentIterations * 0.5;
-//     double progress = std::min(1.0, totalStagnationEver_ / maxStagnation);
-//     double currentNoise = config.noiseParameter * (1.0 - progress);
-//
-//     // Scan repairPool for RegretK and update noise
-//     for (auto op : repairPool.operators) {
-//       if (auto regretK = std::dynamic_pointer_cast<RegretKRepair>(op)) {
-//         regretK->setNoiseParameter(currentNoise);
-//       }
-//     }
-//
-//     // Phase 3: Very strong perturbation at 2000+ iterations - increase destroy
-//     // intensity. Dùng totalStagnationEver_ vì counter kia bị reset bởi Phase 2
-//     if (totalStagnationEver_ > 4000) {
-//       perturbationBoost_ = 1.75; // Destroy 50% more nodes
-//     } else if (totalStagnationEver_ > 2000) {
-//       perturbationBoost_ = 1.5; // Destroy 25% more nodes
-//     } else {
-//       perturbationBoost_ = 1.0;
-//     }
-//
-//     if ((i + 1) % config.segmentIterations == 0) {
-//       // Segment boundary: jump s_current to the archive solution that best fits
-//       // the NEXT weight vector, ensuring SA starts each segment coherently.
-//       int nextWIdx = ((i + 1) / std::max(1, config.segmentIterations)) %
-//                      weightVectors.size();
-//       const auto &nextW = weightVectors[nextWIdx];
-//
-//       auto &front = archive.getFront();
-//       if (front.size() > 1) {
-//         double minDist = front[0].getTotalDistance(), maxDist = minDist;
-//         double minGini = front[0].getWorkloadGini(), maxGini = minGini;
-//         double minTime = front[0].getMaxTime(), maxTime = minTime;
-//         for (const auto &sol : front) {
-//           minDist = std::min(minDist, sol.getTotalDistance());
-//           maxDist = std::max(maxDist, sol.getTotalDistance());
-//           minGini = std::min(minGini, sol.getWorkloadGini());
-//           maxGini = std::max(maxGini, sol.getWorkloadGini());
-//           minTime = std::min(minTime, sol.getMaxTime());
-//           maxTime = std::max(maxTime, sol.getMaxTime());
-//         }
-//         double distR = std::max(1e-6, maxDist - minDist);
-//         double giniR = std::max(1e-6, maxGini - minGini);
-//         double timeR = std::max(1e-6, maxTime - minTime);
-//
-//         double bestScalar = std::numeric_limits<double>::max();
-//         const Solution *bestSol = nullptr;
-//         for (const auto &sol : front) {
-//           double scalar =
-//               nextW.dist * (sol.getTotalDistance() - minDist) / distR +
-//               nextW.gini * (sol.getWorkloadGini() - minGini) / giniR +
-//               nextW.time * (sol.getMaxTime() - minTime) / timeR;
-//           if (scalar < bestScalar) {
-//             bestScalar = scalar;
-//             bestSol = &sol;
-//           }
-//         }
-//         if (bestSol) {
-//           // Chỉ reset stagnation ngắn hạn nếu thực sự jump sang solution khác
-//           if (std::abs(bestSol->getTotalDistance() -
-//                        s_current.getTotalDistance()) > 1e-6 ||
-//               bestSol->getTotalVehicles() != s_current.getTotalVehicles()) {
-//             s_current = *bestSol;
-//             iterationsWithoutImprovement = 0;
-//           } else {
-//             s_current = *bestSol;
-//           }
-//         }
-//       }
-//       auto now_progress = std::chrono::high_resolution_clock::now();
-//       long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-//                               now_progress - startTime)
-//                               .count();
-//       logger->logProgress(i + 1, time_ms, this->archive);
-//       logger->logOperatorSegment(i + 1, destroyPool, repairPool);
-//       destroyPool.updateWeights(config.decayParameter);
-//       repairPool.updateWeights(config.decayParameter);
-//       destroyPool.resetScores();
-//       repairPool.resetScores();
-//
-//       // ⭐ HV-BASED CONVERGENCE CHECK
-//       if (archive.getSize() > 0) {
-//         // Track min vehicles to handle hierarchical dominance resets
-//         int currentMinVeh = INT_MAX;
-//         double archiveBestDist = std::numeric_limits<double>::max();
-//         for (const auto &sol : archive.getFront()) {
-//           currentMinVeh = std::min(currentMinVeh, sol.getTotalVehicles());
-//           archiveBestDist = std::min(archiveBestDist, sol.getTotalDistance());
-//         }
-//
-//         if (currentMinVeh < lastMinVeh) {
-//           // Breakthrough — found a solution with fewer vehicles!
-//           // Due to hierarchical dominance, the archive heavily shrinks, so HV
-//           // drops. Therefore, we must reset the stopping criterion completely.
-//           std::cout << "[VEH-Improve] New min vehicles: " << currentMinVeh
-//                     << " (was " << lastMinVeh << "). Resetting HV tracking."
-//                     << std::endl;
-//           lastMinVeh = currentMinVeh;
-//           hvStagnationCount_ = 0;
-//           previousHV_ = 0.0; // Reset watermark
-//
-//           // ⭐ Weight reset: kéo operator bị death spiral lên tối thiểu 1.0
-//           // để có cơ hội explore vùng NV mới. Giữ nguyên operator đang cao.
-//           for (auto &w : repairPool.weights)
-//             w = std::max(w, 1.0);
-//           for (auto &w : destroyPool.weights)
-//             w = std::max(w, 1.0);
-//         } else {
-//           // Same vehicle level → check HV stagnation normally
-//           double currentHV = archive.computeHypervolume();
-//           double hvImprovement = 0.0;
-//
-//           // ⭐ BUG FIX: When archive has only 1 solution, HV can be 0.0
-//           // (e.g., single point has zero volume). In this case, we must
-//           // count it as stagnation instead of resetting every segment.
-//           if (previousHV_ == 0.0 && currentHV > 1e-9) {
-//             // First non-zero HV calculation after a vehicle drop reset
-//             hvImprovement = 1.0;
-//             previousHV_ = currentHV;
-//             hvStagnationCount_ = 0;
-//           } else if (currentHV <= 1e-9) {
-//             // Archive has effectively 0 HV (1 solution or degenerate)
-//             // Lẽ ra đoạn này chỉ có 1 điểm, nhưng có thể archive có 2 điểm
-//             // trùng nhau
-//             if (archive.getSize() >= 2) {
-//               hvStagnationCount_++;
-//             }
-//             // else: archive vừa được rebuilt sau breakthrough hoặc đang
-//             // xây front mới → không đếm
-//           } else {
-//             hvImprovement = (currentHV - previousHV_) / previousHV_;
-//
-//             if (currentHV >
-//                 previousHV_ * (1.0 + config.hvImprovementThreshold)) {
-//               // Actual improvement beyond threshold → reset stagnation, update
-//               // watermark
-//               hvStagnationCount_ = 0;
-//               previousHV_ = currentHV;
-//             } else {
-//               // Plateau or decrease → counts as stagnation
-//               hvStagnationCount_++;
-//             }
-//           }
-//
-//           std::cout << "[HV] Segment " << (i + 1) << ": HV=" << std::fixed
-//                     << std::setprecision(2) << currentHV
-//                     << " (best=" << std::setprecision(2) << previousHV_ << ")"
-//                     << ", Delta=" << std::setprecision(4)
-//                     << (hvImprovement * 100.0)
-//                     << "%, Stagnation=" << hvStagnationCount_ << "/"
-//                     << config.hvStagnationLimit
-//                     << " | Archive: size=" << archive.getSize()
-//                     << ", minVeh=" << currentMinVeh
-//                     << ", bestDist=" << std::setprecision(2) << archiveBestDist
-//                     << std::endl;
-//
-//           if (hvStagnationCount_ >= config.hvStagnationLimit) {
-//             std::cout << "[HV-Stop] Converged: Hypervolume stable for "
-//                       << hvStagnationCount_ << " consecutive segments ("
-//                       << (i + 1) << " iterations)." << std::endl;
-//             break;
-//           }
-//         }
-//       }
-//     }
-//
-//     // [REMOVED] Counter now managed above after acceptance logic
-//     solutionPool.release(s_new);
-//   }
-//
-//   auto endTime = std::chrono::high_resolution_clock::now();
-//   long long total_ms =
-//       std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime)
-//           .count();
-//
-//   // --- PRINT PROFILING RESULTS ---
-//   long long total_us = stats.destroy_us + stats.repair_us + stats.evaluate_us +
-//                        stats.ls_us + stats.acceptance_us;
-//   if (total_us == 0)
-//     total_us = 1; // Avoid division by zero
-//   std::cout << "\n\n=== ALNS Iteration Breakdown (" << config.maxIterations
-//             << " iters) ===\n";
-//   std::cout << std::fixed << std::setprecision(2);
-//   std::cout << "Component          Time (ms)    Percentage\n";
-//   std::cout << "-------------------------------------------\n";
-//   std::cout << "Destroy            " << std::setw(10)
-//             << stats.destroy_us / 1000.0 << "    " << std::setw(8)
-//             << (100.0 * stats.destroy_us / total_us) << "%\n";
-//   std::cout << "Repair             " << std::setw(10)
-//             << stats.repair_us / 1000.0 << "    " << std::setw(8)
-//             << (100.0 * stats.repair_us / total_us) << "%\n";
-//   std::cout << "Evaluate           " << std::setw(10)
-//             << stats.evaluate_us / 1000.0 << "    " << std::setw(8)
-//             << (100.0 * stats.evaluate_us / total_us) << "%\n";
-//   std::cout << "LocalSearch        " << std::setw(10) << stats.ls_us / 1000.0
-//             << "    " << std::setw(8) << (100.0 * stats.ls_us / total_us)
-//             << "%\n";
-//   std::cout << "Acceptance         " << std::setw(10)
-//             << stats.acceptance_us / 1000.0 << "    " << std::setw(8)
-//             << (100.0 * stats.acceptance_us / total_us) << "%\n";
-//   std::cout << "-------------------------------------------\n";
-//   std::cout << "Total Profiled:    " << std::setw(10) << total_us / 1000.0
-//             << "    " << "100.00%\n";
-//   std::cout << "===========================================\n\n";
-//   // --- END PROFILING ---
-//
-//   // ⭐ SCATTER SEARCH PHASE (Post-ALNS Intensification)
-//   if (config.useScatterSearch && archive.getSize() >= 2) {
-//     std::cout << "\n[SS] Starting Scatter Search intensification phase..."
-//               << std::endl;
-//     // Re-seed scatterSearch_ with current rng state
-//     int newSols = scatterSearch_->run(archive, *this);
-//     std::cout << "[SS] Scatter Search done. Added " << newSols
-//               << " new solution(s) to Pareto Archive." << std::endl;
-//     // Reset operator weights so they reflect only post-SS state
-//     destroyPool.resetScores();
-//     repairPool.resetScores();
-//   }
-//
-//   logger->logFinalFront(this->archive);
-//   logger->logSummary(total_ms, config.maxIterations, this->archive.getSize());
-//
-//   std::cout << "ALNS Finished." << std::endl;
-//   return archive.getFront();
-// }
 
 // ******************************************************************
 // ** 4. IMPROVE SOLUTION (ALNS Mini-Loop for ScatterSearch)
@@ -1483,8 +955,10 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
 // File: src/alns/ALNSSolver.cpp
 
 std::vector<Solution> ALNSSolver::generateInitialSolution() {
-  std::cout << "[Info] Generating Initial Solution (Multi-start + Diverse "
-               "Weighted RCRS)...\n";
+
+  if (config.enableLogging)
+    std::cout << "[Info] Generating Initial Solution (Multi-start + Diverse "
+                 "Weighted RCRS)...\n";
   std::vector<Solution> initials;
 
   // 1. Giai đoạn 1: 4 Deterministic Heuristics cũ (Giữ lại để đảm bảo baseline
@@ -1500,22 +974,26 @@ std::vector<Solution> ALNSSolver::generateInitialSolution() {
                               "Tightest Time Window First"};
 
   for (size_t i = 0; i < orderings.size(); ++i) {
-    std::cout << "  -> Trying heuristic: " << orderNames[i] << "...\n";
+    if (config.enableLogging)
+      std::cout << "  -> Trying heuristic: " << orderNames[i] << "...\n";
     Solution s = constructSolutionFromOrder(orderings[i]);
 
     if (!s.isFeasible()) {
-      std::cout << "     Failed (Infeasible)\n";
+      if (config.enableLogging)
+        std::cout << "     Failed (Infeasible)\n";
       continue;
     }
     int v = s.getTotalVehicles();
     double dist = s.getTotalDistance();
-    std::cout << "     Result: " << v << " vehicles, dist " << dist << "\n";
+    if (config.enableLogging)
+      std::cout << "     Result: " << v << " vehicles, dist " << dist << "\n";
     initials.push_back(s);
   }
 
   // 2. Giai đoạn 2: 30 Diverse Randomized Init bằng constructSolutionFromOrder
   // kết hợp Trọng số Ngẫu nhiên
-  std::cout << "  -> Generating 30 Diverse Randomized Initial Solutions...\n";
+  if (config.enableLogging)
+    std::cout << "  -> Generating 30 Diverse Randomized Initial Solutions...\n";
   std::uniform_real_distribution<> weightDist(0.0, 1.0);
 
   for (int i = 0; i < 30; ++i) {
@@ -1532,11 +1010,14 @@ std::vector<Solution> ALNSSolver::generateInitialSolution() {
     if (s_rand.isFeasible()) {
       int v = s_rand.getTotalVehicles();
       double dist = s_rand.getTotalDistance();
-      std::cout << "     Randomized Init " << i + 1 << " Result: " << v
-                << " vehicles, dist " << dist << "\n";
+      if (config.enableLogging)
+        std::cout << "     Randomized Init " << i + 1 << " Result: " << v
+                  << " vehicles, dist " << dist << "\n";
       initials.push_back(s_rand);
     } else {
-      std::cout << "     Randomized Init " << i + 1 << " Failed (Infeasible)\n";
+      if (config.enableLogging)
+        std::cout << "     Randomized Init " << i + 1
+                  << " Failed (Infeasible)\n";
     }
   }
 
@@ -1550,13 +1031,14 @@ std::vector<Solution> ALNSSolver::generateInitialSolution() {
                            return a.getTotalDistance() < b.getTotalDistance();
                          });
 
-    std::cout << "\n========================================\n"
-              << "Initial Solutions Generated: " << initials.size() << "\n"
-              << "Best Initial Setup Summary:\n"
-              << "  Routes: " << bestSolParam->getNumRoutes() << "\n"
-              << "  Total Distance: " << bestSolParam->getTotalDistance()
-              << "\n"
-              << "========================================\n\n";
+    if (config.enableLogging)
+      std::cout << "\n========================================\n"
+                << "Initial Solutions Generated: " << initials.size() << "\n"
+                << "Best Initial Setup Summary:\n"
+                << "  Routes: " << bestSolParam->getNumRoutes() << "\n"
+                << "  Total Distance: " << bestSolParam->getTotalDistance()
+                << "\n"
+                << "========================================\n\n";
   }
 
   return initials;
@@ -1968,8 +1450,9 @@ Solution ALNSSolver::constructSolutionFromOrder(
   if (!unservedIds.empty()) {
     std::vector<int> stillUnserved;
     for (int custId : unservedIds) {
-      auto vehicle = std::make_shared<Vehicle>(static_cast<int>(sol.getNumRoutes()), vehCapacity,
-                                               vehMaxBattery, vehEnergyRate);
+      auto vehicle =
+          std::make_shared<Vehicle>(static_cast<int>(sol.getNumRoutes()),
+                                    vehCapacity, vehMaxBattery, vehEnergyRate);
       Route singleRoute(sol.getNumRoutes(), vehicle, instance);
       singleRoute.addNode(custId, singleRoute.getNodes().size() - 1);
       singleRoute.evaluate();
@@ -2037,4 +1520,5 @@ Solution ALNSSolver::constructSolutionFromOrder(
   return sol;
 }
 
+double ALNSSolver::getHV() { return this->previousHV_; }
 } // namespace alns

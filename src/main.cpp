@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
     }
     else {
         // c101C5.txt là file 5 khách hàng, RẤT TỐT để test
-        instance_file = "data/solomon/c101C5.txt";
+        instance_file = "../data/solomon/c101C5.txt";
         std::cout << "Info: No instance file provided. Using default: " << instance_file << std::endl;
     }
 

@@ -1,0 +1,49 @@
+--- FINAL PARETO FRONT DETAILS ---
+
+========================================
+== Solution ID: 1
+========================================
+Solution (Vehicles: 1, Distance: 185.16, WorkloadGini: 0.00, MaxTime: 758.06, Feasible: true)
+--- Route ID: 4 --- Feasible: YES
+   Total Distance:      185.16
+   Total Time:          758.06
+   Total Energy Cons:   185.16
+--- Node Sequence (Count: 9) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    9 |   C81 |   Customer |    12.04 |    22.04 |    65.71 |   990.00 |     0.00
+    4 |   S15 |    Station |    55.57 |    69.33 |    67.48 |   990.00 |    35.30
+    5 |   C23 |   Customer |    90.36 |   100.36 |    46.46 |   960.00 |     0.00
+    6 |   C19 |   Customer |   106.76 |   116.76 |    40.05 |   920.00 |     0.00
+    7 |   C49 |   Customer |   118.76 |   128.76 |    38.05 |   910.00 |     0.00
+    1 |    S0 |    Station |   166.81 |   197.14 |    77.75 |   910.00 |    77.75
+    8 |    C4 |   Customer |   233.19 |   722.00 |    41.69 |   870.00 |     0.00
+    0 |    D0 |      Depot |   758.06 |   758.06 |     0.00 |   870.00 |     0.00
+
+
+
+========================================
+== Solution ID: 2
+========================================
+Solution (Vehicles: 1, Distance: 176.39, WorkloadGini: 0.00, MaxTime: 780.44, Feasible: true)
+--- Route ID: 4 --- Feasible: YES
+   Total Distance:      176.39
+   Total Time:          780.44
+   Total Energy Cons:   176.39
+--- Node Sequence (Count: 10) ---
+  Idx | StrID |       Type |  ArrTime |  DepTime |   RemBat |  RemLoad |   Charge
+---------------------------------------------------------------------------------------
+    0 |    D0 |      Depot |     0.00 |     0.00 |    77.75 |  1000.00 |     0.00
+    4 |   S15 |    Station |    24.02 |    24.84 |    55.84 |  1000.00 |     2.11
+    7 |   C49 |   Customer |    39.16 |    49.16 |    41.52 |   990.00 |     0.00
+    6 |   C19 |   Customer |    51.16 |    61.16 |    39.52 |   950.00 |     0.00
+    5 |   C23 |   Customer |    67.57 |    77.57 |    33.12 |   920.00 |     0.00
+    3 |   S13 |    Station |   110.69 |   120.92 |    26.25 |   920.00 |    26.25
+    2 |    S9 |    Station |   147.17 |   177.50 |    77.75 |   920.00 |    77.75
+    8 |    C4 |   Customer |   199.34 |   722.00 |    55.91 |   880.00 |     0.00
+    9 |   C81 |   Customer |   758.40 |   768.40 |    12.04 |   870.00 |     0.00
+    0 |    D0 |      Depot |   780.44 |   780.44 |     0.00 |   870.00 |     0.00
+
+
+

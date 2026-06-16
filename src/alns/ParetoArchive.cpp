@@ -425,6 +425,90 @@ double ParetoArchive::computeHypervolume() const {
   return hv3d;
 }
 
+double ParetoArchive::computeHypervolume2D() const {
+  const auto &flat = getFront();
+  if (flat.empty())
+    return 0.0;
+
+  // =========================================================================
+  // 2D Hypervolume (Distance × Gini)
+  // Algorithm: Sweep-line (Standard 2D HV)
+  // =========================================================================
+  const double REF = 1.1; // Reference point after normalization
+
+  double usedIdealDist = refIdealDist_;
+  double usedIdealGini = refIdealGini_;
+  double usedNadirDist = refNadirDist_;
+  double usedNadirGini = refNadirGini_;
+
+  double rangeDist = std::max(1e-6, usedNadirDist - usedIdealDist);
+  double rangeGini = std::max(1e-6, usedNadirGini - usedIdealGini);
+
+  // Normalize all points to [0, 1] using fixed ideal/nadir
+  struct Point2D {
+    double dist; // normalized
+    double gini; // normalized
+  };
+
+  // Find min vehicles of current front to only compute HV for the lowest
+  // vehicle level (preserving existing hierarchy logic)
+  int minVeh = 1e9;
+  for (const auto &sol : flat) {
+    minVeh = std::min(minVeh, sol.getTotalVehicles());
+  }
+
+  std::vector<Point2D> points;
+  points.reserve(flat.size());
+  for (const auto &sol : flat) {
+    if (sol.getTotalVehicles() > minVeh)
+      continue;
+
+    double nD = (sol.getTotalDistance() - usedIdealDist) / rangeDist;
+    double nG = (sol.getWorkloadGini() - usedIdealGini) / rangeGini;
+
+    if (nD < REF && nG < REF) {
+      points.push_back({std::max(0.0, nD), std::max(0.0, nG)});
+    }
+  }
+
+  if (points.empty())
+    return 0.0;
+
+  // Sort by Gini ascending
+  std::sort(points.begin(), points.end(),
+            [](const Point2D &a, const Point2D &b) {
+              if (std::abs(a.gini - b.gini) > 1e-12)
+                return a.gini < b.gini;
+              return a.dist < b.dist;
+            });
+
+  // Extract 2D non-dominated front (just in case, although getFront() should handle it)
+  std::vector<Point2D> front2d;
+  double minDist = REF + 1.0;
+  for (const auto &p : points) {
+    if (p.dist < minDist - 1e-12) {
+      front2d.push_back(p);
+      minDist = p.dist;
+    }
+  }
+
+  // Sweep-line 2D HV area calculation
+  double hv2d = 0.0;
+  for (size_t i = 0; i < front2d.size(); ++i) {
+    double width;
+    if (i + 1 < front2d.size()) {
+      width = front2d[i + 1].gini - front2d[i].gini;
+    } else {
+      width = REF - front2d[i].gini;
+    }
+    double height = REF - front2d[i].dist;
+    hv2d += width * height;
+  }
+
+  return hv2d;
+}
+
+
 // Fixed Reference Box System — Freezes normalization bounds per vehicle level.
 // This prevents HV from artificially jumping/dropping due to box scaling when
 // extreme solutions arrive.
@@ -435,7 +519,7 @@ void ParetoArchive::initializeReferenceBox(const Solution &initialSolution) {
   refIdealMaxTime_ = 0.0;
 
   // Nadir: upper bounds from initial solution
-  refNadirDist_ = initialSolution.getTotalDistance() * 0.5; // Giving room for exploration
+  refNadirDist_ = initialSolution.getTotalDistance() * 1.5; // Fixed upper boundary logic
   refNadirGini_ = 1.0;                          // Gini bounded by definition
   refNadirMaxTime_ = initialSolution.getMaxTime() * 1.5;
 }

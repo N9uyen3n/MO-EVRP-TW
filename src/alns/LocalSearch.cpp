@@ -8,7 +8,8 @@
 //         *** Requires adding `std::vector<double> demandById_;` to
 //         LocalSearch.h ***
 //
-// [OPT-2] nodeTypeById_ usage completed — All remaining getNodeById()->getType()
+// [OPT-2] nodeTypeById_ usage completed — All remaining
+// getNodeById()->getType()
 //         calls in searchSwap, searchCrossExchange, repositionStations,
 //         searchStationSwap, removeRedundantStations replaced with O(1) array
 //         lookup.
@@ -24,11 +25,13 @@
 //         std::set.
 //
 // [OPT-6] thread_local candidate buffers — reuse heap allocation across calls
-//         in findBestInsertionPositions_TimeAware and getTopKInsertionPositions.
+//         in findBestInsertionPositions_TimeAware and
+//         getTopKInsertionPositions.
 //
 // [OPT-7] calculateEuclideanDistance — std::hypot replaces sqrt(pow+pow).
 //
-// [OPT-8] getDemand() double-call in ejectionChain::findDirect removed (one call).
+// [OPT-8] getDemand() double-call in ejectionChain::findDirect removed (one
+// call).
 //
 // [OPT-9] readyTimeById_ / dueDateById_ / serviceTimeById_ — Flat O(1) TW
 //         lookups. Eliminates getNodeById() shared_ptr copy (atomic inc/dec)
@@ -40,11 +43,12 @@
 // [OPT-10] findBestInsertionPositions_KNN — replace thread_local unordered_set
 //          with thread_local vector<bool> indexed by nodeId (flat array).
 //          Eliminates all hash computation and hash-table cache misses.
-//          neighborSet.clear() was O(K) hash destructions; now O(K) bool resets.
-//          neighborSet.count() was O(1) amortised but with hash overhead;
-//          now inNeighborSet[id] is a single array read — no hashing at all.
-//          Called in every inner iteration of searchOrOpt / searchRelocate /
-//          searchOrOptReversed → measurable win in VND hot path.
+//          neighborSet.clear() was O(K) hash destructions; now O(K) bool
+//          resets. neighborSet.count() was O(1) amortised but with hash
+//          overhead; now inNeighborSet[id] is a single array read — no hashing
+//          at all. Called in every inner iteration of searchOrOpt /
+//          searchRelocate / searchOrOptReversed → measurable win in VND hot
+//          path.
 //
 // [OPT-11] findBestInsertionPositions_KNN — avoid per-call vector allocation.
 //          Previously returned std::vector<size_t> (new heap alloc every call).
@@ -65,6 +69,7 @@
 #include "../../include/core/Station.h"
 #include <algorithm>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -84,6 +89,9 @@ LocalSearch::LocalSearch(std::shared_ptr<Instance> inst) : instance(inst) {
 
   // Preprocess K-Nearest Neighbors
   preprocessKNN();
+
+  // Preprocess Station Replacements
+  preprocessStationReplacements();
 
   // Preprocess Granular Neighborhoods
   preprocessGranularity();
@@ -118,106 +126,137 @@ LocalSearch::LocalSearch(std::shared_ptr<Instance> inst) : instance(inst) {
   serviceTimeById_.assign(maxNodeId + 1, 0.0);
   for (const auto &node : instance->getNodes()) {
     int id = node->getId();
-    readyTimeById_[id]   = node->getReadyTime();
-    dueDateById_[id]     = node->getDueDate();
+    readyTimeById_[id] = node->getReadyTime();
+    dueDateById_[id] = node->getDueDate();
     serviceTimeById_[id] = node->getServiceTime();
   }
 
-  this->vehicleReductionFreq = 1;
+  this->vehicleReductionFreq_ = 2;  
 }
 
 // ============================================================================
 // Algorithm: 4-Phase Hybrid Local Search
 // ===========================================================================
-int LocalSearch::getVehicleReductionFeq() {
-  return this->vehicleReductionFreq;
-}
+int LocalSearch::getVehicleReductionFeq() { return this->vehicleReductionFreq_; }
 
 void LocalSearch::setVehicleReductionFeq(int number) {
-  this->vehicleReductionFreq = number;
+  this->vehicleReductionFreq_ = number;
 }
 
+void LocalSearch::setIterationContext(int currentIteration,
+                                      int totalIterations) {
+  this->currentIteration_ = currentIteration;
+  this->totalIterations_ = totalIterations;
+}
 
+void LocalSearch::DiagCounters::print() const {
+  const char *names[] = {"Relocate",   "Swap",         "OrOpt",
+                         "TwoOpt",     "InterTwoOpt",  "CrossExchange",
+                         "IntraOrOpt", "OrOptReversed"};
+  printf("\n=== VND Operator Stats ===\n");
+  for (int i = 0; i < 8; ++i) {
+    if (opCallCount[i] == 0)
+      continue;
+    printf(" k=%d %-18s calls=%6lld improves=%6lld rate=%.1f%%\n", i, names[i],
+           opCallCount[i], opImproveCount[i],
+           100.0 * opImproveCount[i] / opCallCount[i]);
+  }
+  printf("\n=== searchTwoOptCrossing ===\n");
+  printf(" detected=%lld typeA=%lld applied=%lld\n", crossingDetected,
+         crossingTypeA, crossingApplied);
+  printf(" hit rate: %.1f%% (applied/detected)\n",
+         crossingDetected ? 100.0 * crossingApplied / crossingDetected : 0.0);
+  printf("\n=== segHasStation in INTRA_TWO_OPT ===\n");
+  printf(" total=%lld rejected=%lld reject_rate=%.1f%%\n", stationSegTotal,
+         stationSegReject,
+         stationSegTotal ? 100.0 * stationSegReject / stationSegTotal : 0.0);
+}
 
 void LocalSearch::run(Solution &solution) {
+  diag_.reset();
   // ⭐ VITAL: Must invalidate context from previous ALNS iterations
   searchContext_.invalidate();
   noImprovementCount_ = 0;
 
   // ── 3-Phase LS loop ────────────────────────────────────────────────────────
-  // Phase 1: VND distance optimization  (every iter)
-  // Phase 2: Charging cleanup           (every CHARGING_FREQUENCY iters)
-  // Phase 3: Vehicle reduction          (every iter when routes > 1)
-  //          Merged: ejectionChain + tryEliminate + smartMerge
-  //          ElectricityFree was redundant with smartMerge — removed.
+  // Phase 1: VND distance optimization (every iter)
+  // Phase 2: Charging cleanup (every CHARGING_FREQUENCY iters)
+  // Phase 3: Vehicle reduction (every iter when routes > 1)
+  // Merged: ejectionChain + tryEliminate + smartMerge
+  // ElectricityFree was redundant with smartMerge — removed.
   //
   // Removed modulo throttling for vehicle reduction: if Phase 1 finds a
   // better solution the vehicle reduction should run immediately, not wait
   // for the counter to tick over.
   // ──────────────────────────────────────────────────────────────────────────
-  double t1 = 0, t2 = 0, t3 = 0; // tạm thời
+
+  // ⭐ NEW: Measure CPU time of ALNS algorithm only (excluding I/O, logging)
+  auto start = std::chrono::high_resolution_clock::now();
+
   int maxIter = MAX_LS_ITERATIONS;
   int earlyStop = EARLY_STOP_THRESHOLD;
+  double reduceMinNodeLS = 1;
   if (instance->getCustomers().size() / solution.getNumRoutes() >= 20) {
     maxIter /= 2;
     earlyStop /= 1.5;
+    reduceMinNodeLS = 0.75;
   }
   for (int iter = 0; iter < maxIter; ++iter) {
     bool improved = false;
 
     updateSearchContext(solution);
-    // auto tp1 = std::chrono::high_resolution_clock::now();
+
     // --- Phase 1: Distance Optimization (VND) ---
     bool phase1Improved = runDistanceOptimization(solution);
-    // auto tp2 = std::chrono::high_resolution_clock::now();
-    // t1 += std::chrono::duration<double>(tp2-tp1).count();
     if (phase1Improved) {
       improved = true;
-      // searchContext_.invalidate();
     }
 
     // --- Phase 2: Charging Optimization (periodic) ---
     if (iter % CHARGING_FREQUENCY == 0) {
-      // auto tp3 = std::chrono::high_resolution_clock::now();
       if (runChargingOptimization(solution)) {
         improved = true;
         searchContext_.invalidate();
       }
-      // auto tp4 = std::chrono::high_resolution_clock::now();
-      // t2 += std::chrono::duration<double>(tp4-tp3).count();
     }
 
     // --- Phase 3: Vehicle Reduction (every iter, no throttle) ---
-    // CHỈ chạy khi Phase 1 vừa improve, HOẶC mỗi 2 iter làm fallback
     if (solution.getRoutes().size() > 1) {
-      if (phase1Improved || iter % vehicleReductionFreq == 0) {
-        // auto tp5_clock = std::chrono::high_resolution_clock::now();
+      if (phase1Improved || iter == 0) {
+        if (iter % vehicleReductionFreq_ != 0) continue;
         if (runVehicleReduction(solution)) {
           improved = true;
           noImprovementCount_ = 0;
           searchContext_.invalidate();
         }
-        // auto tp6_clock = std::chrono::high_resolution_clock::now();
-        // t3 += std::chrono::duration<double>(tp6_clock - tp5_clock).count();
       }
     }
-    // printf("Phase1=%.3fs Phase2=%.3fs Phase3=%.3fs\n", t1, t2, t3);
 
     // --- Adaptive Neighborhood Sizing ---
     if (improved) {
       solution.evaluateRoutes();
       noImprovementCount_ = 0;
-      maxNodesToCheck_ = std::max(MIN_NODES_TO_CHECK, maxNodesToCheck_ - 1);
-      maxSwapAttempts_ = std::max(MIN_SWAP_ATTEMPTS, maxSwapAttempts_ - 1);
+      maxNodesToCheck_ =
+          std::max(MIN_NODES_TO_CHECK, maxNodesToCheck_ - 1) * reduceMinNodeLS;
+      maxSwapAttempts_ =
+          std::max(MIN_SWAP_ATTEMPTS, maxSwapAttempts_ - 1) * reduceMinNodeLS;
     } else {
       noImprovementCount_++;
-      maxNodesToCheck_ = std::min(MAX_NODES_TO_CHECK, maxNodesToCheck_ + 1);
-      maxSwapAttempts_ = std::min(MAX_SWAP_ATTEMPTS, maxSwapAttempts_ + 1);
+      maxNodesToCheck_ =
+          std::min(MAX_NODES_TO_CHECK, maxNodesToCheck_ + 1) * reduceMinNodeLS;
+      maxSwapAttempts_ =
+          std::min(MAX_SWAP_ATTEMPTS, maxSwapAttempts_ + 1) * reduceMinNodeLS;
 
       if (noImprovementCount_ >= earlyStop)
         break;
     }
   }
+
+  // ⭐ NEW: Log ALNS CPU time
+  // auto end = std::chrono::high_resolution_clock::now();
+  // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  // double cpuTime = duration.count() / 1000000.0;
+  // printf("ALNS CPU Time: %.3f s\n", cpuTime);
 }
 
 // ============================================================================
@@ -318,9 +357,9 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
     // [FP-4] Trước đây nhánh hasStation=true bỏ qua check này và đi thẳng
     // vào copy. Bây giờ check distance trước — nếu không improve thì return
     // sớm. Nếu có station trong segment, evaluate() sẽ kiểm tra lại sau.
-    int prev    = nodes[move.nodeIdx1 - 1];
-    int nodeI   = nodes[move.nodeIdx1];
-    int nodeJ   = nodes[move.nodeIdx2];
+    int prev = nodes[move.nodeIdx1 - 1];
+    int nodeI = nodes[move.nodeIdx1];
+    int nodeJ = nodes[move.nodeIdx2];
     int next_node = nodes[move.nodeIdx2 + 1];
 
     double oldDist = instance->getDistance(prev, nodeI) +
@@ -347,26 +386,26 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
       for (int k = 0; k < move.segmentLength; ++k)
         segDemand += demandById_[nodes1[move.nodeIdx1 + k]];
 
-      double cap2   = routes[move.routeIdx2].getVehicle()->getCapacity();
-      double used2  = routes[move.routeIdx2].getTotalDemand();
+      double cap2 = routes[move.routeIdx2].getVehicle()->getCapacity();
+      double used2 = routes[move.routeIdx2].getTotalDemand();
       if (used2 + segDemand > cap2 + 1e-9)
         return;
 
       // Distance pre-check (O(1), không copy)
       const auto &nodes2 = routes[move.routeIdx2].getNodes();
       int firstNode = nodes1[move.nodeIdx1];
-      int lastNode  = nodes1[move.nodeIdx1 + move.segmentLength - 1];
-      int prev1     = nodes1[move.nodeIdx1 - 1];
-      int next1     = nodes1[move.nodeIdx1 + move.segmentLength];
-      int prev2     = nodes2[move.nodeIdx2 - 1];
-      int next2     = nodes2[move.nodeIdx2];
+      int lastNode = nodes1[move.nodeIdx1 + move.segmentLength - 1];
+      int prev1 = nodes1[move.nodeIdx1 - 1];
+      int next1 = nodes1[move.nodeIdx1 + move.segmentLength];
+      int prev2 = nodes2[move.nodeIdx2 - 1];
+      int next2 = nodes2[move.nodeIdx2];
 
       double removalSaving = instance->getDistance(prev1, firstNode) +
                              instance->getDistance(lastNode, next1) -
                              instance->getDistance(prev1, next1);
-      double insertCost    = instance->getDistance(prev2, firstNode) +
-                             instance->getDistance(lastNode, next2) -
-                             instance->getDistance(prev2, next2);
+      double insertCost = instance->getDistance(prev2, firstNode) +
+                          instance->getDistance(lastNode, next2) -
+                          instance->getDistance(prev2, next2);
       if (insertCost - removalSaving >= -1e-9)
         return;
     }
@@ -386,14 +425,16 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
       double d1 = demandById_[nodeId1];
       double d2 = demandById_[nodeId2];
 
-      double cap1  = r1.getVehicle()->getCapacity();
-      double cap2  = r2.getVehicle()->getCapacity();
+      double cap1 = r1.getVehicle()->getCapacity();
+      double cap2 = r2.getVehicle()->getCapacity();
       double used1 = r1.getTotalDemand();
       double used2 = r2.getTotalDemand();
 
       // Sau swap: r1 mất d1 được d2, r2 mất d2 được d1
-      if (used1 - d1 + d2 > cap1 + 1e-9) return;
-      if (used2 - d2 + d1 > cap2 + 1e-9) return;
+      if (used1 - d1 + d2 > cap1 + 1e-9)
+        return;
+      if (used2 - d2 + d1 > cap2 + 1e-9)
+        return;
     }
   }
 
@@ -415,14 +456,16 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
       for (int k = 0; k < len2; ++k)
         segDemand2 += demandById_[nodes2[move.nodeIdx2 + k]];
 
-      double cap1  = r1.getVehicle()->getCapacity();
-      double cap2  = r2.getVehicle()->getCapacity();
+      double cap1 = r1.getVehicle()->getCapacity();
+      double cap2 = r2.getVehicle()->getCapacity();
       double used1 = r1.getTotalDemand();
       double used2 = r2.getTotalDemand();
 
       // Sau exchange: r1 mất seg1 được seg2, r2 ngược lại
-      if (used1 - segDemand1 + segDemand2 > cap1 + 1e-9) return;
-      if (used2 - segDemand2 + segDemand1 > cap2 + 1e-9) return;
+      if (used1 - segDemand1 + segDemand2 > cap1 + 1e-9)
+        return;
+      if (used2 - segDemand2 + segDemand1 > cap2 + 1e-9)
+        return;
     }
   }
 
@@ -554,228 +597,6 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
     move.eval.isFeasible = false;
   }
 }
-
-// void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
-//                                const LocalSearchWeights &weights) {
-//   move.eval.reset();
-//   move.eval.isFeasible = false;
-//   const auto &routes = solution.getRoutes();
-//
-//   // ================================================================
-//   // ⭐ FAST PATH: Distance pre-check BEFORE copying routes
-//   // ================================================================
-//
-//   // --- INTER_RELOCATE: Full fast path ---
-//   if (move.type == MoveType::INTER_RELOCATE) {
-//     int nodeId = routes[move.routeIdx1].getNodeAt(move.nodeIdx1);
-//     const auto &r2 = routes[move.routeIdx2];
-//
-//     InsertionResult result = r2.checkInsertionCost(nodeId, move.nodeIdx2);
-//     if (!result.isFeasible) {
-//       return;
-//     }
-//
-//     double distance_removed;
-//     if (move.cachedRemovalSavings != 0.0) {
-//       distance_removed = move.cachedRemovalSavings;
-//     } else {
-//       const auto &r1 = routes[move.routeIdx1];
-//       int prev_node = r1.getNodeAt(move.nodeIdx1 - 1);
-//       int next_node = r1.getNodeAt(move.nodeIdx1 + 1);
-//       distance_removed = instance->getDistance(prev_node, nodeId) +
-//                          instance->getDistance(nodeId, next_node) -
-//                          instance->getDistance(prev_node, next_node);
-//     }
-//
-//     move.eval.isFeasible = true;
-//     move.eval.distanceDelta = result.deltaDistance - distance_removed;
-//     move.eval.objectiveDelta = move.eval.distanceDelta * weights.dist;
-//     return;
-//   }
-//
-//   // --- INTRA_RELOCATE: Distance delta O(1) pre-check ---
-//   if (move.type == MoveType::INTRA_RELOCATE) {
-//     const auto &r1 = routes[move.routeIdx1];
-//     int nodeId = r1.getNodeAt(move.nodeIdx1);
-//
-//     int prev = r1.getNodeAt(move.nodeIdx1 - 1);
-//     int next = r1.getNodeAt(move.nodeIdx1 + 1);
-//     double removalSavings = instance->getDistance(prev, nodeId) +
-//                             instance->getDistance(nodeId, next) -
-//                             instance->getDistance(prev, next);
-//
-//     int insertPos = move.nodeIdx2;
-//     if (move.nodeIdx1 < move.nodeIdx2)
-//       insertPos--;
-//
-//     const auto &nodes = r1.getNodes();
-//     // FIX đúng: ánh xạ post-removal → pre-removal index
-//     int pre_prev =
-//         (insertPos - 1 < move.nodeIdx1) ? (insertPos - 1) : insertPos;
-//     int pre_next = (insertPos < move.nodeIdx1) ? insertPos : (insertPos + 1);
-//     int ins_prev = nodes[pre_prev];
-//     int ins_next = nodes[pre_next];
-//     double insertionCost = instance->getDistance(ins_prev, nodeId) +
-//                            instance->getDistance(nodeId, ins_next) -
-//                            instance->getDistance(ins_prev, ins_next);
-//
-//     double distDelta = insertionCost - removalSavings;
-//     if (distDelta >= -1e-9)
-//       return;
-//   }
-//
-//   // --- INTRA_TWO_OPT: Skip copy if segment has no station ---
-//   if (move.type == MoveType::INTRA_TWO_OPT) {
-//     const auto &r1 = routes[move.routeIdx1];
-//     const auto &nodes = r1.getNodes();
-//
-//     bool hasStation = (move.stationId == 1);
-//
-//     if (!hasStation) {
-//       int prev = nodes[move.nodeIdx1 - 1];
-//       int nodeI = nodes[move.nodeIdx1];
-//       int nodeJ = nodes[move.nodeIdx2];
-//       int next_node = nodes[move.nodeIdx2 + 1];
-//
-//       double oldDist = instance->getDistance(prev, nodeI) +
-//                        instance->getDistance(nodeJ, next_node);
-//       double newDist = instance->getDistance(prev, nodeJ) +
-//                        instance->getDistance(nodeI, next_node);
-//
-//       if (newDist >= oldDist - 1e-9)
-//         return;
-//     }
-//   }
-//
-//   // ================================================================
-//   // END FAST PATH — only moves with good distance improvement reach here
-//   // ================================================================
-//
-//   Route r1_copy = routes[move.routeIdx1];
-//
-//   bool twoRoutes = (move.routeIdx1 != move.routeIdx2 && move.routeIdx2 >= 0);
-//   Route r2_copy = twoRoutes ? routes[move.routeIdx2] : r1_copy;
-//
-//   try {
-//     switch (move.type) {
-//     case MoveType::INTRA_RELOCATE:
-//     case MoveType::INTER_RELOCATE: {
-//       int nodeId = r1_copy.getNodeAt(move.nodeIdx1);
-//       r1_copy.removeNode(move.nodeIdx1);
-//       if (twoRoutes) {
-//         r2_copy.addNode(nodeId, move.nodeIdx2);
-//       } else {
-//         int targetIdx = move.nodeIdx2;
-//         if (move.nodeIdx1 < move.nodeIdx2)
-//           targetIdx--;
-//         r1_copy.addNode(nodeId, targetIdx);
-//       }
-//       break;
-//     }
-//     case MoveType::INTER_OR_OPT: {
-//       std::vector<int> segment;
-//       segment.reserve(move.segmentLength);
-//       for (int i = 0; i < move.segmentLength; ++i) {
-//         segment.push_back(r1_copy.getNodeAt(move.nodeIdx1 + i));
-//       }
-//       for (int i = move.segmentLength - 1; i >= 0; --i) {
-//         r1_copy.removeNode(move.nodeIdx1 + i);
-//       }
-//       if (twoRoutes) {
-//         for (int i = 0; i < move.segmentLength; ++i) {
-//           r2_copy.addNode(segment[i], move.nodeIdx2 + i);
-//         }
-//       } else {
-//         int targetIdx = move.nodeIdx2;
-//         if (move.nodeIdx1 < move.nodeIdx2) {
-//           targetIdx -= move.segmentLength;
-//         }
-//         for (int i = 0; i < move.segmentLength; ++i) {
-//           r1_copy.addNode(segment[i], targetIdx + i);
-//         }
-//       }
-//       break;
-//     }
-//     case MoveType::INTRA_TWO_OPT:
-//       r1_copy.reverseNodes(move.nodeIdx1, move.nodeIdx2);
-//       break;
-//     case MoveType::INTER_CROSS_EXCHANGE: {
-//       if (!twoRoutes)
-//         return;
-//       int len1 = move.segmentLength;
-//       int len2 = move.segmentLength2;
-//
-//       std::vector<int> seg1, seg2;
-//       seg1.reserve(len1);
-//       seg2.reserve(len2);
-//       for (int i = 0; i < len1; ++i)
-//         seg1.push_back(r1_copy.getNodeAt(move.nodeIdx1 + i));
-//       for (int i = 0; i < len2; ++i)
-//         seg2.push_back(r2_copy.getNodeAt(move.nodeIdx2 + i));
-//
-//       for (int i = len1 - 1; i >= 0; --i)
-//         r1_copy.removeNode(move.nodeIdx1 + i);
-//       for (int i = len2 - 1; i >= 0; --i)
-//         r2_copy.removeNode(move.nodeIdx2 + i);
-//
-//       for (int i = 0; i < len2; ++i)
-//         r1_copy.addNode(seg2[i], move.nodeIdx1 + i);
-//       for (int i = 0; i < len1; ++i)
-//         r2_copy.addNode(seg1[i], move.nodeIdx2 + i);
-//       break;
-//     }
-//     case MoveType::INTRA_SWAP: {
-//       int nodeId1 = r1_copy.getNodeAt(move.nodeIdx1);
-//       int nodeId2 = r1_copy.getNodeAt(move.nodeIdx2);
-//       // Xóa index lớn trước để không làm lệch index nhỏ
-//       r1_copy.removeNode(move.nodeIdx2);
-//       r1_copy.addNode(nodeId1, move.nodeIdx2);
-//       r1_copy.removeNode(move.nodeIdx1);
-//       r1_copy.addNode(nodeId2, move.nodeIdx1);
-//       break;
-//     }
-//     case MoveType::INTER_SWAP: {
-//       if (!twoRoutes)
-//         return;
-//       int nodeId1 = r1_copy.getNodeAt(move.nodeIdx1);
-//       int nodeId2 = r2_copy.getNodeAt(move.nodeIdx2);
-//       r1_copy.removeNode(move.nodeIdx1);
-//       r2_copy.removeNode(move.nodeIdx2);
-//       r1_copy.addNode(nodeId2, move.nodeIdx1);
-//       r2_copy.addNode(nodeId1, move.nodeIdx2);
-//       break;
-//     }
-//     case MoveType::STATION_REMOVE: {
-//       r1_copy.removeNode(move.nodeIdx1);
-//       break;
-//     }
-//     case MoveType::INTER_TWO_OPT:
-//       return;
-//     default:
-//       return;
-//     }
-//
-//     r1_copy.evaluate();
-//     if (twoRoutes)
-//       r2_copy.evaluate();
-//
-//     if (!r1_copy.isFeasible() || (twoRoutes && !r2_copy.isFeasible())) {
-//       return;
-//     }
-//
-//     double newDist = r1_copy.getTotalDistance() +
-//                      (twoRoutes ? r2_copy.getTotalDistance() : 0);
-//     double oldDist =
-//         routes[move.routeIdx1].getTotalDistance() +
-//         (twoRoutes ? routes[move.routeIdx2].getTotalDistance() : 0);
-//
-//     move.eval.isFeasible = true;
-//     move.eval.distanceDelta = newDist - oldDist;
-//     move.eval.objectiveDelta = move.eval.distanceDelta * weights.dist;
-//   } catch (...) {
-//     move.eval.isFeasible = false;
-//   }
-// }
 
 void LocalSearch::applyMove(Solution &solution, const MoveDescriptor &move) {
   auto &routes = solution.getRoutes();
@@ -920,34 +741,60 @@ bool LocalSearch::runDistanceOptimization(Solution &solution) {
   updateSearchContext(solution);
 
   int k = 0;
-  while (k < 7) {
+  while (k < 8) {
     bool improved = false;
 
     switch (k) {
     case 0:
+      diag_.opCallCount[0]++;
       improved = searchRelocate(solution, weights, searchContext_);
+      if (improved)
+        diag_.opImproveCount[0]++;
       break;
     case 1:
+      diag_.opCallCount[1]++;
       improved = searchSwap(solution, weights, searchContext_);
+      if (improved)
+        diag_.opImproveCount[1]++;
       break;
     case 2:
+      diag_.opCallCount[2]++;
       improved = searchOrOpt(solution, weights);
+      if (improved)
+        diag_.opImproveCount[2]++;
       break;
     case 3:
+      diag_.opCallCount[3]++;
       improved = searchTwoOpt(solution, weights);
+      if (improved)
+        diag_.opImproveCount[3]++;
       break;
     case 4:
+      diag_.opCallCount[4]++;
       improved = searchInterTwoOpt(solution, weights, searchContext_);
+      if (improved)
+        diag_.opImproveCount[4]++;
       break;
     case 5:
-      improved = searchCrossExchange(solution, weights, searchContext_);
+      diag_.opCallCount[5]++;
+      improved = searchIntraOrOpt(solution, weights, searchContext_);
+      if (improved)
+        diag_.opImproveCount[5]++;
       break;
     case 6:
-      improved = searchIntraOrOpt(solution, weights, searchContext_);
+      if (solution.getNumRoutes() <= 1)
+        break;
+      diag_.opCallCount[6]++;
+      improved = searchCrossExchange(solution, weights, searchContext_);
+      if (improved)
+        diag_.opImproveCount[6]++;
       break;
-      // case 7:
-      //   improved = searchOrOptReversed(solution, weights, searchContext_);
-      //   break;
+      case 7:
+      diag_.opCallCount[7]++;
+      improved = searchOrOptReversed(solution, weights, searchContext_);
+      if (improved)
+      diag_.opImproveCount[7]++;
+      break;
     }
 
     if (improved) {
@@ -959,7 +806,8 @@ bool LocalSearch::runDistanceOptimization(Solution &solution) {
       // nguyên phần còn lại
       patchSearchContext(solution);
 
-      k = 0; // VND restart, nhưng context vẫn còn hợp lệ
+      // k = std::max(k - 1, 0);
+      k = 0;
     } else {
       k++;
     }
@@ -1238,20 +1086,19 @@ bool LocalSearch::searchTwoOpt(Solution &solution,
       if (knnIt == knnCache_.end())
         continue;
 
+      auto knnPrevIt = knnCache_.find(prev);
+
       // Sử dụng thread_local để tránh cấp phát bộ nhớ lặp lại
       static thread_local std::vector<int> jCandidates;
       jCandidates.clear();
       static thread_local std::vector<bool> jSeen;
       jSeen.assign(n, false);
 
-      for (int neighbor : knnIt->second) {
+      auto addCandidate = [&](int neighbor) {
         int p = posInRoute[neighbor];
         if (p == -1)
-          continue; // neighbor không nằm trong route này
+          return;
 
-        // 2-opt swap (i,j) sẽ nối prev với nodes[j] và nodeI với nodes[j+1].
-        // Vì vậy, neighbor có thể là nodes[j] (tức là p = j)
-        // hoặc nodes[j+1] (tức là p = j+1 → j = p-1)
         if (p > i && p < n - 1 && !jSeen[p]) {
           jSeen[p] = true;
           jCandidates.push_back(p);
@@ -1260,7 +1107,13 @@ bool LocalSearch::searchTwoOpt(Solution &solution,
           jSeen[p - 1] = true;
           jCandidates.push_back(p - 1);
         }
-      }
+      };
+
+      for (int neighbor : knnIt->second)
+        addCandidate(neighbor);
+      if (knnPrevIt != knnCache_.end())
+        for (int neighbor : knnPrevIt->second)
+          addCandidate(neighbor);
 
       // Duyệt qua danh sách các j hợp lệ đã được thu thập
       for (int j : jCandidates) {
@@ -1285,13 +1138,14 @@ bool LocalSearch::searchTwoOpt(Solution &solution,
         move.nodeIdx1 = i;
         move.routeIdx2 = r;
         move.nodeIdx2 = j;
-        {
-          bool segHasStation = false;
-          for (int k = i; k <= j && !segHasStation; ++k)
-            if (nodeTypeById_[nodes[k]] == NodeType::STATION)
-              segHasStation = true;
-          move.stationId = segHasStation ? 1 : 0;
-        }
+        bool segHasStation = false;
+        for (int k = i; k <= j && !segHasStation; ++k)
+          if (nodeTypeById_[nodes[k]] == NodeType::STATION)
+            segHasStation = true;
+        move.stationId = segHasStation ? 1 : 0;
+
+        if (segHasStation)
+          diag_.stationSegTotal++;
 
         evaluateMove(solution, move, weights);
 
@@ -1301,6 +1155,8 @@ bool LocalSearch::searchTwoOpt(Solution &solution,
             posInRoute[nodes[k]] = -1;
           applyMove(solution, move);
           return true;
+        } else if (segHasStation && !move.eval.isFeasible) {
+          diag_.stationSegReject++;
         }
       }
     }
@@ -1351,7 +1207,7 @@ bool LocalSearch::searchInterTwoOpt(Solution &solution,
           double newEdges = instance->getDistance(nodes1[i], nodes2[j + 1]) +
                             instance->getDistance(nodes2[j], nodes1[i + 1]);
 
-          if (newEdges >= oldEdges - 0.5)
+          if (newEdges >= oldEdges - 1e-6)
             continue;
 
           // [PRUNE-4] Granularity: both new edges must be below threshold
@@ -1405,8 +1261,8 @@ bool LocalSearch::searchInterTwoOpt(Solution &solution,
           double newDist = newR1.getTotalDistance() + newR2.getTotalDistance();
 
           if (newDist < oldDist - 1e-9) {
-            routes[r1] = newR1;  // already evaluate()d above
-            routes[r2] = newR2;  // already evaluate()d above
+            routes[r1] = newR1; // already evaluate()d above
+            routes[r2] = newR2; // already evaluate()d above
             // [OPT-12] newR1/newR2 already individually evaluated.
             // solution.evaluateRoutes() was re-evaluating ALL routes O(R×N).
             // markDirty() is O(1) — tells Solution its cached total is stale.
@@ -1792,7 +1648,10 @@ bool LocalSearch::searchOrOpt(Solution &solution,
           const auto &candidatePositions =
               findBestInsertionPositions_KNN(routes[r2], firstNodeId, 3);
 
-          for (int j : candidatePositions) {
+              // Only try top-3 positions from KNN cache (O(1) instead of O(n))
+            int maxCandidates = std::min(3, (int)candidatePositions.size());
+            for (int k = 0; k < maxCandidates; ++k) {
+                int j = candidatePositions[k];
             // Intra overlap check
             if (r1 == r2 && (j >= i && j <= i + segLen)) {
               continue;
@@ -1988,7 +1847,8 @@ bool LocalSearch::runChargingOptimization(Solution &solution) {
   if (repositionStations(solution))
     improved = true;
 
-  if (optimizeChargingAmounts(solution))
+  // Redundant Station Elimination (previously optimizeChargingAmounts)
+  if (eliminateRedundantStations(solution))
     improved = true;
 
   if (searchStationSwap(solution))
@@ -2231,7 +2091,7 @@ bool LocalSearch::repositionStations(Solution &solution) {
                                instance->getTime(prevNodeId, altStationId);
 
           if (arrivalTime <= dueDateById_[altStationId]) {
-            bestDetour    = altDetour;
+            bestDetour = altDetour;
             bestStationId = altStationId;
           }
         }
@@ -2321,7 +2181,7 @@ bool LocalSearch::searchStationSwap(Solution &solution) {
   return improved;
 }
 
-bool LocalSearch::optimizeChargingAmounts(Solution &solution) {
+bool LocalSearch::eliminateRedundantStations(Solution &solution) {
   auto &routes = solution.getRoutes();
   bool improved = false;
 
@@ -2465,6 +2325,9 @@ bool LocalSearch::runVehicleReduction(Solution &solution) {
   // ElectricityFreeVehicleReduction was a subset of smartMerge (same pair
   // selection + reconstruction). Merged here to avoid redundant work.
 
+  if (tryEmptySmallestRoute(solution))
+    return true;
+
   if (ejectionChain(solution))
     return true;
 
@@ -2474,8 +2337,149 @@ bool LocalSearch::runVehicleReduction(Solution &solution) {
   if (runSmartMultiRouteMerge(solution))
     return true;
 
-  // if (segmentCrossExchangeForVehicleReduction(solution))
-  //   return true;
+  if (tryTriRouteMerge(solution))
+    return true;
+
+  if (segmentCrossExchangeForVehicleReduction(solution))
+    return true;
+
+  return false;
+}
+
+// ============================================================================
+// Intensified Vehicle Reduction (for late-stage ALNS)
+// Runs ejection chain with increased depth and repeated passes
+// ============================================================================
+bool LocalSearch::runIntensifiedVehicleReduction(Solution &solution,
+                                                 int maxEjectionDepth) {
+  if (solution.getNumRoutes() < 2)
+    return false;
+
+  bool anyImproved = false;
+
+  // Pass 1: Single deep ejection chain at max depth
+  // This is the most powerful operator for vehicle reduction
+  if (maxEjectionDepth >= 3 && ejectionChain(solution)) {
+    anyImproved = true;
+    // After successful ejection, try to eliminate empty routes
+    if (tryEliminateSmallestRoute(solution)) {
+      anyImproved = true;
+    }
+  }
+
+  // Pass 2: Smart multi-route merge (handles energy constraints)
+  if (runSmartMultiRouteMerge(solution)) {
+    anyImproved = true;
+  }
+
+  // Pass 3: Tri-route merge (aggressive 3-route consolidation)
+  if (tryTriRouteMerge(solution)) {
+    anyImproved = true;
+  }
+
+  // Pass 4: Targeted smallest route emptying
+  if (tryEmptySmallestRoute(solution)) {
+    anyImproved = true;
+  }
+
+  return anyImproved;
+}
+
+// ============================================================================
+// tryEmptySmallestRoute (Phase 6)
+// Targeted pass: relocate all customers from the smallest route (<=8 custs)
+// into best feasible positions on other routes, remove empty route.
+// ============================================================================
+bool LocalSearch::tryEmptySmallestRoute(Solution &solution) {
+  auto &routes = solution.getRoutes();
+  int numRoutes = (int)routes.size();
+  if (numRoutes < 2)
+    return false;
+
+  int totalCusts = 0;
+  for (int r = 0; r < numRoutes; ++r) {
+    totalCusts += (int)routes[r].getCustomers().size();
+  }
+  double avgCusts = (double)totalCusts / std::max(1, numRoutes);
+  int threshold = std::max(6, static_cast<int>(0.6 * avgCusts));
+
+  std::vector<std::pair<int, int>> candidateRoutes;
+  for (int r = 0; r < numRoutes; ++r) {
+    int cnt = (int)routes[r].getCustomers().size();
+    if (cnt > 0 && cnt <= threshold) {
+      candidateRoutes.push_back({cnt, r});
+    }
+  }
+
+  if (candidateRoutes.empty())
+    return false;
+  std::sort(candidateRoutes.begin(), candidateRoutes.end());
+
+  for (auto const &pair : candidateRoutes) {
+    int smallestIdx = pair.second;
+    auto customers = routes[smallestIdx].getCustomers();
+
+    bool abortRoute = false;
+    std::vector<std::pair<int, int>> insertions; // {routeIdx, pos}
+
+    for (int c : customers) {
+      double bestCost = 1e18;
+      int bestRoute = -1;
+      size_t bestPos = 0;
+
+      for (int r = 0; r < numRoutes; ++r) {
+        if (r == smallestIdx)
+          continue;
+        const auto &nodes = routes[r].getNodes();
+        for (size_t pos = 1; pos < nodes.size(); ++pos) {
+          InsertionResult res = routes[r].checkInsertionCost(c, (int)pos);
+          if (res.isFeasible && res.deltaDistance < bestCost) {
+            bestCost = res.deltaDistance;
+            bestRoute = r;
+            bestPos = pos;
+          }
+        }
+      }
+
+      if (bestRoute < 0) {
+        abortRoute = true;
+        break;
+      }
+
+      routes[bestRoute].addNode(c, (int)bestPos);
+      routes[bestRoute].evaluate();
+      if (!routes[bestRoute].isFeasible()) {
+        routes[bestRoute].removeNode((int)bestPos);
+        routes[bestRoute].evaluate();
+        abortRoute = true;
+        break;
+      }
+      insertions.push_back({bestRoute, (int)bestPos});
+    }
+
+    if (!abortRoute) {
+      // SUCCESS! Emptied the victim route!
+      // Must remove the customers explicitly just in case before dropping route
+      while (routes[smallestIdx].getCustomers().size() > 0) {
+        for (size_t p = 1; p < routes[smallestIdx].size(); ++p) {
+          if (instance->getNodeType(routes[smallestIdx].getNodeAt(p)) ==
+              NodeType::CUSTOMER) {
+            routes[smallestIdx].removeNode((int)p);
+            break;
+          }
+        }
+      }
+      solution.removeRoute(smallestIdx);
+      solution.evaluateRoutes();
+      return true;
+    } else {
+      // REVERT
+      for (auto it = insertions.rbegin(); it != insertions.rend(); ++it) {
+        routes[it->first].removeNode(it->second);
+        routes[it->first].evaluate();
+      }
+    }
+  }
 
   return false;
 }
@@ -2490,275 +2494,296 @@ bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
   if (numRoutes < 2)
     return false;
 
-  int smallestIdx = -1;
-  size_t minCustomers = std::numeric_limits<size_t>::max();
+  double totalCusts = 0;
+  for (int r = 0; r < numRoutes; ++r) {
+    totalCusts += routes[r].getCustomers().size();
+  }
+  double avgCusts = totalCusts / numRoutes;
+  int dynThreshold = calculateVehicleReductionThreshold(
+      currentIteration_, totalIterations_, numRoutes, 0);
+  int threshold = std::max(static_cast<int>(0.6 * avgCusts), dynThreshold);
 
+  std::vector<std::pair<size_t, int>> candidateRoutes;
   for (int r = 0; r < numRoutes; ++r) {
     size_t custCount = routes[r].getCustomers().size();
-    if (custCount > 0 && custCount < minCustomers) {
-      minCustomers = custCount;
-      smallestIdx = r;
+    if (custCount > 0 && custCount <= static_cast<size_t>(threshold)) {
+      candidateRoutes.push_back({custCount, r});
     }
   }
 
-  if (smallestIdx == -1 || minCustomers > 20) // [FIX] tăng từ 15 lên 20
+  if (candidateRoutes.empty())
     return false;
+  std::sort(candidateRoutes.begin(), candidateRoutes.end());
 
-  std::vector<int> customersToMove = routes[smallestIdx].getCustomers();
+  for (auto const &pair : candidateRoutes) {
+    int smallestIdx = pair.second;
+    std::vector<int> customersToMove = routes[smallestIdx].getCustomers();
 
-  std::vector<Route> newRoutes;
-  for (int r = 0; r < numRoutes; ++r) {
-    if (r != smallestIdx) {
-      newRoutes.push_back(routes[r]);
-    }
-  }
-
-  struct InsertCandidate {
-    int custId = -1;
-    int routeIdx = -1;
-    size_t pos = 0;
-    double cost = 1e18;
-    int stationId = -1;
-    bool statBefore = true;
-  };
-
-  std::vector<int> unplaced = customersToMove;
-
-  // Sort by tightest TW first.
-  // [OPT-9] Flat TW arrays — no shared_ptr copy inside comparator.
-  std::sort(unplaced.begin(), unplaced.end(), [&](int a, int b) {
-    return (dueDateById_[a] - readyTimeById_[a]) <
-           (dueDateById_[b] - readyTimeById_[b]);
-  });
-
-  auto findBestForCustomer = [&](int custId) -> InsertCandidate {
-    InsertCandidate best;
-    best.custId = custId;
-
-    // [OPT-9] Flat TW arrays — no shared_ptr copy.
-    double cDue    = dueDateById_[custId];
-    double cReady  = readyTimeById_[custId];
-    double twWindow = cDue - cReady;
-    bool isTightTW = (twWindow <= 30.0);
-
-    for (int r = 0; r < (int)newRoutes.size(); ++r) {
-      const auto &nodes  = newRoutes[r].getNodes();
-      const auto &states = newRoutes[r].getStates();
-
-      for (size_t pos = 1; pos < nodes.size(); ++pos) {
-        // Option A: Direct
-        if (newRoutes[r].canPossiblyInsert(custId, pos)) {
-          InsertionResult res = newRoutes[r].checkInsertionCost(custId, pos);
-          if (res.isFeasible) {
-            double cost = res.deltaDistance;
-            if (isTightTW && pos <= states.size()) {
-              double travelToPrev  = instance->getTime(nodes[pos - 1], custId);
-              double arrivalAtCust = states[pos - 1].departureTime + travelToPrev;
-              double slack = cDue - arrivalAtCust;
-              if (slack < 0)
-                continue;
-              double waitPenalty = std::max(0.0, cReady - arrivalAtCust);
-              cost += waitPenalty * 0.3;
-            }
-            if (cost < best.cost)
-              best = {custId, r, pos, cost, -1, true};
-          }
-        }
-
-        // Options B & C: Station-assisted, top-1 station by detour
-        int prevId    = nodes[pos - 1];
-        int nextId    = nodes[pos];
-        double directDist = instance->getDistance(prevId, nextId);
-
-        // [OPT-9] thread_local SC buffer — eliminates heap alloc per (r,pos).
-        struct SC { int id; double det; };
-        static thread_local std::vector<SC> sc;
-        sc.clear();
-        sc.reserve(stationIds.size());
-        for (int sid : stationIds)
-          sc.push_back({sid, instance->getDistance(prevId, sid) +
-                                 instance->getDistance(sid, nextId) -
-                                 directDist});
-        int topK = std::min(2, (int)sc.size());
-        std::partial_sort(sc.begin(), sc.begin() + topK, sc.end(),
-                          [](const SC &a, const SC &b) { return a.det < b.det; });
-
-        for (int k = 0; k < topK; ++k) {
-          int sid = sc[k].id;
-
-          // [OPT-4] Pre-filter distance before deep copy
-          // Estimate B: prev -> cust -> sid -> next
-          double costB = instance->getDistance(prevId, custId) +
-                         instance->getDistance(custId, sid) +
-                         instance->getDistance(sid, nextId) - directDist;
-
-          if (costB < best.cost) {
-            Route copy = newRoutes[r];
-            copy.addNode(custId, pos);
-            copy.addNode(sid, pos);
-            copy.evaluate();
-            if (copy.isFeasible()) {
-              double dc = copy.getTotalDistance() - newRoutes[r].getTotalDistance();
-              if (dc < best.cost) {
-                best = {custId, r, pos, dc, sid, true};
-              }
-            }
-          }
-
-          // Estimate C: prev -> sid -> cust -> next
-          double costC = instance->getDistance(prevId, sid) +
-                         instance->getDistance(sid, custId) +
-                         instance->getDistance(custId, nextId) - directDist;
-
-          if (costC < best.cost) {
-            Route copy = newRoutes[r];
-            copy.addNode(custId, pos);
-            copy.addNode(sid, pos + 1);
-            copy.evaluate();
-            if (copy.isFeasible()) {
-              double dc = copy.getTotalDistance() - newRoutes[r].getTotalDistance();
-              if (dc < best.cost) {
-                best = {custId, r, pos, dc, sid, false};
-              }
-            }
-          }
-        }
-      }
-    }
-    return best;
-  };
-
-  auto applyCandidate = [&](const InsertCandidate &c) {
-    if (c.stationId == -1) {
-      newRoutes[c.routeIdx].addNode(c.custId, c.pos);
-    } else if (c.statBefore) {
-      newRoutes[c.routeIdx].addNode(c.custId, c.pos);
-      newRoutes[c.routeIdx].addNode(c.stationId, c.pos);
-    } else {
-      newRoutes[c.routeIdx].addNode(c.custId, c.pos);
-      newRoutes[c.routeIdx].addNode(c.stationId, c.pos + 1);
-    }
-    newRoutes[c.routeIdx].evaluate();
-  };
-
-  // Regret-2 Insertion
-  struct RouteBest {
-    InsertCandidate rank1;
-    InsertCandidate rank2;
-  };
-  std::unordered_map<int, std::vector<RouteBest>> costCache;
-  for (int cId : unplaced)
-    costCache[cId].resize(newRoutes.size());
-  std::vector<bool> routeDirty(newRoutes.size(), true);
-
-  while (!unplaced.empty()) {
-    int bestIdx = -1;
-    double maxRegret = -1e18;
-    InsertCandidate bestCand;
-
-    // Recompute dirty routes
-    for (int r = 0; r < (int)newRoutes.size(); ++r) {
-      if (!routeDirty[r])
-        continue;
-      for (int cId : unplaced) {
-        InsertCandidate rank1, rank2;
-        rank1.custId = cId;
-        rank2.custId = cId;
-        rank2.cost = 1e18;
-
-        for (size_t pos = 1; pos < newRoutes[r].size(); ++pos) {
-          if (!newRoutes[r].canPossiblyInsert(cId, pos))
-            continue;
-          InsertionResult res = newRoutes[r].checkInsertionCost(cId, pos);
-          if (!res.isFeasible)
-            continue;
-          if (res.deltaDistance < rank1.cost) {
-            rank2 = rank1;
-            rank1 = {cId, r, pos, res.deltaDistance, -1, true};
-          } else if (res.deltaDistance < rank2.cost) {
-            rank2 = {cId, r, pos, res.deltaDistance, -1, true};
-          }
-        }
-        costCache[cId][r] = {rank1, rank2};
-      }
-      routeDirty[r] = false;
+    std::vector<Route> newRoutes;
+    newRoutes.reserve(numRoutes - 1);
+    for (int r = 0; r < numRoutes; ++r) {
+      if (r != smallestIdx)
+        newRoutes.push_back(routes[r]);
     }
 
-    for (int idx = 0; idx < (int)unplaced.size(); ++idx) {
-      int cId = unplaced[idx];
-      InsertCandidate globalR1, globalR2;
-      globalR1.custId = cId;
-      globalR2.custId = cId;
-      globalR2.cost = 1e18;
+    struct InsertCandidate {
+      int custId = -1;
+      int routeIdx = -1;
+      size_t pos = 0;
+      double cost = 1e18;
+      int stationId = -1;
+      bool statBefore = true;
+    };
+
+    std::vector<int> unplaced = customersToMove;
+
+    // Sort by tightest TW first.
+    // [OPT-9] Flat TW arrays — no shared_ptr copy inside comparator.
+    std::sort(unplaced.begin(), unplaced.end(), [&](int a, int b) {
+      return (dueDateById_[a] - readyTimeById_[a]) <
+             (dueDateById_[b] - readyTimeById_[b]);
+    });
+
+    auto findBestForCustomer = [&](int custId) -> InsertCandidate {
+      InsertCandidate best;
+      best.custId = custId;
+
+      // [OPT-9] Flat TW arrays — no shared_ptr copy.
+      double cDue = dueDateById_[custId];
+      double cReady = readyTimeById_[custId];
+      double twWindow = cDue - cReady;
+      bool isTightTW = (twWindow <= 30.0);
 
       for (int r = 0; r < (int)newRoutes.size(); ++r) {
-        const auto &rb = costCache[cId][r];
-        if (rb.rank1.routeIdx == -1)
+        const auto &nodes = newRoutes[r].getNodes();
+        const auto &states = newRoutes[r].getStates();
+
+        for (size_t pos = 1; pos < nodes.size(); ++pos) {
+          // Option A: Direct
+          if (newRoutes[r].canPossiblyInsert(custId, pos)) {
+            InsertionResult res = newRoutes[r].checkInsertionCost(custId, pos);
+            if (res.isFeasible) {
+              double cost = res.deltaDistance;
+              if (isTightTW && pos <= states.size()) {
+                double travelToPrev = instance->getTime(nodes[pos - 1], custId);
+                double arrivalAtCust =
+                    states[pos - 1].departureTime + travelToPrev;
+                double slack = cDue - arrivalAtCust;
+                if (slack < 0)
+                  continue;
+                double waitPenalty = std::max(0.0, cReady - arrivalAtCust);
+                cost += waitPenalty * 0.3;
+              }
+              if (cost < best.cost)
+                best = {custId, r, pos, cost, -1, true};
+            }
+          }
+
+          // Options B & C: Station-assisted, top-1 station by detour
+          int prevId = nodes[pos - 1];
+          int nextId = nodes[pos];
+          double directDist = instance->getDistance(prevId, nextId);
+
+          // [OPT-9] thread_local SC buffer — eliminates heap alloc per (r,pos).
+          struct SC {
+            int id;
+            double det;
+          };
+          static thread_local std::vector<SC> sc;
+          sc.clear();
+          sc.reserve(stationIds.size());
+          for (int sid : stationIds)
+            sc.push_back({sid, instance->getDistance(prevId, sid) +
+                                   instance->getDistance(sid, nextId) -
+                                   directDist});
+          int topK = std::min(2, (int)sc.size());
+          std::partial_sort(
+              sc.begin(), sc.begin() + topK, sc.end(),
+              [](const SC &a, const SC &b) { return a.det < b.det; });
+
+          for (int k = 0; k < topK; ++k) {
+            int sid = sc[k].id;
+
+            // [OPT-4] Pre-filter distance before deep copy
+            // Estimate B: prev -> cust -> sid -> next
+            double costB = instance->getDistance(prevId, custId) +
+                           instance->getDistance(custId, sid) +
+                           instance->getDistance(sid, nextId) - directDist;
+
+            if (costB < best.cost) {
+              Route copy = newRoutes[r];
+              copy.addNode(custId, pos);
+              copy.addNode(sid, pos);
+              copy.evaluate();
+              if (copy.isFeasible()) {
+                double dc =
+                    copy.getTotalDistance() - newRoutes[r].getTotalDistance();
+                if (dc < best.cost) {
+                  best = {custId, r, pos, dc, sid, true};
+                }
+              }
+            }
+
+            // Estimate C: prev -> sid -> cust -> next
+            double costC = instance->getDistance(prevId, sid) +
+                           instance->getDistance(sid, custId) +
+                           instance->getDistance(custId, nextId) - directDist;
+
+            if (costC < best.cost) {
+              Route copy = newRoutes[r];
+              copy.addNode(custId, pos);
+              copy.addNode(sid, pos + 1);
+              copy.evaluate();
+              if (copy.isFeasible()) {
+                double dc =
+                    copy.getTotalDistance() - newRoutes[r].getTotalDistance();
+                if (dc < best.cost) {
+                  best = {custId, r, pos, dc, sid, false};
+                }
+              }
+            }
+          }
+        }
+      }
+      return best;
+    };
+
+    auto applyCandidate = [&](const InsertCandidate &c) {
+      if (c.stationId == -1) {
+        newRoutes[c.routeIdx].addNode(c.custId, c.pos);
+      } else if (c.statBefore) {
+        newRoutes[c.routeIdx].addNode(c.custId, c.pos);
+        newRoutes[c.routeIdx].addNode(c.stationId, c.pos);
+      } else {
+        newRoutes[c.routeIdx].addNode(c.custId, c.pos);
+        newRoutes[c.routeIdx].addNode(c.stationId, c.pos + 1);
+      }
+      newRoutes[c.routeIdx].evaluate();
+    };
+
+    // Regret-2 Insertion
+    struct RouteBest {
+      InsertCandidate rank1;
+      InsertCandidate rank2;
+    };
+    std::unordered_map<int, std::vector<RouteBest>> costCache;
+    for (int cId : unplaced)
+      costCache[cId].resize(newRoutes.size());
+    std::vector<bool> routeDirty(newRoutes.size(), true);
+
+    while (!unplaced.empty()) {
+      int bestIdx = -1;
+      double maxRegret = -1e18;
+      InsertCandidate bestCand;
+
+      // Recompute dirty routes
+      for (int r = 0; r < (int)newRoutes.size(); ++r) {
+        if (!routeDirty[r])
+          continue;
+        for (int cId : unplaced) {
+          InsertCandidate rank1, rank2;
+          rank1.custId = cId;
+          rank2.custId = cId;
+          rank2.cost = 1e18;
+
+          for (size_t pos = 1; pos < newRoutes[r].size(); ++pos) {
+            if (!newRoutes[r].canPossiblyInsert(cId, pos))
+              continue;
+            InsertionResult res = newRoutes[r].checkInsertionCost(cId, pos);
+            if (!res.isFeasible)
+              continue;
+            if (res.deltaDistance < rank1.cost) {
+              rank2 = rank1;
+              rank1 = {cId, r, pos, res.deltaDistance, -1, true};
+            } else if (res.deltaDistance < rank2.cost) {
+              rank2 = {cId, r, pos, res.deltaDistance, -1, true};
+            }
+          }
+          costCache[cId][r] = {rank1, rank2};
+        }
+        routeDirty[r] = false;
+      }
+
+      for (int idx = 0; idx < (int)unplaced.size(); ++idx) {
+        int cId = unplaced[idx];
+        InsertCandidate globalR1, globalR2;
+        globalR1.custId = cId;
+        globalR2.custId = cId;
+        globalR2.cost = 1e18;
+
+        for (int r = 0; r < (int)newRoutes.size(); ++r) {
+          const auto &rb = costCache[cId][r];
+          if (rb.rank1.routeIdx == -1)
+            continue;
+
+          if (rb.rank1.cost < globalR1.cost) {
+            globalR2 = globalR1;
+            globalR1 = rb.rank1;
+            if (rb.rank2.routeIdx != -1 && rb.rank2.cost < globalR2.cost) {
+              globalR2 = rb.rank2;
+            }
+          } else if (rb.rank1.cost < globalR2.cost) {
+            globalR2 = rb.rank1;
+          }
+        }
+
+        if (globalR1.routeIdx == -1)
           continue;
 
-        if (rb.rank1.cost < globalR1.cost) {
-          globalR2 = globalR1;
-          globalR1 = rb.rank1;
-          if (rb.rank2.routeIdx != -1 && rb.rank2.cost < globalR2.cost) {
-            globalR2 = rb.rank2;
-          }
-        } else if (rb.rank1.cost < globalR2.cost) {
-          globalR2 = rb.rank1;
+        double regret =
+            (globalR2.routeIdx == -1) ? 1e15 : (globalR2.cost - globalR1.cost);
+        if (regret > maxRegret) {
+          maxRegret = regret;
+          bestIdx = idx;
+          bestCand = globalR1;
         }
       }
 
-      if (globalR1.routeIdx == -1)
-        continue;
+      if (bestIdx == -1)
+        break;
 
-      double regret =
-          (globalR2.routeIdx == -1) ? 1e15 : (globalR2.cost - globalR1.cost);
-      if (regret > maxRegret) {
-        maxRegret = regret;
-        bestIdx = idx;
-        bestCand = globalR1;
+      applyCandidate(bestCand);
+      routeDirty[bestCand.routeIdx] = true;
+
+      // [OPT-4] swap-and-pop O(1) instead of erase+remove O(N)
+      unplaced[bestIdx] = unplaced.back();
+      unplaced.pop_back();
+    }
+
+    // Station-assisted pass for remaining unplaced
+    if (!unplaced.empty()) {
+      std::vector<int> stillUnplaced;
+      for (int cId : unplaced) {
+        InsertCandidate c = findBestForCustomer(cId);
+        if (c.routeIdx != -1)
+          applyCandidate(c);
+        else
+          stillUnplaced.push_back(cId);
       }
+      unplaced = stillUnplaced;
     }
 
-    if (bestIdx == -1)
-      break;
+    if (!unplaced.empty())
+      continue;
 
-    applyCandidate(bestCand);
-    routeDirty[bestCand.routeIdx] = true;
-
-    // [OPT-4] swap-and-pop O(1) instead of erase+remove O(N)
-    unplaced[bestIdx] = unplaced.back();
-    unplaced.pop_back();
-  }
-
-  // Station-assisted pass for remaining unplaced
-  if (!unplaced.empty()) {
-    std::vector<int> stillUnplaced;
-    for (int cId : unplaced) {
-      InsertCandidate c = findBestForCustomer(cId);
-      if (c.routeIdx != -1)
-        applyCandidate(c);
-      else
-        stillUnplaced.push_back(cId);
+    for (auto &route : newRoutes) {
+      route.evaluate();
+      if (!route.isFeasible())
+        continue;
     }
-    unplaced = stillUnplaced;
-  }
 
-  if (!unplaced.empty())
-    return false;
+    // WE SUCCEEDED FOR THIS CANDIDATE ROUTE!
+    while (solution.getNumRoutes() > 0)
+      solution.removeRoute(0);
+    for (auto &route : newRoutes)
+      solution.addRoute(route);
 
-  for (auto &route : newRoutes) {
-    route.evaluate();
-    if (!route.isFeasible())
-      return false;
-  }
+    solution.evaluateRoutes();
+    return true;
 
-  while (solution.getNumRoutes() > 0)
-    solution.removeRoute(0);
-  for (auto &route : newRoutes)
-    solution.addRoute(route);
+  } // end of for candidateRoutes
 
-  solution.evaluateRoutes();
-  return true;
+  return false;
 }
 
 // ============================================================================
@@ -2779,13 +2804,23 @@ bool LocalSearch::ejectionChain(Solution &solution) {
   };
   std::vector<VictimCand> victimCands;
   {
-    // [OPT-9] depot dueDate = planning horizon — use flat array, no shared_ptr copy.
+    // [OPT-9] depot dueDate = planning horizon — use flat array, no shared_ptr
+    // copy.
     double horizon = dueDateById_[0];
     for (int r = 0; r < numRoutes; ++r) {
       const auto &custs = routes[r].getCustomers();
       int cnt = (int)custs.size();
-      const int avgCusts = instance->getCustomers().size() / solution.getNumRoutes();
-      const int victimSizeLimit = std::max(10, avgCusts);
+      // [Phase 1] Dynamic victim size limit: conservative early, aggressive
+      // late
+      const int nRoutes =
+          (solution.getNumRoutes() > 0) ? (int)solution.getNumRoutes() : 1;
+      const int avgCusts = (int)instance->getCustomers().size() / nRoutes;
+      int victimSizeLimit;
+      if (currentIteration_ < totalIterations_ * 0.5) {
+        victimSizeLimit = std::max(8, avgCusts); // conservative early
+      } else {
+        victimSizeLimit = std::max(12, avgCusts + 3); // aggressive late
+      }
       if (cnt == 0 || cnt > victimSizeLimit)
         continue;
       double avgTW = 0.0;
@@ -2805,7 +2840,7 @@ bool LocalSearch::ejectionChain(Solution &solution) {
               return a.score > b.score;
             });
 
-  const int MAX_VICTIMS = std::min(3, (int)victimCands.size());
+  const int MAX_VICTIMS = std::min(LocalSearch::MAX_EJECTION_DEPTH, (int)victimCands.size());
   const double vehCap = instance->getVehicleCapacity();
 
   // =========================================================================
@@ -2835,19 +2870,21 @@ bool LocalSearch::ejectionChain(Solution &solution) {
     int r = -1;
     size_t pos = 0;
     double cost = 1e18;
+    int stationId = -1;
+    bool statBefore = false;
   };
 
   auto findDirect = [&](int cId, const std::vector<Route> &workRoutes,
                         const std::vector<std::vector<double>> &slacks,
                         int excludeR = -1) -> PlaceResult {
     PlaceResult best;
-    double dem      = demandById_[cId];
+    double dem = demandById_[cId];
     // [OPT-9] Use flat TW arrays — no shared_ptr copy, no atomic inc/dec.
-    double cDue     = dueDateById_[cId];
-    double cReady   = readyTimeById_[cId];
-    double cSvc     = serviceTimeById_[cId];
+    double cDue = dueDateById_[cId];
+    double cReady = readyTimeById_[cId];
+    double cSvc = serviceTimeById_[cId];
     double twWindow = cDue - cReady;
-    bool isTightTW  = (twWindow <= 30.0);
+    bool isTightTW = (twWindow <= 30.0);
 
     for (int r = 0; r < (int)workRoutes.size(); ++r) {
       if (r == excludeR)
@@ -2868,10 +2905,10 @@ bool LocalSearch::ejectionChain(Solution &solution) {
         if (arrC > cDue)
           continue;
 
-        double waitC      = std::max(0.0, cReady - arrC);
-        double depC       = arrC + waitC + cSvc;
+        double waitC = std::max(0.0, cReady - arrC);
+        double depC = arrC + waitC + cSvc;
         double arrNextNew = depC + instance->getTime(cId, nextId);
-        double delay      = std::max(0.0, arrNextNew - states[pos].arrivalTime);
+        double delay = std::max(0.0, arrNextNew - states[pos].arrivalTime);
         double effectiveSlack = sl[pos] + states[pos].timeWait;
 
         if (delay > effectiveSlack)
@@ -2885,12 +2922,12 @@ bool LocalSearch::ejectionChain(Solution &solution) {
 
         double totalCost = res.deltaDistance;
         if (isTightTW) {
-          double travel  = instance->getTime(wnodes[pos - 1], cId);
+          double travel = instance->getTime(wnodes[pos - 1], cId);
           double arrival = states[pos - 1].departureTime + travel;
           totalCost += std::max(0.0, cReady - arrival) * 0.3;
         }
         if (totalCost < best.cost)
-          best = {r, pos, totalCost};
+          best = {r, pos, totalCost, -1, false};
       }
     }
     return best;
@@ -2908,12 +2945,12 @@ bool LocalSearch::ejectionChain(Solution &solution) {
       size_t pos;
       double cost;
     };
-    const auto &nodes  = route.getNodes();
+    const auto &nodes = route.getNodes();
     const auto &states = route.getStates();
     // [OPT-9] Flat TW arrays — no shared_ptr copy.
-    double cDue   = dueDateById_[cId];
+    double cDue = dueDateById_[cId];
     double cReady = readyTimeById_[cId];
-    double cSvc   = serviceTimeById_[cId];
+    double cSvc = serviceTimeById_[cId];
 
     PosCost best{0, 1e18};
 
@@ -2926,10 +2963,10 @@ bool LocalSearch::ejectionChain(Solution &solution) {
       if (arrC > cDue)
         continue;
 
-      double waitC      = std::max(0.0, cReady - arrC);
-      double depC       = arrC + waitC + cSvc;
+      double waitC = std::max(0.0, cReady - arrC);
+      double depC = arrC + waitC + cSvc;
       double arrNextNew = depC + instance->getTime(cId, nextId);
-      double delay      = std::max(0.0, arrNextNew - states[pos].arrivalTime);
+      double delay = std::max(0.0, arrNextNew - states[pos].arrivalTime);
       double effectiveSlack = slacks[pos] + states[pos].timeWait;
 
       if (delay > effectiveSlack)
@@ -3105,12 +3142,13 @@ bool LocalSearch::ejectionChain(Solution &solution) {
         PlaceResult bestPlace;
 
         for (int idx = 0; idx < (int)up.size(); ++idx) {
-          int cId    = up[idx];
+          int cId = up[idx];
           double dem = demandById_[cId];
-          // [OPT-9] Flat TW arrays — no shared_ptr copy per customer per iteration.
-          double cDue   = dueDateById_[cId];
+          // [OPT-9] Flat TW arrays — no shared_ptr copy per customer per
+          // iteration.
+          double cDue = dueDateById_[cId];
           double cReady = readyTimeById_[cId];
-          double cSvc   = serviceTimeById_[cId];
+          double cSvc = serviceTimeById_[cId];
           PlaceResult rank1, rank2;
           rank2.cost = 1e18;
 
@@ -3130,10 +3168,10 @@ bool LocalSearch::ejectionChain(Solution &solution) {
                             instance->getTime(prevId, cId);
 
               if (arrC <= cDue) {
-                double waitC      = std::max(0.0, cReady - arrC);
-                double depC       = arrC + waitC + cSvc;
+                double waitC = std::max(0.0, cReady - arrC);
+                double depC = arrC + waitC + cSvc;
                 double arrNextNew = depC + instance->getTime(cId, nextId);
-                double delay      =
+                double delay =
                     std::max(0.0, arrNextNew - states[pos].arrivalTime);
                 double effSlack = slacks[pos] + states[pos].timeWait;
 
@@ -3194,9 +3232,9 @@ bool LocalSearch::ejectionChain(Solution &solution) {
             continue;
 
           // [OPT-9] cDue / cReady already in scope from flat arrays above.
-          double twWidth    = cDue - cReady;
-          double twPenalty  = 100.0 / std::max(1.0, twWidth);
-          double regret     =
+          double twWidth = cDue - cReady;
+          double twPenalty = 100.0 / std::max(1.0, twWidth);
+          double regret =
               ((rank2.r == -1) ? 1e15 : (rank2.cost - rank1.cost)) + twPenalty;
 
           if (regret > maxRegret) {
@@ -3261,7 +3299,7 @@ bool LocalSearch::ejectionChain(Solution &solution) {
           const auto &rnodes = workRoutes[r].getNodes();
 
           for (int i = 1; i < (int)rnodes.size() - 1; ++i) {
-            int yId    = rnodes[i];
+            int yId = rnodes[i];
             if (nodeTypeById_[yId] != NodeType::CUSTOMER)
               continue;
             double demY = demandById_[yId];
@@ -3277,7 +3315,7 @@ bool LocalSearch::ejectionChain(Solution &solution) {
                 receivable++;
             }
             double twWidth = dueDateById_[yId] - readyTimeById_[yId];
-            double scoreY  =
+            double scoreY =
                 receivable + twWidth / 100.0 - ejectPenalty[yId] * 1000.0;
             if (scoreY > bestYScore) {
               bestYScore = scoreY;
@@ -3351,9 +3389,13 @@ bool LocalSearch::ejectionChain(Solution &solution) {
 
         for (int r1 = 0; r1 < WR && !placed; ++r1) {
           int nYCands = buildCands(workRoutes, r1, 5, demandById_[xId]);
+          // [BUG-FIX] Snapshot Y-candidates before inner buildCands overwrites tl_cands
+          struct SnapCand { int id, pos; };
+          std::vector<SnapCand> yCands(nYCands);
+          for (int i = 0; i < nYCands; ++i) yCands[i] = {tl_cands[i].id, tl_cands[i].pos};
 
           for (int yi = 0; yi < nYCands && !placed; ++yi) {
-            int yId = tl_cands[yi].id, yPos = tl_cands[yi].pos;
+            int yId = yCands[yi].id, yPos = yCands[yi].pos;
 
             Route backup_r1 = workRoutes[r1];
             workRoutes[r1].removeNode(yPos);
@@ -3455,9 +3497,13 @@ bool LocalSearch::ejectionChain(Solution &solution) {
 
         for (int r1 = 0; r1 < WR && !placed; ++r1) {
           int nYCands = buildCands(workRoutes, r1, 3, demandById_[xId]);
+          // [BUG-FIX] Snapshot Y-candidates before inner buildCands overwrites tl_cands
+          struct SnapCand3 { int id, pos; };
+          std::vector<SnapCand3> yCands3(nYCands);
+          for (int i = 0; i < nYCands; ++i) yCands3[i] = {tl_cands[i].id, tl_cands[i].pos};
 
           for (int yi = 0; yi < nYCands && !placed; ++yi) {
-            int yId = tl_cands[yi].id, yPos = tl_cands[yi].pos;
+            int yId = yCands3[yi].id, yPos = yCands3[yi].pos;
 
             Route backup_r1 = workRoutes[r1];
             workRoutes[r1].removeNode(yPos);
@@ -3490,9 +3536,12 @@ bool LocalSearch::ejectionChain(Solution &solution) {
                 if (r2 == r1)
                   continue;
                 int nZCands = buildCands(workRoutes, r2, 3, demandById_[yId]);
+                // [BUG-FIX] Snapshot Z-candidates before inner buildCands(r3) overwrites
+                std::vector<SnapCand3> zCands3(nZCands);
+                for (int i = 0; i < nZCands; ++i) zCands3[i] = {tl_cands[i].id, tl_cands[i].pos};
 
                 for (int zi = 0; zi < nZCands && !placed; ++zi) {
-                  int zId = tl_cands[zi].id, zPos = tl_cands[zi].pos;
+                  int zId = zCands3[zi].id, zPos = zCands3[zi].pos;
 
                   Route backup_r2 = workRoutes[r2];
                   workRoutes[r2].removeNode(zPos);
@@ -3527,6 +3576,7 @@ bool LocalSearch::ejectionChain(Solution &solution) {
                         continue;
                       int nWCands =
                           buildCands(workRoutes, r3, 3, demandById_[zId]);
+                      // tl_cands is now r3's candidates — safe to read directly (innermost level)
 
                       for (int wi = 0; wi < nWCands && !placed; ++wi) {
                         int wId = tl_cands[wi].id, wPos = tl_cands[wi].pos;
@@ -3597,6 +3647,161 @@ bool LocalSearch::ejectionChain(Solution &solution) {
       unplaced = stillUnplaced;
     }
 
+    // ── Stage B4: Ejection depth-4 (top-2 W candidates) ──────────────────
+    if (!unplaced.empty()) {
+      std::vector<int> stillUnplaced;
+      for (int xId : unplaced) {
+        bool placed = false;
+
+        for (int r1 = 0; r1 < WR && !placed; ++r1) {
+          int nYCands = buildCands(workRoutes, r1, 2, demandById_[xId]);
+          // [BUG-FIX] Snapshot Y-candidates before inner buildCands overwrites tl_cands
+          struct SnapCand4 { int id, pos; };
+          std::vector<SnapCand4> yCands4(nYCands);
+          for (int i = 0; i < nYCands; ++i) yCands4[i] = {tl_cands[i].id, tl_cands[i].pos};
+
+          for (int yi = 0; yi < nYCands && !placed; ++yi) {
+            int yId = yCands4[yi].id, yPos = yCands4[yi].pos;
+
+            Route backup_r1 = workRoutes[r1];
+            workRoutes[r1].removeNode(yPos);
+            workRoutes[r1].evaluate();
+            markDirty(workRoutes, {r1});
+
+            if (!tryInsertFast(workRoutes[r1], xId, cachedSlacks[r1])) {
+              workRoutes[r1] = backup_r1;
+              markDirty(workRoutes, {r1});
+              continue;
+            }
+            markDirty(workRoutes, {r1});
+
+            for (int r2 = 0; r2 < WR && !placed; ++r2) {
+              if (r2 == r1)
+                continue;
+              int nZCands = buildCands(workRoutes, r2, 2, demandById_[yId]);
+              // [BUG-FIX] Snapshot Z-candidates before inner buildCands(r3) overwrites
+              std::vector<SnapCand4> zCands4(nZCands);
+              for (int i = 0; i < nZCands; ++i) zCands4[i] = {tl_cands[i].id, tl_cands[i].pos};
+
+              for (int zi = 0; zi < nZCands && !placed; ++zi) {
+                int zId = zCands4[zi].id, zPos = zCands4[zi].pos;
+                Route backup_r2 = workRoutes[r2];
+                workRoutes[r2].removeNode(zPos);
+                workRoutes[r2].evaluate();
+                markDirty(workRoutes, {r2});
+
+                if (!tryInsertFast(workRoutes[r2], yId, cachedSlacks[r2])) {
+                  workRoutes[r2] = backup_r2;
+                  markDirty(workRoutes, {r2});
+                  continue;
+                }
+                markDirty(workRoutes, {r2});
+
+                for (int r3 = 0; r3 < WR && !placed; ++r3) {
+                  if (r3 == r1 || r3 == r2)
+                    continue;
+                  int nWCands = buildCands(workRoutes, r3, 2, demandById_[zId]);
+                  for (int wi = 0; wi < nWCands && !placed; ++wi) {
+                    int wId = tl_cands[wi].id, wPos = tl_cands[wi].pos;
+                    Route backup_r3 = workRoutes[r3];
+                    workRoutes[r3].removeNode(wPos);
+                    workRoutes[r3].evaluate();
+                    markDirty(workRoutes, {r3});
+
+                    if (!tryInsertFast(workRoutes[r3], zId, cachedSlacks[r3])) {
+                      workRoutes[r3] = backup_r3;
+                      markDirty(workRoutes, {r3});
+                      continue;
+                    }
+                    markDirty(workRoutes, {r3});
+
+                    PlaceResult wp =
+                        findDirect(wId, workRoutes, cachedSlacks, r3);
+                    if (wp.r != -1) {
+                      Route backup_wp = workRoutes[wp.r];
+                      workRoutes[wp.r].addNode(wId, wp.pos);
+                      workRoutes[wp.r].evaluate();
+                      if (workRoutes[wp.r].isFeasible()) {
+                        markDirty(workRoutes, {wp.r});
+                        placed = true;
+                        break;
+                      }
+                      workRoutes[wp.r] = backup_wp;
+                      markDirty(workRoutes, {wp.r});
+                    }
+                    if (!placed) {
+                      workRoutes[r3] = backup_r3;
+                      markDirty(workRoutes, {r3});
+                    }
+                  }
+                }
+                if (!placed) {
+                  workRoutes[r2] = backup_r2;
+                  markDirty(workRoutes, {r2});
+                }
+              }
+            }
+            if (!placed) {
+              workRoutes[r1] = backup_r1;
+              markDirty(workRoutes, {r1});
+            }
+          }
+        }
+        if (!placed)
+          stillUnplaced.push_back(xId);
+      }
+      unplaced = stillUnplaced;
+    }
+
+    // ── Stage B5: Ejection depth-5 (top-1 V candidate) ───────────────────
+    if (!unplaced.empty()) {
+      std::vector<int> stillUnplaced;
+      for (int xId : unplaced) {
+        bool placed = false;
+
+        for (int r1 = 0; r1 < WR && !placed; ++r1) {
+          int nYCands = buildCands(workRoutes, r1, 1, demandById_[xId]);
+          if (nYCands == 0)
+            continue;
+
+          int yId = tl_cands[0].id, yPos = tl_cands[0].pos;
+          Route backup_r1 = workRoutes[r1];
+          workRoutes[r1].removeNode(yPos);
+          workRoutes[r1].evaluate();
+          markDirty(workRoutes, {r1});
+
+          if (!tryInsertFast(workRoutes[r1], xId, cachedSlacks[r1])) {
+            workRoutes[r1] = backup_r1;
+            markDirty(workRoutes, {r1});
+            continue;
+          }
+          markDirty(workRoutes, {r1});
+
+          // Try ALL insertion positions for displaced y across all routes
+          PlaceResult yp = findDirect(yId, workRoutes, cachedSlacks, r1);
+          if (yp.r != -1) {
+            Route backup_yp = workRoutes[yp.r];
+            workRoutes[yp.r].addNode(yId, yp.pos);
+            workRoutes[yp.r].evaluate();
+            if (workRoutes[yp.r].isFeasible()) {
+              markDirty(workRoutes, {yp.r});
+              placed = true;
+            } else {
+              workRoutes[yp.r] = backup_yp;
+              markDirty(workRoutes, {yp.r});
+            }
+          }
+          if (!placed) {
+            workRoutes[r1] = backup_r1;
+            markDirty(workRoutes, {r1});
+          }
+        }
+        if (!placed)
+          stillUnplaced.push_back(xId);
+      }
+      unplaced = stillUnplaced;
+    }
+
     // ── Stage C: Station-assisted fallback ────────────────────────────────
     if (!unplaced.empty()) {
       std::vector<int> finalUnplaced;
@@ -3653,7 +3858,7 @@ std::vector<size_t> LocalSearch::getTopKInsertionPositions(const Route &route,
 
   const auto &nodes = route.getNodes();
   // [OPT-9] Flat TW arrays — no shared_ptr copy.
-  double twDue   = dueDateById_[nodeId];
+  double twDue = dueDateById_[nodeId];
   double twReady = readyTimeById_[nodeId];
   const auto &states = route.getStates();
 
@@ -3717,7 +3922,10 @@ bool LocalSearch::runSmartMultiRouteMerge(Solution &solution) {
     for (int j = i + 1; j < numRoutes; ++j) {
       int sizeSum = (int)(routes[i].getCustomers().size() +
                           routes[j].getCustomers().size());
-      if (sizeSum > 30 || sizeSum == 0)
+      if (sizeSum > calculateVehicleReductionThreshold(
+                        currentIteration_, totalIterations_, numRoutes, 0) *
+                        2 ||
+          sizeSum == 0)
         continue;
       double dist = calculateEuclideanDistance(computeCentroid(routes[i]),
                                                computeCentroid(routes[j]));
@@ -3951,6 +4159,254 @@ bool LocalSearch::runSmartMultiRouteMerge(Solution &solution) {
     return true;
   }
   return false;
+}
+
+// ============================================================================
+// tryTriRouteMerge
+// Phase 9.2: Tri-Merge Capability (3 routes -> 2 routes)
+// ============================================================================
+
+bool LocalSearch::tryTriRouteMerge(Solution &solution) {
+  auto &routes = solution.getRoutes();
+  int numRoutes = (int)routes.size();
+  if (numRoutes < 3)
+    return false;
+
+  std::vector<int> smallRoutes;
+  const double vehCap = instance->getVehicleCapacity();
+  for (int r = 0; r < numRoutes; ++r) {
+    if (routes[r].getTotalDemand() < vehCap * 0.8 &&
+        !routes[r].getCustomers().empty()) {
+      smallRoutes.push_back(r);
+    }
+  }
+
+  if (smallRoutes.size() < 3)
+    return false;
+
+  double bestMergeScore = -1e9;
+  int r1_idx = -1, r2_idx = -1, r3_idx = -1;
+
+  for (size_t i = 0; i < smallRoutes.size(); ++i) {
+    for (size_t j = i + 1; j < smallRoutes.size(); ++j) {
+      for (size_t k = j + 1; k < smallRoutes.size(); ++k) {
+        int r1 = smallRoutes[i];
+        int r2 = smallRoutes[j];
+        int r3 = smallRoutes[k];
+
+        double totalDemand = routes[r1].getTotalDemand() +
+                             routes[r2].getTotalDemand() +
+                             routes[r3].getTotalDemand();
+        if (totalDemand > 2.0 * vehCap)
+          continue;
+
+        int sizeSum = (int)(routes[r1].getCustomers().size() +
+                            routes[r2].getCustomers().size() +
+                            routes[r3].getCustomers().size());
+
+        double dist12 = calculateEuclideanDistance(computeCentroid(routes[r1]),
+                                                   computeCentroid(routes[r2]));
+        double dist23 = calculateEuclideanDistance(computeCentroid(routes[r2]),
+                                                   computeCentroid(routes[r3]));
+        double dist13 = calculateEuclideanDistance(computeCentroid(routes[r1]),
+                                                   computeCentroid(routes[r3]));
+
+        double score = (1000.0 - sizeSum) - (dist12 + dist23 + dist13) / 3.0;
+        if (score > bestMergeScore) {
+          bestMergeScore = score;
+          r1_idx = r1;
+          r2_idx = r2;
+          r3_idx = r3;
+        }
+      }
+    }
+  }
+
+  if (r1_idx == -1)
+    return false;
+
+  std::vector<int> customer_pool;
+  for (int c : routes[r1_idx].getCustomers())
+    customer_pool.push_back(c);
+  for (int c : routes[r2_idx].getCustomers())
+    customer_pool.push_back(c);
+  for (int c : routes[r3_idx].getCustomers())
+    customer_pool.push_back(c);
+
+  auto vehicleType = routes[r1_idx].getVehicle();
+  std::vector<Route> newRoutes;
+  newRoutes.reserve(2);
+  newRoutes.push_back(Route(0, vehicleType, instance));
+  newRoutes.push_back(Route(0, vehicleType, instance));
+
+  std::unordered_map<int, int> nearStatCache;
+  nearStatCache.reserve(64);
+  for (int cid : customer_pool)
+    nearStatCache[cid] = findNearestStation(cid);
+
+  {
+    int seed1 = -1, seed2 = -1;
+    double maxDist = -1.0;
+    for (int i = 0; i < (int)customer_pool.size(); ++i) {
+      for (int j = i + 1; j < (int)customer_pool.size(); ++j) {
+        double d = instance->getDistance(customer_pool[i], customer_pool[j]);
+        if (d > maxDist) {
+          maxDist = d;
+          seed1 = customer_pool[i];
+          seed2 = customer_pool[j];
+        }
+      }
+    }
+    auto removeSeed = [&](int seedId) {
+      auto it = std::find(customer_pool.begin(), customer_pool.end(), seedId);
+      if (it != customer_pool.end()) {
+        *it = customer_pool.back();
+        customer_pool.pop_back();
+      }
+    };
+    if (seed1 != -1 && seed2 != -1) {
+      newRoutes[0].addNode(seed1, 1);
+      newRoutes[1].addNode(seed2, 1);
+      removeSeed(seed1);
+      removeSeed(seed2);
+    } else if (!customer_pool.empty()) {
+      newRoutes[0].addNode(customer_pool[0], 1);
+      customer_pool[0] = customer_pool.back();
+      customer_pool.pop_back();
+    }
+  }
+
+  struct MergeCandidate {
+    int custId = -1;
+    int routeIdx = -1;
+    size_t pos = 0;
+    double cost = 1e18;
+    int stationId = -1;
+    bool statBefore = true;
+  };
+
+  bool construction_failed = false;
+
+  while (!customer_pool.empty() && !construction_failed) {
+    MergeCandidate globalBest;
+
+    double routeDist[2] = {newRoutes[0].getTotalDistance(),
+                           newRoutes[1].getTotalDistance()};
+    double routeCap[2] = {newRoutes[0].getVehicle()->getCapacity(),
+                          newRoutes[1].getVehicle()->getCapacity()};
+
+    for (int cust_id : customer_pool) {
+      double demand = demandById_[cust_id];
+      int nearStat = nearStatCache.count(cust_id) ? nearStatCache[cust_id] : -1;
+
+      for (int r_idx = 0; r_idx < 2; ++r_idx) {
+        if (newRoutes[r_idx].getTotalDemand() + demand > routeCap[r_idx])
+          continue;
+
+        const int routeSz = (int)newRoutes[r_idx].size();
+
+        for (int pos = 1; pos < routeSz; ++pos) {
+
+          InsertionResult resA =
+              newRoutes[r_idx].checkInsertionCost(cust_id, pos);
+          if (resA.isFeasible && resA.deltaDistance < globalBest.cost) {
+            globalBest = {cust_id, r_idx, (size_t)pos, resA.deltaDistance,
+                          -1,      true};
+          }
+
+          if (nearStat == -1)
+            continue;
+
+          int prevNode = newRoutes[r_idx].getNodeAt(pos - 1);
+          int nextNode = newRoutes[r_idx].getNodeAt(pos);
+          double directEdge = instance->getDistance(prevNode, nextNode);
+
+          double detourB = instance->getDistance(prevNode, nearStat) +
+                           instance->getDistance(nearStat, cust_id) +
+                           instance->getDistance(cust_id, nextNode) -
+                           directEdge;
+          if (detourB < globalBest.cost) {
+            Route copyB = newRoutes[r_idx];
+            copyB.addNode(cust_id, pos);
+            copyB.addNode(nearStat, pos);
+            copyB.evaluate();
+            if (copyB.isFeasible()) {
+              double c = copyB.getTotalDistance() - routeDist[r_idx];
+              if (c < globalBest.cost)
+                globalBest = {cust_id, r_idx, (size_t)pos, c, nearStat, true};
+            }
+          }
+
+          double detourC = instance->getDistance(prevNode, cust_id) +
+                           instance->getDistance(cust_id, nearStat) +
+                           instance->getDistance(nearStat, nextNode) -
+                           directEdge;
+          if (detourC < globalBest.cost) {
+            Route copyC = newRoutes[r_idx];
+            copyC.addNode(cust_id, pos);
+            copyC.addNode(nearStat, pos + 1);
+            copyC.evaluate();
+            if (copyC.isFeasible()) {
+              double c = copyC.getTotalDistance() - routeDist[r_idx];
+              if (c < globalBest.cost)
+                globalBest = {cust_id, r_idx, (size_t)pos, c, nearStat, false};
+            }
+          }
+        }
+      }
+    }
+
+    if (globalBest.routeIdx == -1) {
+      construction_failed = true;
+      break;
+    }
+
+    auto &targetRoute = newRoutes[globalBest.routeIdx];
+    if (globalBest.stationId == -1) {
+      targetRoute.addNode(globalBest.custId, globalBest.pos);
+    } else if (globalBest.statBefore) {
+      targetRoute.addNode(globalBest.custId, globalBest.pos);
+      targetRoute.addNode(globalBest.stationId, globalBest.pos);
+    } else {
+      targetRoute.addNode(globalBest.custId, globalBest.pos);
+      targetRoute.addNode(globalBest.stationId, globalBest.pos + 1);
+    }
+    targetRoute.evaluate();
+
+    auto it = std::find(customer_pool.begin(), customer_pool.end(),
+                        globalBest.custId);
+    if (it != customer_pool.end()) {
+      *it = customer_pool.back();
+      customer_pool.pop_back();
+    }
+  }
+
+  if (construction_failed)
+    return false;
+
+  std::vector<Route> finalRoutes;
+  finalRoutes.reserve(2);
+
+  for (auto &r : newRoutes) {
+    r.evaluate();
+    if (!r.isFeasible())
+      return false;
+    if (!r.getCustomers().empty()) {
+      finalRoutes.push_back(r);
+    }
+  }
+
+  std::vector<int> routesToRemove = {r1_idx, r2_idx, r3_idx};
+  std::sort(routesToRemove.begin(), routesToRemove.end(), std::greater<int>());
+
+  for (int r : routesToRemove) {
+    solution.removeRoute(r);
+  }
+  for (const auto &r : finalRoutes) {
+    solution.addRoute(r);
+  }
+
+  return true;
 }
 
 bool LocalSearch::segmentCrossExchangeForVehicleReduction(Solution &solution) {
@@ -4225,7 +4681,7 @@ LocalSearch::findBestInsertionPositions_TimeAware(const Route &route,
 
   // [OPT-9] Flat TW arrays — no shared_ptr copy / atomic inc-dec.
   // nodeId here is always a customer (knnCache_ fallback path or direct call).
-  const double twDue   = dueDateById_[nodeId];
+  const double twDue = dueDateById_[nodeId];
   const double twReady = readyTimeById_[nodeId];
 
   for (size_t pos = 1; pos < nodes.size(); ++pos) {
@@ -4295,29 +4751,26 @@ void LocalSearch::preprocessKNN() {
   }
 }
 
-void LocalSearch::preprocessGranularity() {
-  auto customers = instance->getCustomers();
-  int n = customers.size();
-
-  if (n < 2) {
-    avgDistance_ = 0.0;
-    distanceThreshold_ = std::numeric_limits<double>::max();
-    return;
-  }
-
-  double totalDistance = 0.0;
-  int pairCount = 0;
-
-  for (size_t i = 0; i < customers.size(); ++i) {
-    for (size_t j = i + 1; j < customers.size(); ++j) {
-      totalDistance +=
-          instance->getDistance(customers[i]->getId(), customers[j]->getId());
-      pairCount++;
+void LocalSearch::preprocessStationReplacements() {
+    // Precompute top-3 best station replacements for each station
+    // Only computed once at initialization
+    static bool stationReplacementsComputed = false;
+    if (!stationReplacementsComputed) {
+        stationReplacementsComputed = true;
+        for (int s1 : stationIds) {
+            std::vector<std::pair<double, int>> candidates;
+            for (int s2 : stationIds) {
+                if (s1 == s2) continue;
+                double detour = instance->getDistance(s1, s2) - instance->getDistance(s2, s1);
+                candidates.emplace_back(detour, s2);
+            }
+            std::sort(candidates.begin(), candidates.end());
+            int topK = std::min(3, (int)candidates.size());
+            for (int k = 0; k < topK; ++k) {
+                bestStationReplacements_[s1].push_back(candidates[k].second);
+            }
+        }
     }
-  }
-
-  avgDistance_ = totalDistance / pairCount;
-  distanceThreshold_ = GRANULARITY_FACTOR * avgDistance_;
 }
 
 // ============================================================================
@@ -4334,7 +4787,8 @@ void LocalSearch::preprocessGranularity() {
 //          Callers must use  const auto &  and must NOT keep the reference past
 //          the next call to this function (thread_local buffer is overwritten).
 // ============================================================================
-std::vector<size_t> LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
+std::vector<size_t>
+LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
                                             int topK) const {
   // [OPT-11] Shared thread_local output buffer — zero allocation per call.
   static thread_local std::vector<size_t> tl_knn_result;
@@ -4371,7 +4825,7 @@ std::vector<size_t> LocalSearch::findBestInsertionPositions_KNN(const Route &rou
     int nid = nodes[pos];
     if (nid < (int)inNeighborSet.size() && inNeighborSet[nid]) {
       if (pos > 0)
-        isCandidate[pos]     = true;
+        isCandidate[pos] = true;
       if (pos + 1 < routeSize)
         isCandidate[pos + 1] = true;
     }
@@ -4399,7 +4853,7 @@ std::vector<size_t> LocalSearch::findBestInsertionPositions_KNN(const Route &rou
   // nodeId is guaranteed to be a valid customer here (knnCache_ only has
   // customer entries), so readyTimeById_/dueDateById_ are safe to index.
   const double twReady = readyTimeById_[nodeId];
-  const double twDue   = dueDateById_[nodeId];
+  const double twDue = dueDateById_[nodeId];
 
   bool foundAny = false;
   for (int pos = 1; pos < routeSize; ++pos) {
@@ -4409,8 +4863,8 @@ std::vector<size_t> LocalSearch::findBestInsertionPositions_KNN(const Route &rou
 
     int prev = nodes[pos - 1];
     double distBefore = instance->getDistance(prev, nodes[pos]);
-    double distAfter  = instance->getDistance(prev, nodeId)
-                      + instance->getDistance(nodeId, nodes[pos]);
+    double distAfter = instance->getDistance(prev, nodeId) +
+                       instance->getDistance(nodeId, nodes[pos]);
     double detour = distAfter - distBefore;
 
     double arrivalTime =
@@ -4751,9 +5205,6 @@ void LocalSearch::preprocessTWNext() {
   }
 }
 
-// =============================================================================
-// reconstructRouteWithTwoStations — 3-Phase Route Reconstruction
-// =============================================================================
 //
 // Mục đích: Sau khi forceReduceVehicles merge routes, sequence cũ là garbage.
 // Rebuild hoàn toàn 1 route từ tập customers đã biết.
@@ -4854,25 +5305,25 @@ bool LocalSearch::reconstructRouteWithTwoStations(
     // [OPT-9] Use flat TW arrays — eliminates 3+ getNodeById() calls per
     // (pos, k) iteration (shared_ptr copy = atomic inc/dec each time).
     double newReady = readyTimeById_[cNew];
-    double newDue   = dueDateById_[cNew];
-    double newSvc   = serviceTimeById_[cNew];
+    double newDue = dueDateById_[cNew];
+    double newSvc = serviceTimeById_[cNew];
     int szSeq = (int)seq.size();
 
     double bestFeasibleDelta = 1e18;
-    double bestAnyDelta      = 1e18;
+    double bestAnyDelta = 1e18;
     int bestFeasiblePos = -1;
-    int bestAnyPos      = 0;
+    int bestAnyPos = 0;
 
     // Simulate arrival times through existing seq (without cNew).
     // arrTime[i] = arrival at seq[i] following depot→seq[0]→...→seq[i]
     std::vector<double> arrTime(szSeq);
     {
-      double t   = 0.0;
-      int prev   = depotId;
+      double t = 0.0;
+      int prev = depotId;
       for (int i = 0; i < szSeq; ++i) {
         arrTime[i] = arrivalAt(prev, seq[i], t);
         // [OPT-9] serviceTimeById_ — no getNodeById() call.
-        t    = arrTime[i] + serviceTimeById_[seq[i]];
+        t = arrTime[i] + serviceTimeById_[seq[i]];
         prev = seq[i];
       }
     }
@@ -4888,14 +5339,14 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 
       if (delta < bestAnyDelta) {
         bestAnyDelta = delta;
-        bestAnyPos   = pos;
+        bestAnyPos = pos;
       }
 
       // TW feasibility check for cNew itself.
-      // [OPT-9] serviceTimeById_ replaces getNodeById(seq[pos-1])->getServiceTime()
-      double tPrev  = (pos > 0)
-                        ? (arrTime[pos - 1] + serviceTimeById_[seq[pos - 1]])
-                        : 0.0;
+      // [OPT-9] serviceTimeById_ replaces
+      // getNodeById(seq[pos-1])->getServiceTime()
+      double tPrev =
+          (pos > 0) ? (arrTime[pos - 1] + serviceTimeById_[seq[pos - 1]]) : 0.0;
       double arrCNew = tPrev + instance->getDistance(prevId, cNew);
       double depCNew = std::max(arrCNew, newReady) + newSvc;
 
@@ -4904,7 +5355,7 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 
       // Check TW propagation: customers from pos onward get pushed by ΔT.
       double tNext = depCNew;
-      bool twOk    = true;
+      bool twOk = true;
       for (int k = pos; k < szSeq; ++k) {
         double arrK = tNext + instance->getDistance(
                                   (k == pos) ? cNew : seq[k - 1], seq[k]);
@@ -4913,12 +5364,13 @@ bool LocalSearch::reconstructRouteWithTwoStations(
           twOk = false;
           break;
         }
-        tNext = std::max(arrK, readyTimeById_[seq[k]]) + serviceTimeById_[seq[k]];
+        tNext =
+            std::max(arrK, readyTimeById_[seq[k]]) + serviceTimeById_[seq[k]];
       }
 
       if (twOk && delta < bestFeasibleDelta) {
         bestFeasibleDelta = delta;
-        bestFeasiblePos   = pos;
+        bestFeasiblePos = pos;
       }
     }
 
@@ -5245,7 +5697,8 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //   const double horizon = instance->getNodeById(0)->getDueDate();
 //   const int depotId = 0;
 //
-//   // ── Victim scoring ────────────────────────────────────────────────────────
+//   // ── Victim scoring
+//   ────────────────────────────────────────────────────────
 //   // Score cao → customers dễ redistribute sang routes khác.
 //   // Dùng proxy nhanh (không chạy actual insertion):
 //   //   TW flexibility: TW rộng → dễ fit vào nhiều routes
@@ -5264,7 +5717,8 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //     for (int c : custs) {
 //       auto node = instance->getNodeById(c);
 //       avgTW +=
-//           (node->getDueDate() - node->getReadyTime()) / std::max(1.0, horizon);
+//           (node->getDueDate() - node->getReadyTime()) / std::max(1.0,
+//           horizon);
 //       cx += node->getX();
 //       cy += node->getY();
 //     }
@@ -5322,10 +5776,12 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //   std::sort(victimRanking.begin(), victimRanking.end(),
 //             [&](int a, int b) { return victimScore(a) > victimScore(b); });
 //
-//   // ── Helper: approximate insertion cost (direct + station-aware) ───────────
+//   // ── Helper: approximate insertion cost (direct + station-aware)
+//   ───────────
 //   // Trả về {feasible, cost} cho insertion của cId tại pos trong route r.
 //   // Nếu direct feasible → cost = deltaDistance.
-//   // Nếu direct infeasible về energy → thử top-1 station, cost = detour + delta.
+//   // Nếu direct infeasible về energy → thử top-1 station, cost = detour +
+//   delta.
 //   // Nếu TW infeasible → {false, INF}.
 //   struct InsertCost {
 //     bool feasible;
@@ -5368,7 +5824,8 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //
 //     int K = std::min(2, (int)sc.size());
 //     std::partial_sort(sc.begin(), sc.begin() + K, sc.end(),
-//                       [](const SC &a, const SC &b) { return a.det < b.det; });
+//                       [](const SC &a, const SC &b) { return a.det < b.det;
+//                       });
 //
 //     for (int k = 0; k < K; ++k) {
 //       for (bool bef : {true, false}) {
@@ -5385,12 +5842,14 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //     return {false, 1e18, -1, true};
 //   };
 //
-//   // ── Main loop: thử từng victim theo ranking ───────────────────────────────
+//   // ── Main loop: thử từng victim theo ranking
+//   ───────────────────────────────
 //   // Với mỗi victim: pre-check → attempt loop → nếu success return true.
 //   // maxAttemptsPerVictim: dùng maxAttempts parameter làm budget per victim.
 //   // Caller nên pass 80-150.
 //
-//   // ── Main loop: thử từng victim theo ranking ───────────────────────────────
+//   // ── Main loop: thử từng victim theo ranking
+//   ───────────────────────────────
 //   // Hướng 2: Bỏ pre-check hoàn toàn — để attempt loop tự quyết định.
 //   // Lý do: pre-check group simulation có false negative cao (block oan).
 //   //        pre-check independent vẫn block nếu reconstruct quá conservative.
@@ -5436,10 +5895,11 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //       std::vector<int> toInsert = ejected;
 //
 //       if (strategy == 0) {
-//         // TW-tight first (deterministic untuk attempt 0, shuffle untuk sisanya)
-//         if (attempt > 0)
+//         // TW-tight first (deterministic untuk attempt 0, shuffle untuk
+//         sisanya) if (attempt > 0)
 //           std::shuffle(toInsert.begin(), toInsert.end(), rng);
-//         std::stable_sort(toInsert.begin(), toInsert.end(), [&](int a, int b) {
+//         std::stable_sort(toInsert.begin(), toInsert.end(), [&](int a, int b)
+//         {
 //           auto na = instance->getNodeById(a);
 //           auto nb = instance->getNodeById(b);
 //           return (na->getDueDate() - na->getReadyTime()) <
@@ -5471,7 +5931,8 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //           hasCustomers[ri] = true;
 //         }
 //
-//         // Now sort with O(1) centroid lookup — NOT O(nR × avgRouteSize × log N)
+//         // Now sort with O(1) centroid lookup — NOT O(nR × avgRouteSize × log
+//         N)
 //         // per comparison!
 //         std::shuffle(toInsert.begin(), toInsert.end(), rng);
 //         std::sort(toInsert.begin(), toInsert.end(), [&](int a, int b) {
@@ -5560,7 +6021,8 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //         }
 //
 //         // Apply: dùng Route đã rebuild sẵn — KHÔNG reconstruct lần 2
-//         // rebuilt guaranteed non-null vì ri != -1 chỉ set khi reconstruct thành
+//         // rebuilt guaranteed non-null vì ri != -1 chỉ set khi reconstruct
+//         thành
 //         // công
 //         cRoutes[bestCand.ri] = std::move(*bestCand.rebuilt);
 //         unplaced[bestIdx] = unplaced.back();
@@ -5577,7 +6039,8 @@ bool LocalSearch::reconstructRouteWithTwoStations(
 //
 //       solution = candidate;
 //       std::cout << "[FRV] SUCCESS attempt=" << attempt
-//                 << " strategy=" << strategy << " victim=" << victimIdx << " | "
+//                 << " strategy=" << strategy << " victim=" << victimIdx << " |
+//                 "
 //                 << currentVeh << " -> " << solution.getNumRoutes()
 //                 << " veh | dist=" << std::fixed << std::setprecision(2)
 //                 << solution.getTotalDistance() << "\n";
@@ -5811,4 +6274,56 @@ bool LocalSearch::searchOrOptReversed(Solution &solution,
     }
   }
   return false;
+}
+// [OPT-10] Adaptive threshold calculation for vehicle reduction
+int LocalSearch::calculateVehicleReductionThreshold(int currentIteration,
+                                                    int totalIterations,
+                                                    int currentNumRoutes,
+                                                    int bksVehicles) const {
+  if (bksVehicles <= 0) {
+    // Progressive Vehicle Lower Bound calculation (Capacity bound)
+    double totalDemand = 0;
+    for (const auto &c : instance->getCustomers()) {
+      totalDemand += demandById_[c->getId()];
+    }
+    bksVehicles = static_cast<int>(
+        std::ceil(totalDemand / instance->getVehicleCapacity()));
+  }
+
+  double progress =
+      static_cast<double>(currentIteration) / std::max(1, totalIterations);
+  double baseThreshold = 8.0 + 7.0 * std::pow(1.0 - progress, 0.5);
+
+  // If we're above Theoretical Lower Bound, be much more aggressive
+  if (currentNumRoutes > bksVehicles) {
+    baseThreshold += 2.0 * (currentNumRoutes - bksVehicles);
+    baseThreshold = std::min(baseThreshold, 20.0);
+  }
+
+  return static_cast<int>(std::max(6.0, std::round(baseThreshold)));
+}
+
+void LocalSearch::preprocessGranularity() {
+  auto customers = instance->getCustomers();
+  int n = customers.size();
+
+  if (n < 2) {
+    avgDistance_ = 0.0;
+    distanceThreshold_ = std::numeric_limits<double>::max();
+    return;
+  }
+
+  double totalDistance = 0.0;
+  int pairCount = 0;
+
+  for (size_t i = 0; i < customers.size(); ++i) {
+    for (size_t j = i + 1; j < customers.size(); ++j) {
+      totalDistance +=
+          instance->getDistance(customers[i]->getId(), customers[j]->getId());
+      pairCount++;
+    }
+  }
+
+  avgDistance_ = totalDistance / pairCount;
+  distanceThreshold_ = GRANULARITY_FACTOR * avgDistance_;
 }

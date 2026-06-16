@@ -1,0 +1,931 @@
+Segment,OperatorName,Type,Weight,Score,UsageCount
+150,EnergyCriticalRemoval,Destroy,2.5000,493.0000,27
+150,Route Merging Destroy,Destroy,3.0000,572.0000,38
+150,TimeSlackDestroy,Destroy,2.5000,403.0000,25
+150,Random Removal,Destroy,2.0000,271.0000,21
+150,VehicleReductionAwareDestroy,Destroy,3.5000,801.0000,39
+150,ChargingAwareRouteBuilder,Repair,2.0000,519.0000,33
+150,Adaptive Insertion,Repair,2.0000,346.0000,23
+150,Greedy Energy Insertion (Enhanced),Repair,1.5000,451.0000,22
+150,Smart Station Repair,Repair,2.5000,855.0000,43
+150,Regret-3 Repair (Smart Packing),Repair,2.5000,369.0000,29
+300,EnergyCriticalRemoval,Destroy,4.8639,643.0000,37
+300,Route Merging Destroy,Destroy,4.8079,376.0000,28
+300,TimeSlackDestroy,Destroy,4.5430,407.0000,29
+300,Random Removal,Destroy,3.6357,214.0000,18
+300,VehicleReductionAwareDestroy,Destroy,6.0558,572.0000,38
+300,ChargingAwareRouteBuilder,Repair,4.0591,370.0000,21
+300,Adaptive Insertion,Repair,3.9565,527.0000,29
+300,Greedy Energy Insertion (Enhanced),Repair,4.3500,423.0000,31
+300,Smart Station Repair,Repair,5.1076,570.0000,42
+300,Regret-3 Repair (Smart Packing),Repair,4.0336,322.0000,27
+450,EnergyCriticalRemoval,Destroy,6.7411,499.0000,35
+450,Route Merging Destroy,Destroy,6.1010,339.0000,27
+450,TimeSlackDestroy,Destroy,5.9667,368.0000,31
+450,Random Removal,Destroy,4.8737,188.0000,16
+450,VehicleReductionAwareDestroy,Destroy,7.4053,569.0000,41
+450,ChargingAwareRouteBuilder,Repair,6.0931,552.0000,38
+450,Adaptive Insertion,Repair,6.0889,445.0000,33
+450,Greedy Energy Insertion (Enhanced),Repair,5.7443,286.0000,21
+450,Smart Station Repair,Repair,6.3771,250.0000,22
+450,Regret-3 Repair (Smart Packing),Repair,5.2175,430.0000,36
+600,EnergyCriticalRemoval,Destroy,7.8685,515.0000,38
+600,Route Merging Destroy,Destroy,7.0692,381.0000,27
+600,TimeSlackDestroy,Destroy,6.8524,315.0000,25
+600,Random Removal,Destroy,5.9051,291.0000,23
+600,VehicleReductionAwareDestroy,Destroy,8.3762,504.0000,37
+600,ChargingAwareRouteBuilder,Repair,7.3581,361.0000,23
+600,Adaptive Insertion,Repair,7.1983,364.0000,28
+600,Greedy Energy Insertion (Enhanced),Repair,6.9255,493.0000,38
+600,Smart Station Repair,Repair,7.1251,433.0000,33
+600,Regret-3 Repair (Smart Packing),Repair,6.2265,355.0000,28
+750,EnergyCriticalRemoval,Destroy,8.7211,540.0000,42
+750,Route Merging Destroy,Destroy,8.1255,375.0000,30
+750,TimeSlackDestroy,Destroy,7.7145,314.0000,27
+750,Random Removal,Destroy,6.9172,231.0000,18
+750,VehicleReductionAwareDestroy,Destroy,9.1630,368.0000,33
+750,ChargingAwareRouteBuilder,Repair,8.6087,411.0000,31
+750,Adaptive Insertion,Repair,8.0686,320.0000,28
+750,Greedy Energy Insertion (Enhanced),Repair,7.8327,311.0000,25
+750,Smart Station Repair,Repair,8.0245,478.0000,40
+750,Regret-3 Repair (Smart Packing),Repair,7.1943,308.0000,26
+900,EnergyCriticalRemoval,Destroy,9.3415,389.0000,33
+900,Route Merging Destroy,Destroy,8.7816,389.0000,31
+900,TimeSlackDestroy,Destroy,8.3018,308.0000,26
+900,Random Removal,Destroy,7.8046,334.0000,25
+900,VehicleReductionAwareDestroy,Destroy,9.4613,419.0000,35
+900,ChargingAwareRouteBuilder,Repair,9.3061,477.0000,37
+900,Adaptive Insertion,Repair,8.5726,296.0000,25
+900,Greedy Energy Insertion (Enhanced),Repair,8.5238,396.0000,34
+900,Smart Station Repair,Repair,8.6133,312.0000,24
+900,Regret-3 Repair (Smart Packing),Repair,7.8921,358.0000,30
+1050,EnergyCriticalRemoval,Destroy,9.7085,322.0000,25
+1050,Route Merging Destroy,Destroy,9.3467,338.0000,29
+1050,TimeSlackDestroy,Destroy,8.8334,486.0000,41
+1050,Random Removal,Destroy,8.6379,310.0000,26
+1050,VehicleReductionAwareDestroy,Destroy,9.8378,372.0000,29
+1050,ChargingAwareRouteBuilder,Repair,9.8440,277.0000,23
+1050,Adaptive Insertion,Repair,9.0627,346.0000,29
+1050,Greedy Energy Insertion (Enhanced),Repair,8.9923,478.0000,41
+1050,Smart Station Repair,Repair,9.2713,394.0000,31
+1050,Regret-3 Repair (Smart Packing),Repair,8.4983,333.0000,26
+1200,EnergyCriticalRemoval,Destroy,10.1842,315.0000,23
+1200,Route Merging Destroy,Destroy,9.6929,453.0000,37
+1200,TimeSlackDestroy,Destroy,9.2865,439.0000,32
+1200,Random Removal,Destroy,9.1307,328.0000,28
+1200,VehicleReductionAwareDestroy,Destroy,10.2863,372.0000,30
+1200,ChargingAwareRouteBuilder,Repair,10.1739,411.0000,28
+1200,Adaptive Insertion,Repair,9.4929,355.0000,29
+1200,Greedy Energy Insertion (Enhanced),Repair,9.3922,392.0000,34
+1200,Smart Station Repair,Repair,9.7871,461.0000,35
+1200,Regret-3 Repair (Smart Packing),Repair,9.1447,288.0000,24
+1350,EnergyCriticalRemoval,Destroy,10.7109,468.0000,34
+1350,Route Merging Destroy,Destroy,10.0755,392.0000,34
+1350,TimeSlackDestroy,Destroy,9.9513,269.0000,21
+1350,Random Removal,Destroy,9.5182,364.0000,31
+1350,VehicleReductionAwareDestroy,Destroy,10.6033,369.0000,30
+1350,ChargingAwareRouteBuilder,Repair,10.8496,442.0000,32
+1350,Adaptive Insertion,Repair,9.9052,407.0000,33
+1350,Greedy Energy Insertion (Enhanced),Repair,9.7128,354.0000,30
+1350,Smart Station Repair,Repair,10.2947,299.0000,25
+1350,Regret-3 Repair (Smart Packing),Repair,9.5730,360.0000,30
+1500,EnergyCriticalRemoval,Destroy,11.1690,614.0000,40
+1500,Route Merging Destroy,Destroy,10.2936,332.0000,28
+1500,TimeSlackDestroy,Destroy,10.3800,324.0000,24
+1500,Random Removal,Destroy,9.8518,473.0000,31
+1500,VehicleReductionAwareDestroy,Destroy,10.8578,354.0000,27
+1500,ChargingAwareRouteBuilder,Repair,11.2940,410.0000,29
+1500,Adaptive Insertion,Repair,10.2694,348.0000,27
+1500,Greedy Energy Insertion (Enhanced),Repair,10.0259,438.0000,34
+1500,Smart Station Repair,Repair,10.5445,505.0000,27
+1500,Regret-3 Repair (Smart Packing),Repair,9.9370,396.0000,33
+1650,EnergyCriticalRemoval,Destroy,11.7961,389.0000,34
+1650,Route Merging Destroy,Destroy,10.5281,391.0000,32
+1650,TimeSlackDestroy,Destroy,10.8480,284.0000,24
+1650,Random Removal,Destroy,10.6627,406.0000,31
+1650,VehicleReductionAwareDestroy,Destroy,11.1958,364.0000,29
+1650,ChargingAwareRouteBuilder,Repair,11.7206,385.0000,34
+1650,Adaptive Insertion,Repair,10.6623,459.0000,37
+1650,Greedy Energy Insertion (Enhanced),Repair,10.4544,311.0000,25
+1650,Smart Station Repair,Repair,11.7684,453.0000,35
+1650,Regret-3 Repair (Smart Packing),Repair,10.2465,226.0000,19
+1800,EnergyCriticalRemoval,Destroy,11.7429,408.0000,29
+1800,Route Merging Destroy,Destroy,10.7817,338.0000,29
+1800,TimeSlackDestroy,Destroy,10.9958,294.0000,25
+1800,Random Removal,Destroy,11.0278,505.0000,37
+1800,VehicleReductionAwareDestroy,Destroy,11.3992,359.0000,30
+1800,ChargingAwareRouteBuilder,Repair,11.6611,350.0000,28
+1800,Adaptive Insertion,Repair,10.9238,392.0000,34
+1800,Greedy Energy Insertion (Enhanced),Repair,10.7522,330.0000,28
+1800,Smart Station Repair,Repair,11.9446,512.0000,33
+1800,Regret-3 Repair (Smart Packing),Repair,10.4937,320.0000,27
+1950,EnergyCriticalRemoval,Destroy,12.0918,600.0000,39
+1950,Route Merging Destroy,Destroy,10.9127,260.0000,22
+1950,TimeSlackDestroy,Destroy,11.1105,392.0000,34
+1950,Random Removal,Destroy,11.4210,291.0000,23
+1950,VehicleReductionAwareDestroy,Destroy,11.4843,356.0000,32
+1950,ChargingAwareRouteBuilder,Repair,11.7869,331.0000,28
+1950,Adaptive Insertion,Repair,11.0146,402.0000,31
+1950,Greedy Energy Insertion (Enhanced),Repair,10.9072,315.0000,26
+1950,Smart Station Repair,Repair,12.4802,498.0000,37
+1950,Regret-3 Repair (Smart Packing),Repair,10.6974,353.0000,28
+2100,EnergyCriticalRemoval,Destroy,12.5857,521.0000,38
+2100,Route Merging Destroy,Destroy,11.0485,419.0000,34
+2100,TimeSlackDestroy,Destroy,11.1733,405.0000,29
+2100,Random Removal,Destroy,11.6056,223.0000,17
+2100,VehicleReductionAwareDestroy,Destroy,11.4304,454.0000,32
+2100,ChargingAwareRouteBuilder,Repair,11.7921,426.0000,30
+2100,Adaptive Insertion,Repair,11.3076,288.0000,26
+2100,Greedy Energy Insertion (Enhanced),Repair,11.0885,414.0000,32
+2100,Smart Station Repair,Repair,12.6271,549.0000,35
+2100,Regret-3 Repair (Smart Packing),Repair,10.9839,345.0000,27
+2250,EnergyCriticalRemoval,Destroy,12.7544,407.0000,27
+2250,Route Merging Destroy,Destroy,11.2398,481.0000,35
+2250,TimeSlackDestroy,Destroy,11.5921,305.0000,24
+2250,Random Removal,Destroy,11.8324,388.0000,29
+2250,VehicleReductionAwareDestroy,Destroy,11.8440,488.0000,35
+2250,ChargingAwareRouteBuilder,Repair,12.1533,506.0000,33
+2250,Adaptive Insertion,Repair,11.2730,375.0000,27
+2250,Greedy Energy Insertion (Enhanced),Repair,11.3658,314.0000,27
+2250,Smart Station Repair,Repair,13.0859,562.0000,37
+2250,Regret-3 Repair (Smart Packing),Repair,11.2530,312.0000,26
+2400,EnergyCriticalRemoval,Destroy,13.1024,632.0000,41
+2400,Route Merging Destroy,Destroy,11.6153,444.0000,34
+2400,TimeSlackDestroy,Destroy,11.7596,261.0000,20
+2400,Random Removal,Destroy,12.0645,356.0000,30
+2400,VehicleReductionAwareDestroy,Destroy,12.1588,317.0000,25
+2400,ChargingAwareRouteBuilder,Repair,12.6303,410.0000,28
+2400,Adaptive Insertion,Repair,11.6654,515.0000,39
+2400,Greedy Energy Insertion (Enhanced),Repair,11.4054,298.0000,25
+2400,Smart Station Repair,Repair,13.4014,394.0000,27
+2400,Regret-3 Repair (Smart Packing),Repair,11.3650,393.0000,31
+2550,EnergyCriticalRemoval,Destroy,13.4492,390.0000,31
+2550,Route Merging Destroy,Destroy,11.8318,369.0000,29
+2550,TimeSlackDestroy,Destroy,11.9531,367.0000,29
+2550,Random Removal,Destroy,12.0348,284.0000,24
+2550,VehicleReductionAwareDestroy,Destroy,12.2370,440.0000,37
+2550,ChargingAwareRouteBuilder,Repair,12.9322,370.0000,28
+2550,Adaptive Insertion,Repair,11.8963,363.0000,29
+2550,Greedy Energy Insertion (Enhanced),Repair,11.4826,361.0000,29
+2550,Smart Station Repair,Repair,13.5800,396.0000,34
+2550,Regret-3 Repair (Smart Packing),Repair,11.5619,360.0000,30
+2700,EnergyCriticalRemoval,Destroy,13.3189,323.0000,27
+2700,Route Merging Destroy,Destroy,11.9656,274.0000,23
+2700,TimeSlackDestroy,Destroy,12.0584,396.0000,33
+2700,Random Removal,Destroy,12.0046,493.0000,36
+2700,VehicleReductionAwareDestroy,Destroy,12.1852,389.0000,31
+2700,ChargingAwareRouteBuilder,Repair,12.9745,462.0000,36
+2700,Adaptive Insertion,Repair,11.9895,476.0000,37
+2700,Greedy Energy Insertion (Enhanced),Repair,11.6274,276.0000,23
+2700,Smart Station Repair,Repair,13.2901,349.0000,28
+2700,Regret-3 Repair (Smart Packing),Repair,11.6276,312.0000,26
+2850,EnergyCriticalRemoval,Destroy,13.1155,419.0000,31
+2850,Route Merging Destroy,Destroy,11.9578,351.0000,24
+2850,TimeSlackDestroy,Destroy,12.0497,444.0000,37
+2850,Random Removal,Destroy,12.2581,410.0000,31
+2850,VehicleReductionAwareDestroy,Destroy,12.2397,324.0000,27
+2850,ChargingAwareRouteBuilder,Repair,12.9533,419.0000,30
+2850,Adaptive Insertion,Repair,12.1208,307.0000,24
+2850,Greedy Energy Insertion (Enhanced),Repair,11.6833,470.0000,36
+2850,Smart Station Repair,Repair,13.1662,404.0000,31
+2850,Regret-3 Repair (Smart Packing),Repair,11.6835,348.0000,29
+3000,EnergyCriticalRemoval,Destroy,13.1756,491.0000,34
+3000,Route Merging Destroy,Destroy,12.3578,426.0000,32
+3000,TimeSlackDestroy,Destroy,12.0422,286.0000,24
+3000,Random Removal,Destroy,12.4032,398.0000,30
+3000,VehicleReductionAwareDestroy,Destroy,12.2037,360.0000,30
+3000,ChargingAwareRouteBuilder,Repair,13.1053,363.0000,26
+3000,Adaptive Insertion,Repair,12.2214,391.0000,31
+3000,Greedy Energy Insertion (Enhanced),Repair,11.8892,334.0000,28
+3000,Smart Station Repair,Repair,13.1461,585.0000,41
+3000,Regret-3 Repair (Smart Packing),Repair,11.7309,288.0000,24
+3150,EnergyCriticalRemoval,Destroy,13.3655,431.0000,33
+3150,Route Merging Destroy,Destroy,12.5010,360.0000,30
+3150,TimeSlackDestroy,Destroy,12.0234,342.0000,25
+3150,Random Removal,Destroy,12.5327,388.0000,29
+3150,VehicleReductionAwareDestroy,Destroy,12.1732,397.0000,33
+3150,ChargingAwareRouteBuilder,Repair,13.2337,320.0000,29
+3150,Adaptive Insertion,Repair,12.2801,273.0000,21
+3150,Greedy Energy Insertion (Enhanced),Repair,11.8951,484.0000,37
+3150,Smart Station Repair,Repair,13.3145,529.0000,37
+3150,Regret-3 Repair (Smart Packing),Repair,11.7713,312.0000,26
+3300,EnergyCriticalRemoval,Destroy,13.3197,315.0000,27
+3300,Route Merging Destroy,Destroy,12.4259,288.0000,24
+3300,TimeSlackDestroy,Destroy,12.2719,360.0000,30
+3300,Random Removal,Destroy,12.6597,420.0000,35
+3300,VehicleReductionAwareDestroy,Destroy,12.1518,413.0000,34
+3300,ChargingAwareRouteBuilder,Repair,12.9039,386.0000,30
+3300,Adaptive Insertion,Repair,12.3881,252.0000,22
+3300,Greedy Energy Insertion (Enhanced),Repair,12.0730,396.0000,33
+3300,Smart Station Repair,Repair,13.4619,462.0000,40
+3300,Regret-3 Repair (Smart Packing),Repair,11.8056,300.0000,25
+3450,EnergyCriticalRemoval,Destroy,13.0718,778.0000,46
+3450,Route Merging Destroy,Destroy,12.3620,295.0000,23
+3450,TimeSlackDestroy,Destroy,12.2311,365.0000,29
+3450,Random Removal,Destroy,12.5608,390.0000,29
+3450,VehicleReductionAwareDestroy,Destroy,12.1511,276.0000,23
+3450,ChargingAwareRouteBuilder,Repair,12.8983,589.0000,38
+3450,Adaptive Insertion,Repair,12.2481,450.0000,31
+3450,Greedy Energy Insertion (Enhanced),Repair,12.0620,398.0000,30
+3450,Smart Station Repair,Repair,13.1751,334.0000,25
+3450,Regret-3 Repair (Smart Packing),Repair,11.8348,333.0000,26
+3600,EnergyCriticalRemoval,Destroy,13.6480,307.0000,25
+3600,Route Merging Destroy,Destroy,12.4316,438.0000,33
+3600,TimeSlackDestroy,Destroy,12.2844,393.0000,31
+3600,Random Removal,Destroy,12.6939,439.0000,35
+3600,VehicleReductionAwareDestroy,Destroy,12.1284,304.0000,26
+3600,ChargingAwareRouteBuilder,Repair,13.2885,442.0000,34
+3600,Adaptive Insertion,Repair,12.5883,397.0000,32
+3600,Greedy Energy Insertion (Enhanced),Repair,12.2427,345.0000,27
+3600,Smart Station Repair,Repair,13.2028,301.0000,24
+3600,Regret-3 Repair (Smart Packing),Repair,11.9807,396.0000,33
+3750,EnergyCriticalRemoval,Destroy,13.4428,343.0000,28
+3750,Route Merging Destroy,Destroy,12.5578,321.0000,25
+3750,TimeSlackDestroy,Destroy,12.3433,384.0000,32
+3750,Random Removal,Destroy,12.6712,453.0000,36
+3750,VehicleReductionAwareDestroy,Destroy,12.0630,369.0000,29
+3750,ChargingAwareRouteBuilder,Repair,13.2453,465.0000,38
+3750,Adaptive Insertion,Repair,12.5610,318.0000,23
+3750,Greedy Energy Insertion (Enhanced),Repair,12.3230,393.0000,31
+3750,Smart Station Repair,Repair,13.1037,310.0000,26
+3750,Regret-3 Repair (Smart Packing),Repair,11.9836,384.0000,32
+3900,EnergyCriticalRemoval,Destroy,13.2639,295.0000,24
+3900,Route Merging Destroy,Destroy,12.6001,444.0000,37
+3900,TimeSlackDestroy,Destroy,12.2918,336.0000,28
+3900,Random Removal,Destroy,12.6581,391.0000,31
+3900,VehicleReductionAwareDestroy,Destroy,12.1622,360.0000,30
+3900,ChargingAwareRouteBuilder,Repair,13.0940,353.0000,28
+3900,Adaptive Insertion,Repair,12.7508,358.0000,30
+3900,Greedy Energy Insertion (Enhanced),Repair,12.3761,430.0000,36
+3900,Smart Station Repair,Repair,12.9266,349.0000,28
+3900,Regret-3 Repair (Smart Packing),Repair,11.9861,336.0000,28
+4050,EnergyCriticalRemoval,Destroy,13.1180,545.0000,30
+4050,Route Merging Destroy,Destroy,12.5101,438.0000,33
+4050,TimeSlackDestroy,Destroy,12.2480,345.0000,27
+4050,Random Removal,Destroy,12.6513,510.0000,39
+4050,VehicleReductionAwareDestroy,Destroy,12.1378,252.0000,21
+4050,ChargingAwareRouteBuilder,Repair,13.0210,539.0000,33
+4050,Adaptive Insertion,Repair,12.6281,360.0000,30
+4050,Greedy Energy Insertion (Enhanced),Repair,12.3114,507.0000,37
+4050,Smart Station Repair,Repair,12.8572,360.0000,23
+4050,Regret-3 Repair (Smart Packing),Repair,11.9882,324.0000,27
+4200,EnergyCriticalRemoval,Destroy,13.8753,533.0000,45
+4200,Route Merging Destroy,Destroy,12.6245,306.0000,22
+4200,TimeSlackDestroy,Destroy,12.3275,358.0000,30
+4200,Random Removal,Destroy,12.7151,285.0000,22
+4200,VehicleReductionAwareDestroy,Destroy,12.1172,372.0000,31
+4200,ChargingAwareRouteBuilder,Repair,13.5178,402.0000,31
+4200,Adaptive Insertion,Repair,12.5339,355.0000,28
+4200,Greedy Energy Insertion (Enhanced),Repair,12.5201,430.0000,36
+4200,Smart Station Repair,Repair,13.2765,319.0000,26
+4200,Regret-3 Repair (Smart Packing),Repair,11.9899,348.0000,29
+4350,EnergyCriticalRemoval,Destroy,13.5707,446.0000,35
+4350,Route Merging Destroy,Destroy,12.8172,384.0000,32
+4350,TimeSlackDestroy,Destroy,12.2684,336.0000,28
+4350,Random Removal,Destroy,12.7510,357.0000,28
+4350,VehicleReductionAwareDestroy,Destroy,12.0996,324.0000,27
+4350,ChargingAwareRouteBuilder,Repair,13.4353,417.0000,30
+4350,Adaptive Insertion,Repair,12.5556,356.0000,30
+4350,Greedy Energy Insertion (Enhanced),Repair,12.4337,430.0000,36
+4350,Smart Station Repair,Repair,13.1254,320.0000,27
+4350,Regret-3 Repair (Smart Packing),Repair,11.9914,324.0000,27
+4500,EnergyCriticalRemoval,Destroy,13.4465,333.0000,27
+4500,Route Merging Destroy,Destroy,12.6946,384.0000,32
+4500,TimeSlackDestroy,Destroy,12.2281,360.0000,30
+4500,Random Removal,Destroy,12.7509,343.0000,27
+4500,VehicleReductionAwareDestroy,Destroy,12.0846,408.0000,34
+4500,ChargingAwareRouteBuilder,Repair,13.5050,296.0000,25
+4500,Adaptive Insertion,Repair,12.4523,452.0000,38
+4500,Greedy Energy Insertion (Enhanced),Repair,12.3603,454.0000,38
+4500,Smart Station Repair,Repair,12.9344,338.0000,25
+4500,Regret-3 Repair (Smart Packing),Repair,11.9927,288.0000,24
+4650,EnergyCriticalRemoval,Destroy,13.2795,418.0000,30
+4650,Route Merging Destroy,Destroy,12.5904,345.0000,28
+4650,TimeSlackDestroy,Destroy,12.1939,327.0000,23
+4650,Random Removal,Destroy,12.7438,511.0000,38
+4650,VehicleReductionAwareDestroy,Destroy,12.0719,374.0000,31
+4650,ChargingAwareRouteBuilder,Repair,13.2553,394.0000,33
+4650,Adaptive Insertion,Repair,12.3686,434.0000,34
+4650,Greedy Energy Insertion (Enhanced),Repair,12.2984,271.0000,22
+4650,Smart Station Repair,Repair,13.0222,492.0000,29
+4650,Regret-3 Repair (Smart Packing),Repair,11.9938,384.0000,32
+4800,EnergyCriticalRemoval,Destroy,13.3776,393.0000,34
+4800,Route Merging Destroy,Destroy,12.5501,390.0000,33
+4800,TimeSlackDestroy,Destroy,12.4974,370.0000,31
+4800,Random Removal,Destroy,12.8493,332.0000,28
+4800,VehicleReductionAwareDestroy,Destroy,12.0708,272.0000,24
+4800,ChargingAwareRouteBuilder,Repair,13.0579,399.0000,34
+4800,Adaptive Insertion,Repair,12.4281,312.0000,27
+4800,Greedy Energy Insertion (Enhanced),Repair,12.3014,372.0000,32
+4800,Smart Station Repair,Repair,13.6137,302.0000,26
+4800,Regret-3 Repair (Smart Packing),Repair,11.9947,372.0000,31
+4950,EnergyCriticalRemoval,Destroy,13.1048,356.0000,33
+4950,Route Merging Destroy,Destroy,12.4403,315.0000,25
+4950,TimeSlackDestroy,Destroy,12.4131,410.0000,31
+4950,Random Removal,Destroy,12.7005,447.0000,36
+4950,VehicleReductionAwareDestroy,Destroy,11.9602,284.0000,25
+4950,ChargingAwareRouteBuilder,Repair,12.8595,437.0000,34
+4950,Adaptive Insertion,Repair,12.2972,343.0000,28
+4950,Greedy Energy Insertion (Enhanced),Repair,12.1999,324.0000,28
+4950,Smart Station Repair,Repair,13.3140,350.0000,30
+4950,Regret-3 Repair (Smart Packing),Repair,11.9955,358.0000,30
+5100,EnergyCriticalRemoval,Destroy,12.7573,311.0000,26
+5100,Route Merging Destroy,Destroy,12.4642,446.0000,35
+5100,TimeSlackDestroy,Destroy,12.5350,399.0000,32
+5100,Random Removal,Destroy,12.6579,427.0000,31
+5100,VehicleReductionAwareDestroy,Destroy,11.8702,280.0000,26
+5100,ChargingAwareRouteBuilder,Repair,12.8585,351.0000,27
+5100,Adaptive Insertion,Repair,12.2901,318.0000,24
+5100,Greedy Energy Insertion (Enhanced),Repair,12.1056,444.0000,38
+5100,Smart Station Repair,Repair,13.0669,402.0000,32
+5100,Regret-3 Repair (Smart Packing),Repair,11.9862,348.0000,29
+5250,EnergyCriticalRemoval,Destroy,12.6379,416.0000,31
+5250,Route Merging Destroy,Destroy,12.5060,454.0000,39
+5250,TimeSlackDestroy,Destroy,12.5251,341.0000,27
+5250,Random Removal,Destroy,12.8254,320.0000,27
+5250,VehicleReductionAwareDestroy,Destroy,11.7050,290.0000,26
+5250,ChargingAwareRouteBuilder,Repair,12.8797,361.0000,31
+5250,Adaptive Insertion,Repair,12.4341,329.0000,27
+5250,Greedy Energy Insertion (Enhanced),Repair,12.0424,310.0000,27
+5250,Smart Station Repair,Repair,12.9912,391.0000,29
+5250,Regret-3 Repair (Smart Packing),Repair,11.9883,430.0000,36
+5400,EnergyCriticalRemoval,Destroy,12.7551,430.0000,32
+5400,Route Merging Destroy,Destroy,12.3763,373.0000,30
+5400,TimeSlackDestroy,Destroy,12.5408,395.0000,32
+5400,Random Removal,Destroy,12.6793,304.0000,26
+5400,VehicleReductionAwareDestroy,Destroy,11.6224,392.0000,30
+5400,ChargingAwareRouteBuilder,Repair,12.6945,448.0000,33
+5400,Adaptive Insertion,Repair,12.3968,324.0000,28
+5400,Greedy Energy Insertion (Enhanced),Repair,11.9583,425.0000,31
+5400,Smart Station Repair,Repair,13.0649,327.0000,27
+5400,Regret-3 Repair (Smart Packing),Repair,11.9817,370.0000,31
+5550,EnergyCriticalRemoval,Destroy,12.8575,499.0000,35
+5550,Route Merging Destroy,Destroy,12.3848,366.0000,31
+5550,TimeSlackDestroy,Destroy,12.5112,296.0000,25
+5550,Random Removal,Destroy,12.5313,351.0000,28
+5550,VehicleReductionAwareDestroy,Destroy,11.8390,340.0000,31
+5550,ChargingAwareRouteBuilder,Repair,12.8267,349.0000,22
+5550,Adaptive Insertion,Repair,12.2730,342.0000,30
+5550,Greedy Energy Insertion (Enhanced),Repair,12.2210,424.0000,36
+5550,Smart Station Repair,Repair,12.9219,365.0000,31
+5550,Regret-3 Repair (Smart Packing),Repair,11.9748,372.0000,31
+5700,EnergyCriticalRemoval,Destroy,13.0674,337.0000,24
+5700,Route Merging Destroy,Destroy,12.2981,381.0000,31
+5700,TimeSlackDestroy,Destroy,12.4105,469.0000,38
+5700,Random Removal,Destroy,12.5320,422.0000,32
+5700,VehicleReductionAwareDestroy,Destroy,11.7083,324.0000,25
+5700,ChargingAwareRouteBuilder,Repair,13.2823,398.0000,32
+5700,Adaptive Insertion,Repair,12.1420,338.0000,25
+5700,Greedy Energy Insertion (Enhanced),Repair,12.1545,304.0000,26
+5700,Smart Station Repair,Repair,12.7497,497.0000,34
+5700,Regret-3 Repair (Smart Packing),Repair,11.9786,396.0000,33
+5850,EnergyCriticalRemoval,Destroy,13.2136,355.0000,27
+5850,Route Merging Destroy,Destroy,12.2969,439.0000,35
+5850,TimeSlackDestroy,Destroy,12.4003,396.0000,33
+5850,Random Removal,Destroy,12.6303,330.0000,28
+5850,VehicleReductionAwareDestroy,Destroy,11.8961,363.0000,27
+5850,ChargingAwareRouteBuilder,Repair,13.1556,298.0000,23
+5850,Adaptive Insertion,Repair,12.3487,525.0000,40
+5850,Greedy Energy Insertion (Enhanced),Repair,12.0852,260.0000,22
+5850,Smart Station Repair,Repair,13.0299,452.0000,36
+5850,Regret-3 Repair (Smart Packing),Repair,11.9818,348.0000,29
+6000,EnergyCriticalRemoval,Destroy,13.2037,222.0000,21
+6000,Route Merging Destroy,Destroy,12.3338,306.0000,26
+6000,TimeSlackDestroy,Destroy,12.3402,368.0000,31
+6000,Random Removal,Destroy,12.5036,497.0000,37
+6000,VehicleReductionAwareDestroy,Destroy,12.1283,566.0000,35
+6000,ChargingAwareRouteBuilder,Repair,13.1257,566.0000,40
+6000,Adaptive Insertion,Repair,12.4652,361.0000,29
+6000,Greedy Energy Insertion (Enhanced),Repair,12.0451,334.0000,29
+6000,Smart Station Repair,Repair,12.9588,410.0000,28
+6000,Regret-3 Repair (Smart Packing),Repair,11.9845,288.0000,24
+6150,EnergyCriticalRemoval,Destroy,12.8089,389.0000,25
+6150,Route Merging Destroy,Destroy,12.2491,404.0000,35
+6150,TimeSlackDestroy,Destroy,12.2698,339.0000,27
+6150,Random Removal,Destroy,12.6429,455.0000,33
+6150,VehicleReductionAwareDestroy,Destroy,12.7348,310.0000,30
+6150,ChargingAwareRouteBuilder,Repair,13.2793,427.0000,33
+6150,Adaptive Insertion,Repair,12.4626,366.0000,32
+6150,Greedy Energy Insertion (Enhanced),Repair,11.9659,374.0000,33
+6150,Smart Station Repair,Repair,13.2114,454.0000,29
+6150,Regret-3 Repair (Smart Packing),Repair,11.9868,276.0000,23
+6300,EnergyCriticalRemoval,Destroy,13.2216,294.0000,27
+6300,Route Merging Destroy,Destroy,12.1432,384.0000,32
+6300,TimeSlackDestroy,Destroy,12.3127,350.0000,30
+6300,Random Removal,Destroy,12.8147,384.0000,32
+6300,VehicleReductionAwareDestroy,Destroy,12.3746,365.0000,29
+6300,ChargingAwareRouteBuilder,Repair,13.2283,282.0000,25
+6300,Adaptive Insertion,Repair,12.3089,358.0000,30
+6300,Greedy Energy Insertion (Enhanced),Repair,11.8711,438.0000,37
+6300,Smart Station Repair,Repair,13.5779,435.0000,36
+6300,Regret-3 Repair (Smart Packing),Repair,11.9888,264.0000,22
+6450,EnergyCriticalRemoval,Destroy,12.8717,314.0000,24
+6450,Route Merging Destroy,Destroy,12.1217,348.0000,29
+6450,TimeSlackDestroy,Destroy,12.2158,300.0000,25
+6450,Random Removal,Destroy,12.6925,463.0000,37
+6450,VehicleReductionAwareDestroy,Destroy,12.4063,408.0000,35
+6450,ChargingAwareRouteBuilder,Repair,12.9361,424.0000,33
+6450,Adaptive Insertion,Repair,12.2525,262.0000,22
+6450,Greedy Energy Insertion (Enhanced),Repair,11.8661,236.0000,20
+6450,Smart Station Repair,Repair,13.3537,467.0000,38
+6450,Regret-3 Repair (Smart Packing),Repair,11.9905,444.0000,37
+6600,EnergyCriticalRemoval,Destroy,12.9034,539.0000,40
+6600,Route Merging Destroy,Destroy,12.1034,352.0000,30
+6600,TimeSlackDestroy,Destroy,12.1834,336.0000,29
+6600,Random Removal,Destroy,12.6656,397.0000,32
+6600,VehicleReductionAwareDestroy,Destroy,12.2939,227.0000,19
+6600,ChargingAwareRouteBuilder,Repair,12.9230,398.0000,28
+6600,Adaptive Insertion,Repair,12.2010,338.0000,30
+6600,Greedy Energy Insertion (Enhanced),Repair,11.8562,349.0000,29
+6600,Smart Station Repair,Repair,13.1941,418.0000,34
+6600,Regret-3 Repair (Smart Packing),Repair,11.9919,348.0000,29
+6750,EnergyCriticalRemoval,Destroy,12.9892,441.0000,39
+6750,Route Merging Destroy,Destroy,12.0479,318.0000,27
+6750,TimeSlackDestroy,Destroy,12.0938,311.0000,25
+6750,Random Removal,Destroy,12.6267,394.0000,33
+6750,VehicleReductionAwareDestroy,Destroy,12.2420,347.0000,26
+6750,ChargingAwareRouteBuilder,Repair,13.1167,315.0000,27
+6750,Adaptive Insertion,Repair,12.0609,308.0000,27
+6750,Greedy Energy Insertion (Enhanced),Repair,11.8829,382.0000,30
+6750,Smart Station Repair,Repair,13.0591,470.0000,38
+6750,Regret-3 Repair (Smart Packing),Repair,11.9931,336.0000,28
+6900,EnergyCriticalRemoval,Destroy,12.7369,348.0000,32
+6900,Route Merging Destroy,Destroy,12.0074,224.0000,19
+6900,TimeSlackDestroy,Destroy,12.1458,342.0000,29
+6900,Random Removal,Destroy,12.5236,344.0000,29
+6900,VehicleReductionAwareDestroy,Destroy,12.4076,535.0000,41
+6900,ChargingAwareRouteBuilder,Repair,12.8992,393.0000,33
+6900,Adaptive Insertion,Repair,11.9628,285.0000,23
+6900,Greedy Energy Insertion (Enhanced),Repair,12.0105,310.0000,27
+6900,Smart Station Repair,Repair,12.9555,445.0000,37
+6900,Regret-3 Repair (Smart Packing),Repair,11.9942,360.0000,30
+7050,EnergyCriticalRemoval,Destroy,12.4576,460.0000,34
+7050,Route Merging Destroy,Destroy,11.9747,308.0000,26
+7050,TimeSlackDestroy,Destroy,12.0929,471.0000,38
+7050,Random Removal,Destroy,12.4244,424.0000,32
+7050,VehicleReductionAwareDestroy,Destroy,12.5038,272.0000,20
+7050,ChargingAwareRouteBuilder,Repair,12.7506,495.0000,38
+7050,Adaptive Insertion,Repair,12.0271,328.0000,28
+7050,Greedy Energy Insertion (Enhanced),Repair,11.9311,313.0000,25
+7050,Smart Station Repair,Repair,12.8162,465.0000,31
+7050,Regret-3 Repair (Smart Packing),Repair,11.9950,334.0000,28
+7200,EnergyCriticalRemoval,Destroy,12.6184,372.0000,34
+7200,Route Merging Destroy,Destroy,11.9554,318.0000,27
+7200,TimeSlackDestroy,Destroy,12.1381,245.0000,19
+7200,Random Removal,Destroy,12.5482,464.0000,36
+7200,VehicleReductionAwareDestroy,Destroy,12.6682,415.0000,34
+7200,ChargingAwareRouteBuilder,Repair,12.7920,386.0000,35
+7200,Adaptive Insertion,Repair,11.9802,313.0000,25
+7200,Greedy Energy Insertion (Enhanced),Repair,12.0195,254.0000,22
+7200,Smart Station Repair,Repair,13.1438,465.0000,35
+7200,Regret-3 Repair (Smart Packing),Repair,11.9851,396.0000,33
+7350,EnergyCriticalRemoval,Destroy,12.3668,299.0000,25
+7350,Route Merging Destroy,Destroy,11.9288,396.0000,33
+7350,TimeSlackDestroy,Destroy,12.2516,310.0000,26
+7350,Random Removal,Destroy,12.5993,324.0000,27
+7350,VehicleReductionAwareDestroy,Destroy,12.5989,468.0000,39
+7350,ChargingAwareRouteBuilder,Repair,12.5275,305.0000,24
+7350,Adaptive Insertion,Repair,12.0612,400.0000,34
+7350,Greedy Energy Insertion (Enhanced),Repair,11.9484,396.0000,33
+7350,Smart Station Repair,Repair,13.1651,372.0000,32
+7350,Regret-3 Repair (Smart Packing),Repair,11.9873,324.0000,27
+7500,EnergyCriticalRemoval,Destroy,12.3058,430.0000,31
+7500,Route Merging Destroy,Destroy,11.9395,416.0000,35
+7500,TimeSlackDestroy,Destroy,12.2024,529.0000,43
+7500,Random Removal,Destroy,12.5094,274.0000,23
+7500,VehicleReductionAwareDestroy,Destroy,12.5090,214.0000,18
+7500,ChargingAwareRouteBuilder,Repair,12.5546,437.0000,32
+7500,Adaptive Insertion,Repair,12.0167,300.0000,26
+7500,Greedy Energy Insertion (Enhanced),Repair,11.9561,335.0000,27
+7500,Smart Station Repair,Repair,12.9341,407.0000,33
+7500,Regret-3 Repair (Smart Packing),Repair,11.9892,384.0000,32
+7650,EnergyCriticalRemoval,Destroy,12.5406,405.0000,31
+7650,Route Merging Destroy,Destroy,11.9314,418.0000,36
+7650,TimeSlackDestroy,Destroy,12.2173,417.0000,30
+7650,Random Removal,Destroy,12.4200,431.0000,31
+7650,VehicleReductionAwareDestroy,Destroy,12.4160,257.0000,22
+7650,ChargingAwareRouteBuilder,Repair,12.7199,512.0000,34
+7650,Adaptive Insertion,Repair,11.9450,282.0000,25
+7650,Greedy Energy Insertion (Enhanced),Repair,12.0238,345.0000,28
+7650,Smart Station Repair,Repair,12.8440,441.0000,34
+7650,Regret-3 Repair (Smart Packing),Repair,11.9908,348.0000,29
+7800,EnergyCriticalRemoval,Destroy,12.6192,437.0000,30
+7800,Route Merging Destroy,Destroy,11.8834,403.0000,33
+7800,TimeSlackDestroy,Destroy,12.4697,355.0000,28
+7800,Random Removal,Destroy,12.6425,354.0000,30
+7800,VehicleReductionAwareDestroy,Destroy,12.3059,342.0000,29
+7800,ChargingAwareRouteBuilder,Repair,13.0707,676.0000,48
+7800,Adaptive Insertion,Repair,11.8452,258.0000,22
+7800,Greedy Energy Insertion (Enhanced),Repair,12.0684,290.0000,25
+7800,Smart Station Repair,Repair,12.8630,307.0000,25
+7800,Regret-3 Repair (Smart Packing),Repair,11.9922,360.0000,30
+7950,EnergyCriticalRemoval,Destroy,12.9113,390.0000,27
+7950,Route Merging Destroy,Destroy,11.9327,476.0000,40
+7950,TimeSlackDestroy,Destroy,12.5011,295.0000,23
+7950,Random Removal,Destroy,12.5161,359.0000,29
+7950,VehicleReductionAwareDestroy,Destroy,12.2290,320.0000,31
+7950,ChargingAwareRouteBuilder,Repair,13.2226,304.0000,24
+7950,Adaptive Insertion,Repair,11.8275,374.0000,33
+7950,Greedy Energy Insertion (Enhanced),Repair,11.9982,497.0000,41
+7950,Smart Station Repair,Repair,12.7755,429.0000,32
+7950,Regret-3 Repair (Smart Packing),Repair,11.9934,236.0000,20
+8100,EnergyCriticalRemoval,Destroy,13.1413,570.0000,41
+8100,Route Merging Destroy,Destroy,11.9278,248.0000,21
+8100,TimeSlackDestroy,Destroy,12.5498,386.0000,29
+8100,Random Removal,Destroy,12.4956,423.0000,34
+8100,VehicleReductionAwareDestroy,Destroy,11.9430,280.0000,25
+8100,ChargingAwareRouteBuilder,Repair,13.1392,506.0000,38
+8100,Adaptive Insertion,Repair,11.7534,361.0000,30
+8100,Greedy Energy Insertion (Enhanced),Repair,12.0167,354.0000,27
+8100,Smart Station Repair,Repair,12.8701,304.0000,23
+8100,Regret-3 Repair (Smart Packing),Repair,11.9644,382.0000,32
+8250,EnergyCriticalRemoval,Destroy,13.2554,301.0000,26
+8250,Route Merging Destroy,Destroy,11.9100,356.0000,30
+8250,TimeSlackDestroy,Destroy,12.6639,286.0000,24
+8250,Random Removal,Destroy,12.4874,468.0000,36
+8250,VehicleReductionAwareDestroy,Destroy,11.8316,402.0000,34
+8250,ChargingAwareRouteBuilder,Repair,13.1657,499.0000,42
+8250,Adaptive Insertion,Repair,11.7954,312.0000,27
+8250,Greedy Energy Insertion (Enhanced),Repair,12.1809,320.0000,27
+8250,Smart Station Repair,Repair,12.9222,358.0000,27
+8250,Regret-3 Repair (Smart Packing),Repair,11.9603,324.0000,27
+8400,EnergyCriticalRemoval,Destroy,13.0037,386.0000,32
+8400,Route Merging Destroy,Destroy,11.9035,312.0000,26
+8400,TimeSlackDestroy,Destroy,12.5518,395.0000,32
+8400,Random Removal,Destroy,12.5643,398.0000,34
+8400,VehicleReductionAwareDestroy,Destroy,11.8303,319.0000,26
+8400,ChargingAwareRouteBuilder,Repair,12.9730,339.0000,29
+8400,Adaptive Insertion,Repair,11.7594,232.0000,20
+8400,Greedy Energy Insertion (Enhanced),Repair,12.1315,386.0000,33
+8400,Smart Station Repair,Repair,12.9728,496.0000,40
+8400,Regret-3 Repair (Smart Packing),Repair,11.9663,357.0000,28
+8550,EnergyCriticalRemoval,Destroy,12.8625,476.0000,36
+8550,Route Merging Destroy,Destroy,11.9180,320.0000,27
+8550,TimeSlackDestroy,Destroy,12.5206,476.0000,37
+8550,Random Removal,Destroy,12.4355,332.0000,28
+8550,VehicleReductionAwareDestroy,Destroy,11.8962,242.0000,22
+8550,ChargingAwareRouteBuilder,Repair,12.7805,340.0000,27
+8550,Adaptive Insertion,Repair,11.7355,218.0000,19
+8550,Greedy Energy Insertion (Enhanced),Repair,12.0664,372.0000,33
+8550,Smart Station Repair,Repair,12.8869,460.0000,33
+8550,Regret-3 Repair (Smart Packing),Repair,12.0838,456.0000,38
+8700,EnergyCriticalRemoval,Destroy,12.9164,579.0000,36
+8700,Route Merging Destroy,Destroy,11.9081,330.0000,28
+8700,TimeSlackDestroy,Destroy,12.5722,404.0000,34
+8700,Random Removal,Destroy,12.3488,433.0000,35
+8700,VehicleReductionAwareDestroy,Destroy,11.7618,186.0000,17
+8700,ChargingAwareRouteBuilder,Repair,12.7523,380.0000,30
+8700,Adaptive Insertion,Repair,11.6962,404.0000,32
+8700,Greedy Energy Insertion (Enhanced),Repair,11.9473,321.0000,26
+8700,Smart Station Repair,Repair,13.0447,493.0000,34
+8700,Regret-3 Repair (Smart Packing),Repair,12.0713,334.0000,28
+8850,EnergyCriticalRemoval,Destroy,13.3915,408.0000,29
+8850,Route Merging Destroy,Destroy,11.8897,411.0000,33
+8850,TimeSlackDestroy,Destroy,12.4688,308.0000,26
+8850,Random Removal,Destroy,12.3522,392.0000,33
+8850,VehicleReductionAwareDestroy,Destroy,11.6387,345.0000,29
+8850,ChargingAwareRouteBuilder,Repair,12.7395,350.0000,27
+8850,Adaptive Insertion,Repair,11.8355,368.0000,28
+8850,Greedy Energy Insertion (Enhanced),Repair,12.0071,325.0000,26
+8850,Smart Station Repair,Repair,13.2630,405.0000,34
+8850,Regret-3 Repair (Smart Packing),Repair,12.0499,416.0000,35
+9000,EnergyCriticalRemoval,Destroy,13.4931,433.0000,30
+9000,Route Merging Destroy,Destroy,11.9744,413.0000,33
+9000,TimeSlackDestroy,Destroy,12.3754,414.0000,35
+9000,Random Removal,Destroy,12.2812,243.0000,19
+9000,VehicleReductionAwareDestroy,Destroy,11.6774,417.0000,33
+9000,ChargingAwareRouteBuilder,Repair,12.7730,457.0000,35
+9000,Adaptive Insertion,Repair,12.0316,411.0000,31
+9000,Greedy Energy Insertion (Enhanced),Repair,12.0811,354.0000,31
+9000,Smart Station Repair,Repair,13.0603,374.0000,26
+9000,Regret-3 Repair (Smart Packing),Repair,12.0252,324.0000,27
+9150,EnergyCriticalRemoval,Destroy,13.6341,298.0000,28
+9150,Route Merging Destroy,Destroy,12.0556,364.0000,31
+9150,TimeSlackDestroy,Destroy,12.2934,406.0000,34
+9150,Random Removal,Destroy,12.3574,505.0000,37
+9150,VehicleReductionAwareDestroy,Destroy,11.8212,222.0000,20
+9150,ChargingAwareRouteBuilder,Repair,12.8156,374.0000,29
+9150,Adaptive Insertion,Repair,12.2156,402.0000,35
+9150,Greedy Energy Insertion (Enhanced),Repair,11.9818,348.0000,30
+9150,Smart Station Repair,Repair,13.2590,317.0000,26
+9150,Regret-3 Repair (Smart Packing),Repair,12.0215,354.0000,30
+9300,EnergyCriticalRemoval,Destroy,13.1854,324.0000,26
+9300,Route Merging Destroy,Destroy,12.0085,392.0000,33
+9300,TimeSlackDestroy,Destroy,12.2405,334.0000,28
+9300,Random Removal,Destroy,12.5511,445.0000,36
+9300,VehicleReductionAwareDestroy,Destroy,11.7130,320.0000,27
+9300,ChargingAwareRouteBuilder,Repair,12.8277,456.0000,37
+9300,Adaptive Insertion,Repair,12.1061,257.0000,20
+9300,Greedy Energy Insertion (Enhanced),Repair,11.9245,396.0000,33
+9300,Smart Station Repair,Repair,13.0990,322.0000,28
+9300,Regret-3 Repair (Smart Packing),Repair,11.9882,384.0000,32
+9450,EnergyCriticalRemoval,Destroy,13.0769,499.0000,35
+9450,Route Merging Destroy,Destroy,11.9891,420.0000,35
+9450,TimeSlackDestroy,Destroy,12.1937,360.0000,30
+9450,Random Removal,Destroy,12.5226,282.0000,24
+9450,VehicleReductionAwareDestroy,Destroy,11.7338,313.0000,26
+9450,ChargingAwareRouteBuilder,Repair,12.7522,368.0000,29
+9450,Adaptive Insertion,Repair,12.2177,358.0000,31
+9450,Greedy Energy Insertion (Enhanced),Repair,11.9359,306.0000,26
+9450,Smart Station Repair,Repair,12.8591,377.0000,27
+9450,Regret-3 Repair (Smart Packing),Repair,11.9900,465.0000,37
+9600,EnergyCriticalRemoval,Destroy,13.2539,431.0000,33
+9600,Route Merging Destroy,Destroy,11.9907,378.0000,32
+9600,TimeSlackDestroy,Destroy,12.1647,404.0000,34
+9600,Random Removal,Destroy,12.4067,306.0000,26
+9600,VehicleReductionAwareDestroy,Destroy,11.7795,294.0000,25
+9600,ChargingAwareRouteBuilder,Repair,12.7428,491.0000,41
+9600,Adaptive Insertion,Repair,12.1173,328.0000,28
+9600,Greedy Energy Insertion (Enhanced),Repair,11.9109,320.0000,27
+9600,Smart Station Repair,Repair,13.0247,326.0000,25
+9600,Regret-3 Repair (Smart Packing),Repair,12.0766,348.0000,29
+9750,EnergyCriticalRemoval,Destroy,13.2249,391.0000,30
+9750,Route Merging Destroy,Destroy,11.9640,356.0000,30
+9750,TimeSlackDestroy,Destroy,12.1223,312.0000,26
+9750,Random Removal,Destroy,12.3111,460.0000,35
+9750,VehicleReductionAwareDestroy,Destroy,11.7766,344.0000,29
+9750,ChargingAwareRouteBuilder,Repair,12.6278,354.0000,27
+9750,Adaptive Insertion,Repair,12.0569,302.0000,26
+9750,Greedy Energy Insertion (Enhanced),Repair,11.9020,421.0000,34
+9750,Smart Station Repair,Repair,13.0270,486.0000,38
+9750,Regret-3 Repair (Smart Packing),Repair,12.0651,300.0000,25
+9900,EnergyCriticalRemoval,Destroy,13.1962,366.0000,29
+9900,Route Merging Destroy,Destroy,11.9494,369.0000,29
+9900,TimeSlackDestroy,Destroy,12.1040,372.0000,31
+9900,Random Removal,Destroy,12.4359,381.0000,30
+9900,VehicleReductionAwareDestroy,Destroy,11.7894,372.0000,31
+9900,ChargingAwareRouteBuilder,Repair,12.7003,392.0000,30
+9900,Adaptive Insertion,Repair,11.9906,391.0000,31
+9900,Greedy Energy Insertion (Enhanced),Repair,11.9741,370.0000,31
+9900,Smart Station Repair,Repair,12.9914,371.0000,30
+9900,Regret-3 Repair (Smart Packing),Repair,12.0554,336.0000,28
+10050,EnergyCriticalRemoval,Destroy,13.1098,320.0000,25
+10050,Route Merging Destroy,Destroy,12.0656,322.0000,27
+10050,TimeSlackDestroy,Destroy,12.0884,356.0000,30
+10050,Random Removal,Destroy,12.4755,441.0000,35
+10050,VehicleReductionAwareDestroy,Destroy,11.8210,394.0000,33
+10050,ChargingAwareRouteBuilder,Repair,12.7552,447.0000,37
+10050,Adaptive Insertion,Repair,12.0840,276.0000,23
+10050,Greedy Energy Insertion (Enhanced),Repair,11.9683,322.0000,27
+10050,Smart Station Repair,Repair,12.8977,368.0000,28
+10050,Regret-3 Repair (Smart Packing),Repair,12.0471,420.0000,35
+10200,EnergyCriticalRemoval,Destroy,13.0634,513.0000,36
+10200,Route Merging Destroy,Destroy,12.0446,324.0000,27
+10200,TimeSlackDestroy,Destroy,12.0551,336.0000,28
+10200,Random Removal,Destroy,12.4942,405.0000,32
+10200,VehicleReductionAwareDestroy,Destroy,11.8388,360.0000,27
+10200,ChargingAwareRouteBuilder,Repair,12.6541,506.0000,36
+10200,Adaptive Insertion,Repair,12.0714,344.0000,29
+10200,Greedy Energy Insertion (Enhanced),Repair,11.9619,353.0000,28
+10200,Smart Station Repair,Repair,12.9344,507.0000,38
+10200,Regret-3 Repair (Smart Packing),Repair,12.0400,228.0000,19
+10350,EnergyCriticalRemoval,Destroy,13.2414,448.0000,36
+10350,Route Merging Destroy,Destroy,12.0379,324.0000,27
+10350,TimeSlackDestroy,Destroy,12.0469,348.0000,29
+10350,Random Removal,Destroy,12.5185,312.0000,26
+10350,VehicleReductionAwareDestroy,Destroy,12.0630,382.0000,32
+10350,ChargingAwareRouteBuilder,Repair,12.8643,298.0000,26
+10350,Adaptive Insertion,Repair,12.0400,368.0000,31
+10350,Greedy Energy Insertion (Enhanced),Repair,12.0587,368.0000,31
+10350,Smart Station Repair,Repair,12.9956,372.0000,28
+10350,Regret-3 Repair (Smart Packing),Repair,12.0340,408.0000,34
+10500,EnergyCriticalRemoval,Destroy,13.1218,497.0000,42
+10500,Route Merging Destroy,Destroy,12.0322,300.0000,25
+10500,TimeSlackDestroy,Destroy,12.0398,360.0000,30
+10500,Random Removal,Destroy,12.4407,360.0000,30
+10500,VehicleReductionAwareDestroy,Destroy,12.0441,276.0000,23
+10500,ChargingAwareRouteBuilder,Repair,12.6539,409.0000,33
+10500,Adaptive Insertion,Repair,12.0146,294.0000,25
+10500,Greedy Energy Insertion (Enhanced),Repair,12.0305,344.0000,29
+10500,Smart Station Repair,Repair,13.0391,398.0000,34
+10500,Regret-3 Repair (Smart Packing),Repair,12.0289,348.0000,29
+10650,EnergyCriticalRemoval,Destroy,12.9286,380.0000,31
+10650,Route Merging Destroy,Destroy,12.0274,329.0000,26
+10650,TimeSlackDestroy,Destroy,12.0339,437.0000,35
+10650,Random Removal,Destroy,12.3746,451.0000,36
+10650,VehicleReductionAwareDestroy,Destroy,12.0375,273.0000,22
+10650,ChargingAwareRouteBuilder,Repair,12.6149,483.0000,33
+10650,Adaptive Insertion,Repair,11.9764,320.0000,27
+10650,Greedy Energy Insertion (Enhanced),Repair,12.0053,376.0000,32
+10650,Smart Station Repair,Repair,12.8391,379.0000,32
+10650,Regret-3 Repair (Smart Packing),Repair,12.0246,312.0000,26
+10800,EnergyCriticalRemoval,Destroy,12.8280,501.0000,40
+10800,Route Merging Destroy,Destroy,12.1214,322.0000,27
+10800,TimeSlackDestroy,Destroy,12.1016,294.0000,25
+10800,Random Removal,Destroy,12.3976,308.0000,26
+10800,VehicleReductionAwareDestroy,Destroy,12.0933,380.0000,32
+10800,ChargingAwareRouteBuilder,Repair,12.9181,421.0000,35
+10800,Adaptive Insertion,Repair,11.9577,325.0000,26
+10800,Greedy Energy Insertion (Enhanced),Repair,11.9670,354.0000,30
+10800,Smart Station Repair,Repair,12.6898,359.0000,30
+10800,Regret-3 Repair (Smart Packing),Repair,12.0209,346.0000,29
+10950,EnergyCriticalRemoval,Destroy,12.7825,444.0000,29
+10950,Route Merging Destroy,Destroy,12.0921,317.0000,25
+10950,TimeSlackDestroy,Destroy,12.0504,376.0000,32
+10950,Random Removal,Destroy,12.3149,449.0000,36
+10950,VehicleReductionAwareDestroy,Destroy,12.0605,371.0000,28
+10950,ChargingAwareRouteBuilder,Repair,12.7847,450.0000,28
+10950,Adaptive Insertion,Repair,12.0391,380.0000,30
+10950,Greedy Energy Insertion (Enhanced),Repair,11.9419,433.0000,36
+10950,Smart Station Repair,Repair,12.5813,360.0000,28
+10950,Regret-3 Repair (Smart Packing),Repair,12.0074,334.0000,28
+11100,EnergyCriticalRemoval,Destroy,13.1617,331.0000,25
+11100,Route Merging Destroy,Destroy,12.1803,286.0000,24
+11100,TimeSlackDestroy,Destroy,12.0053,368.0000,28
+11100,Random Removal,Destroy,12.3385,529.0000,39
+11100,VehicleReductionAwareDestroy,Destroy,12.2389,394.0000,34
+11100,ChargingAwareRouteBuilder,Repair,13.2777,465.0000,35
+11100,Adaptive Insertion,Repair,12.1332,280.0000,24
+11100,Greedy Energy Insertion (Enhanced),Repair,11.9548,350.0000,30
+11100,Smart Station Repair,Repair,12.6227,537.0000,38
+11100,Regret-3 Repair (Smart Packing),Repair,11.9956,276.0000,23
+11250,EnergyCriticalRemoval,Destroy,13.1734,414.0000,30
+11250,Route Merging Destroy,Destroy,12.1407,397.0000,32
+11250,TimeSlackDestroy,Destroy,12.1760,400.0000,34
+11250,Random Removal,Destroy,12.5223,314.0000,27
+11250,VehicleReductionAwareDestroy,Destroy,12.1413,354.0000,27
+11250,ChargingAwareRouteBuilder,Repair,13.2789,415.0000,35
+11250,Adaptive Insertion,Repair,12.0632,392.0000,30
+11250,Greedy Energy Insertion (Enhanced),Repair,11.9116,301.0000,24
+11250,Smart Station Repair,Repair,12.8490,394.0000,31
+11250,Regret-3 Repair (Smart Packing),Repair,11.9962,377.0000,30
+11400,EnergyCriticalRemoval,Destroy,13.2674,444.0000,32
+11400,Route Merging Destroy,Destroy,12.1805,308.0000,26
+11400,TimeSlackDestroy,Destroy,12.1143,573.0000,43
+11400,Random Removal,Destroy,12.3884,302.0000,26
+11400,VehicleReductionAwareDestroy,Destroy,12.2868,298.0000,23
+11400,ChargingAwareRouteBuilder,Repair,13.0656,392.0000,27
+11400,Adaptive Insertion,Repair,12.2138,373.0000,30
+11400,Greedy Energy Insertion (Enhanced),Repair,12.0061,431.0000,36
+11400,Smart Station Repair,Repair,12.8281,369.0000,27
+11400,Regret-3 Repair (Smart Packing),Repair,12.0818,360.0000,30
+11550,EnergyCriticalRemoval,Destroy,13.3586,465.0000,29
+11550,Route Merging Destroy,Destroy,12.1304,284.0000,24
+11550,TimeSlackDestroy,Destroy,12.2960,462.0000,39
+11550,Random Removal,Destroy,12.2725,366.0000,31
+11550,VehicleReductionAwareDestroy,Destroy,12.3873,338.0000,27
+11550,ChargingAwareRouteBuilder,Repair,13.2836,430.0000,34
+11550,Adaptive Insertion,Repair,12.2467,276.0000,24
+11550,Greedy Energy Insertion (Enhanced),Repair,12.0010,468.0000,40
+11550,Smart Station Repair,Repair,12.9539,411.0000,28
+11550,Regret-3 Repair (Smart Packing),Repair,12.0695,330.0000,24
+11700,EnergyCriticalRemoval,Destroy,13.7600,227.0000,19
+11700,Route Merging Destroy,Destroy,12.0858,292.0000,25
+11700,TimeSlackDestroy,Destroy,12.2285,440.0000,37
+11700,Random Removal,Destroy,12.2026,410.0000,35
+11700,VehicleReductionAwareDestroy,Destroy,12.4069,420.0000,34
+11700,ChargingAwareRouteBuilder,Repair,13.1881,345.0000,29
+11700,Adaptive Insertion,Repair,12.1347,306.0000,27
+11700,Greedy Energy Insertion (Enhanced),Repair,11.9559,395.0000,32
+11700,Smart Station Repair,Repair,13.2126,409.0000,34
+11700,Regret-3 Repair (Smart Packing),Repair,12.3216,334.0000,28
+11850,EnergyCriticalRemoval,Destroy,13.4881,551.0000,41
+11850,Route Merging Destroy,Destroy,12.0250,284.0000,24
+11850,TimeSlackDestroy,Destroy,12.1780,402.0000,34
+11850,Random Removal,Destroy,12.1293,244.0000,21
+11850,VehicleReductionAwareDestroy,Destroy,12.3988,370.0000,30
+11850,ChargingAwareRouteBuilder,Repair,12.9944,342.0000,28
+11850,Adaptive Insertion,Repair,12.0145,404.0000,32
+11850,Greedy Energy Insertion (Enhanced),Repair,12.0140,365.0000,30
+11850,Smart Station Repair,Repair,13.0351,368.0000,29
+11850,Regret-3 Repair (Smart Packing),Repair,12.2627,372.0000,31
+12000,EnergyCriticalRemoval,Destroy,13.4807,354.0000,24
+12000,Route Merging Destroy,Destroy,11.9962,402.0000,34
+12000,TimeSlackDestroy,Destroy,12.1248,278.0000,24
+12000,Random Removal,Destroy,12.0528,364.0000,31
+12000,VehicleReductionAwareDestroy,Destroy,12.3890,416.0000,37
+12000,ChargingAwareRouteBuilder,Repair,12.8774,340.0000,30
+12000,Adaptive Insertion,Repair,12.1061,266.0000,23
+12000,Greedy Energy Insertion (Enhanced),Repair,12.0369,348.0000,30
+12000,Smart Station Repair,Repair,12.9833,338.0000,27
+12000,Regret-3 Repair (Smart Packing),Repair,12.2233,522.0000,40
+12150,EnergyCriticalRemoval,Destroy,13.6711,466.0000,35
+12150,Route Merging Destroy,Destroy,11.9703,362.0000,31
+12150,TimeSlackDestroy,Destroy,12.0436,296.0000,25
+12150,Random Removal,Destroy,12.0061,373.0000,30
+12150,VehicleReductionAwareDestroy,Destroy,12.2172,306.0000,29
+12150,ChargingAwareRouteBuilder,Repair,12.6457,362.0000,29
+12150,Adaptive Insertion,Repair,12.0249,274.0000,24
+12150,Greedy Energy Insertion (Enhanced),Repair,11.9714,306.0000,27
+12150,Smart Station Repair,Repair,12.9136,363.0000,32
+12150,Regret-3 Repair (Smart Packing),Repair,12.3473,498.0000,38
+12300,EnergyCriticalRemoval,Destroy,13.6176,414.0000,30
+12300,Route Merging Destroy,Destroy,11.9264,286.0000,24
+12300,TimeSlackDestroy,Destroy,12.0131,458.0000,35
+12300,Random Removal,Destroy,12.0702,348.0000,29
+12300,VehicleReductionAwareDestroy,Destroy,11.9673,371.0000,32
+12300,ChargingAwareRouteBuilder,Repair,12.6213,411.0000,31
+12300,Adaptive Insertion,Repair,11.9337,435.0000,36
+12300,Greedy Energy Insertion (Enhanced),Repair,11.8757,280.0000,24
+12300,Smart Station Repair,Repair,12.6781,367.0000,27
+12300,Regret-3 Repair (Smart Packing),Repair,12.4610,384.0000,32
+12450,EnergyCriticalRemoval,Destroy,13.6449,452.0000,29
+12450,Route Merging Destroy,Destroy,11.9249,414.0000,35
+12450,TimeSlackDestroy,Destroy,12.1740,320.0000,28
+12450,Random Removal,Destroy,12.0597,366.0000,31
+12450,VehicleReductionAwareDestroy,Destroy,11.9113,292.0000,27
+12450,ChargingAwareRouteBuilder,Repair,12.7168,274.0000,20
+12450,Adaptive Insertion,Repair,11.9561,310.0000,27
+12450,Greedy Energy Insertion (Enhanced),Repair,11.8443,368.0000,33
+12450,Smart Station Repair,Repair,12.8153,512.0000,38
+12450,Regret-3 Repair (Smart Packing),Repair,12.3918,380.0000,32
+12600,EnergyCriticalRemoval,Destroy,13.9361,475.0000,37
+12600,Route Merging Destroy,Destroy,11.9105,306.0000,26
+12600,TimeSlackDestroy,Destroy,12.0622,434.0000,37
+12600,Random Removal,Destroy,12.0217,377.0000,30
+12600,VehicleReductionAwareDestroy,Destroy,11.7468,235.0000,20
+12600,ChargingAwareRouteBuilder,Repair,12.8643,441.0000,34
+12600,Adaptive Insertion,Repair,11.8849,308.0000,27
+12600,Greedy Energy Insertion (Enhanced),Repair,11.7404,349.0000,28
+12600,Smart Station Repair,Repair,12.9140,345.0000,29
+12600,Regret-3 Repair (Smart Packing),Repair,12.3143,384.0000,32
+12750,EnergyCriticalRemoval,Destroy,13.7714,412.0000,39
+12750,Route Merging Destroy,Destroy,11.8893,409.0000,33
+12750,TimeSlackDestroy,Destroy,12.0123,324.0000,24
+12750,Random Removal,Destroy,12.1034,409.0000,33
+12750,VehicleReductionAwareDestroy,Destroy,11.7473,255.0000,21
+12750,ChargingAwareRouteBuilder,Repair,12.8802,566.0000,43
+12750,Adaptive Insertion,Repair,11.8133,321.0000,26
+12750,Greedy Energy Insertion (Enhanced),Repair,11.8490,230.0000,20
+12750,Smart Station Repair,Repair,12.7614,392.0000,36
+12750,Regret-3 Repair (Smart Packing),Repair,12.2672,300.0000,25
+12900,EnergyCriticalRemoval,Destroy,13.2903,437.0000,34
+12900,Route Merging Destroy,Destroy,11.9650,364.0000,31
+12900,TimeSlackDestroy,Destroy,12.2354,322.0000,27
+12900,Random Removal,Destroy,12.1470,386.0000,29
+12900,VehicleReductionAwareDestroy,Destroy,11.8066,326.0000,29
+12900,ChargingAwareRouteBuilder,Repair,12.9226,434.0000,35
+12900,Adaptive Insertion,Repair,11.8932,462.0000,40
+12900,Greedy Energy Insertion (Enhanced),Repair,11.7966,248.0000,21
+12900,Smart Station Repair,Repair,12.4805,357.0000,26
+12900,Regret-3 Repair (Smart Packing),Repair,12.2271,334.0000,28
+13050,EnergyCriticalRemoval,Destroy,13.2247,495.0000,34
+13050,Route Merging Destroy,Destroy,11.9315,382.0000,32
+13050,TimeSlackDestroy,Destroy,12.1890,329.0000,26
+13050,Random Removal,Destroy,12.3215,351.0000,28
+13050,VehicleReductionAwareDestroy,Destroy,11.7218,410.0000,30
+13050,ChargingAwareRouteBuilder,Repair,12.8442,544.0000,37
+13050,Adaptive Insertion,Repair,11.8418,315.0000,26
+13050,Greedy Energy Insertion (Enhanced),Repair,11.7986,352.0000,30
+13050,Smart Station Repair,Repair,12.6681,300.0000,19
+13050,Regret-3 Repair (Smart Packing),Repair,12.1823,456.0000,38
+13200,EnergyCriticalRemoval,Destroy,13.4248,412.0000,33
+13200,Route Merging Destroy,Destroy,11.9324,367.0000,29
+13200,TimeSlackDestroy,Destroy,12.2587,346.0000,29
+13200,Random Removal,Destroy,12.3537,388.0000,33
+13200,VehicleReductionAwareDestroy,Destroy,12.0136,304.0000,26
+13200,ChargingAwareRouteBuilder,Repair,13.1230,347.0000,29
+13200,Adaptive Insertion,Repair,11.8828,364.0000,31
+13200,Greedy Energy Insertion (Enhanced),Repair,11.7888,320.0000,27
+13200,Smart Station Repair,Repair,13.1363,378.0000,29
+13200,Regret-3 Repair (Smart Packing),Repair,12.1550,408.0000,34
+13350,EnergyCriticalRemoval,Destroy,13.2838,431.0000,33
+13350,Route Merging Destroy,Destroy,12.0408,333.0000,26
+13350,TimeSlackDestroy,Destroy,12.2096,312.0000,26
+13350,Random Removal,Destroy,12.2642,543.0000,40
+13350,VehicleReductionAwareDestroy,Destroy,11.9654,300.0000,25
+13350,ChargingAwareRouteBuilder,Repair,12.9494,447.0000,33
+13350,Adaptive Insertion,Repair,11.8617,338.0000,25
+13350,Greedy Energy Insertion (Enhanced),Repair,11.7982,346.0000,29
+13350,Smart Station Repair,Repair,13.1210,452.0000,35
+13350,Regret-3 Repair (Smart Packing),Repair,12.1317,336.0000,28
+13500,EnergyCriticalRemoval,Destroy,13.2503,501.0000,38
+13500,Route Merging Destroy,Destroy,12.1559,274.0000,23
+13500,TimeSlackDestroy,Destroy,12.1781,466.0000,39
+13500,Random Removal,Destroy,12.4609,300.0000,25
+13500,VehicleReductionAwareDestroy,Destroy,11.9706,355.0000,25
+13500,ChargingAwareRouteBuilder,Repair,13.0388,291.0000,23
+13500,Adaptive Insertion,Repair,12.1104,405.0000,33
+13500,Greedy Energy Insertion (Enhanced),Repair,11.8182,551.0000,41
+13500,Smart Station Repair,Repair,13.0900,361.0000,29
+13500,Regret-3 Repair (Smart Packing),Repair,12.1120,288.0000,24
+13650,EnergyCriticalRemoval,Destroy,13.2404,488.0000,40
+13650,Route Merging Destroy,Destroy,12.1194,345.0000,27
+13650,TimeSlackDestroy,Destroy,12.1437,390.0000,29
+13650,Random Removal,Destroy,12.3917,252.0000,21
+13650,VehicleReductionAwareDestroy,Destroy,12.3050,354.0000,33
+13650,ChargingAwareRouteBuilder,Repair,12.9808,438.0000,32
+13650,Adaptive Insertion,Repair,12.1348,334.0000,29
+13650,Greedy Energy Insertion (Enhanced),Repair,12.0613,314.0000,27
+13650,Smart Station Repair,Repair,12.9937,419.0000,35
+13650,Regret-3 Repair (Smart Packing),Repair,12.0952,324.0000,27
+13800,EnergyCriticalRemoval,Destroy,13.0844,463.0000,32
+13800,Route Merging Destroy,Destroy,12.2182,336.0000,28
+13800,TimeSlackDestroy,Destroy,12.3394,436.0000,33
+13800,Random Removal,Destroy,12.3330,393.0000,31
+13800,VehicleReductionAwareDestroy,Destroy,12.0683,348.0000,26
+13800,ChargingAwareRouteBuilder,Repair,13.0868,481.0000,32
+13800,Adaptive Insertion,Repair,12.0421,468.0000,36
+13800,Greedy Energy Insertion (Enhanced),Repair,11.9965,267.0000,21
+13800,Smart Station Repair,Repair,12.8404,448.0000,35
+13800,Regret-3 Repair (Smart Packing),Repair,12.0809,312.0000,26
+13950,EnergyCriticalRemoval,Destroy,13.2920,399.0000,33
+13950,Route Merging Destroy,Destroy,12.1855,369.0000,29
+13950,TimeSlackDestroy,Destroy,12.4703,324.0000,27
+13950,Random Removal,Destroy,12.3846,432.0000,36
+13950,VehicleReductionAwareDestroy,Destroy,12.2658,300.0000,25
+13950,ChargingAwareRouteBuilder,Repair,13.3785,361.0000,29
+13950,Adaptive Insertion,Repair,12.1858,319.0000,25
+13950,Greedy Energy Insertion (Enhanced),Repair,12.1042,380.0000,32
+13950,Smart Station Repair,Repair,12.8343,380.0000,32
+13950,Regret-3 Repair (Smart Packing),Repair,12.0688,384.0000,32

@@ -1,0 +1,201 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[T5]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese,english]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Báo cáo Phân tích Bóc tách (Ablation Study)\\ Các Bộ dữ liệu Quy mô Lớn (Scale \_21)}
+\author{Báo cáo Tự động}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\selectlanguage{vietnamese}
+
+\begin{abstract}
+Báo cáo này tập trung phân tích kết quả của thuật toán MO-ALNS (phiên bản FULL và No-EQ) giải bài toán EVRPTW-PR trên các bộ dữ liệu quy mô lớn (tất cả các instances có đuôi \texttt{\_21}, tương ứng với 100 khách hàng và 21 trạm sạc). Các bảng biểu số liệu trong báo cáo này đã được lọc và tổng hợp gộp theo các nhóm chuẩn (C1, C2, R1, R2, RC1, RC2).
+\end{abstract}
+
+\section{Thiết lập Thực nghiệm}
+Bảng dưới đây trình bày cấu hình protocol thử nghiệm chung. Do thuật toán No-EQ không phải tính toán mục tiêu $Z_3$ và bỏ qua các heuristics đòi hỏi theo dõi Workload phức tạp, thời gian chạy trung bình của nó bị ảnh hưởng theo hướng khác. Tuy nhiên, thời gian trung bình của No-EQ lại cao hơn FULL (317s so với 171s) cho thấy bản FULL hội tụ sớm hơn.
+
+\begin{table}[H]
+    \centering
+    \caption{Protocol Thử nghiệm Tổng quan}
+    \input{latex_tables/table1_protocol.tex}
+\end{table}
+
+\section{Khả năng Giải quyết Phương tiện (Fleet Attainment)}
+Thuật toán MO-ALNS giải EVRPTW-PR tối ưu hóa số lượng xe $Z_1$ như là mục tiêu quan trọng nhất. Bảng dưới đây so sánh số lượng xe tốt nhất (Best $Z_1$) tìm được bởi hai phiên bản FULL và No-EQ so với kết quả tốt nhất từng được công bố (BKS - Best Known Solutions) từ \textit{Keskin \& Çatay (2016)} cho các trường hợp trạm sạc một phần (Partial Recharge - $q=free$). 
+
+Kết quả cho thấy cả hai thuật toán đều bám sát và phần lớn tìm được nghiệm có số xe khớp hoàn toàn với BKS.
+
+\begin{table}[H]
+    \centering
+    \caption{So sánh Số lượng Xe (Best $Z_1$) với BKS (Keskin \& Çatay 2016)}
+    \input{latex_tables/table2_bks_comparison.tex}
+\end{table}
+
+% Bên cạnh đó, xét về tỷ lệ đạt được số lượng xe mục tiêu chung (Success Rate - SR) trong 10 lần chạy, cả hai phiên bản đều thể hiện độ ổn định cực kỳ cao (trung bình SR trên 94\%).
+
+\begin{table}[H]
+    \centering
+    \caption{Tỷ lệ Success Rate (SR \%) đạt Common Fleet Target (chỉ tính quy mô \_21)}
+    \input{latex_tables/table3_attainment.tex}
+\end{table}
+
+\section{Chất lượng Nghiệm Tập trung Quãng đường ($s^{TD}$)}
+Bảng dưới đây so sánh các giá trị hàm mục tiêu (Quãng đường $Z_2$, Độ chênh lệch Gini $Z_3$, Thời gian lớn nhất $Z_4$) đối với nghiệm $s^{TD}$ (tập trung vào khoảng cách) của hai thuật toán. Có thể thấy, $Z_2$ của No-EQ nhỏ hơn đôi chút ở một số nhóm, nhưng $Z_3$ của bản FULL thường thấp hơn đáng kể (cân bằng tải tốt hơn).
+
+\begin{table}[H]
+    \centering
+    \caption{So sánh Hàm Mục tiêu của Nghiệm TD (Trung bình theo nhóm \_21)}
+    \input{latex_tables/table4_td_solutions.tex}
+\end{table}
+
+\section{Không gian Tập Pareto (Hypervolume)}
+Việc tích hợp mục tiêu $Z_3$ giúp thuật toán FULL giữ lại được một tập đa dạng các nghiệm không bị thống trị. Điều này dẫn tới giá trị HV2D và HV3D của bản FULL tốt hơn rệt.
+
+\begin{table}[H]
+    \centering
+    \caption{Hypervolume (HV2D và HV3D) Trung bình theo Nhóm (\_21)}
+    \input{latex_tables/table5_hypervolume.tex}
+\end{table}
+
+\section{Kiểm định Thống kê (Wilcoxon Signed-Rank)}
+Kiểm định thống kê Wilcoxon được thực hiện giữa cặp kết quả FULL - No-EQ. Các giá trị $p < 0.05$ cho thấy sự khác biệt có ý nghĩa thống kê. Bản FULL gia tăng đáng kể Hypervolume và giảm Gini, đổi lại $Z_2$ tăng nhẹ.
+
+\begin{table}[H]
+    \centering
+    \caption{Kiểm định Wilcoxon (FULL - No-EQ) trên các instance \_21}
+    \input{latex_tables/table6_ablation.tex}
+\end{table}
+
+\section{Đánh giá Route-Level Fairness}
+Dù quan sát Z3 tổng thể có cải thiện, nhưng cần xem xét các chỉ số phân tán ở quy mô từng tuyến xe. Trung vị của Gini, Min/Max/Mean Gini, Tỷ lệ lớn nhất $\rho_{max}$, Hệ số biến thiên CV, và Chỉ số Jain giữa hai phiên bản được thống kê chi tiết theo từng nhóm dưới đây. 
+
+\begin{table}[H]
+    \centering
+    \caption{Các Chỉ số Cân bằng Tải Nội tại (Route Fairness) phân rã theo nhóm quy mô \_21}
+    \resizebox{\textwidth}{!}{
+    \input{latex_tables/table7_route_fairness.tex}
+    }
+\end{table}
+
+\section{Chi phí Tính toán (Runtime Overhead)}
+Phân tích chi phí tính toán cho thấy phiên bản FULL tối ưu hơn hẳn No-EQ trên nhiều nhóm dữ liệu \_21. Tỷ lệ Overhead đa phần mang dấu âm, phản ánh việc bản FULL chạy nhanh hơn.
+
+\begin{table}[H]
+    \centering
+    \caption{Thời gian Tính toán Trung bình (s) và Overhead (\%)}
+    \input{latex_tables/table8_runtime.tex}
+\end{table}
+
+\section{Đồ thị Hội tụ và Tối ưu (Figures)}
+Nhờ thư mục lưu trữ artifacts, chúng ta có các biểu đồ so sánh:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{fig_convergence_c101_21_BestDistance.png}
+    \includegraphics[width=0.45\textwidth]{fig_convergence_c101_21_BestWorkloadGini.png}
+    \caption{Biểu đồ hội tụ Quãng đường và Độ cân bằng tải của c101\_21}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{fig_convergence_r101_21_BestDistance.png}
+    \includegraphics[width=0.45\textwidth]{fig_convergence_r101_21_BestWorkloadGini.png}
+    \caption{Biểu đồ hội tụ Quãng đường và Độ cân bằng tải của r101\_21}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{fig_convergence_rc101_21_BestDistance.png}
+    \includegraphics[width=0.45\textwidth]{fig_convergence_rc101_21_BestWorkloadGini.png}
+    \caption{Biểu đồ hội tụ Quãng đường và Độ cân bằng tải của rc101\_21}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{fig_budget_equity_curve.png}
+    \caption{Đường cong Budgeted Equity tổng quan}
+\end{figure}
+
+\section{Phân tích Độ dài Route (Case Studies: c101\_21, r101\_21, rc101\_21)}
+
+Để hiểu rõ hơn sự khác biệt giữa FULL và No-EQ ở cấp độ từng tuyến xe, chúng tôi phân tích chi tiết 3 instance đại diện \texttt{c101\_21}, \texttt{r101\_21} và \texttt{rc101\_21} với nghiệm tốt nhất (Best $Z_1$ $\to$ Best $Z_2$) của mỗi phiên bản. Bảng~\ref{tab:route_lengths} trình bày độ dài từng route (TotalTime\_H) đã được sắp xếp tăng dần cho \texttt{c101\_21}.
+
+\begin{table}[H]
+    \centering
+    \caption{Độ dài từng route sắp xếp tăng dần --- c101\_21 (FULL vs No-EQ)}
+    \label{tab:route_lengths}
+    \small
+    \begin{tabular}{ccc|ccc}
+        \toprule
+        \multicolumn{3}{c|}{\textbf{FULL} ($Z_1$=12, $Z_2$=1044.50, $Z_3$=0.0921)} &
+        \multicolumn{3}{c}{\textbf{No-EQ} ($Z_1$=12, $Z_2$=1043.45, $Z_3$=0.1078)} \\
+        \textbf{Route \#} & \textbf{TotalTime} & \textbf{Xe phục vụ} &
+        \textbf{Route \#} & \textbf{TotalTime} & \textbf{Xe phục vụ} \\
+        \midrule
+        1  & 588.58  & 6 KH  & 1  & 588.58  & 6 KH \\
+        2  & 900.62  & 9 KH  & 2  & 900.62  & 9 KH \\
+        3  & 1035.29 & 6 KH  & 3  & 1035.29 & 6 KH \\
+        4  & 1059.74 & 10 KH & 4  & 1059.74 & 10 KH \\
+        5  & 1065.97 & 7 KH  & 5  & 1065.97 & 7 KH \\
+        6  & 1135.79 & 10 KH & 6  & 1135.79 & 10 KH \\
+        7  & 1147.27 & 10 KH & 7  & 1155.42 & 6 KH \\
+        8  & 1153.21 & 7 KH  & 8  & 1157.04 & 11 KH \\
+        9  & 1162.81 & 8 KH  & 9  & 1162.81 & 8 KH \\
+        10 & 1165.27 & 11 KH & 10 & 1165.27 & 11 KH \\
+        11 & 1186.56 & 8 KH  & 11 & 1186.56 & 8 KH \\
+        12 & 1199.38 & 8 KH  & 12 & 1199.38 & 8 KH \\
+        \midrule
+        \textbf{Makespan} & \textbf{1199.38} & & \textbf{Makespan} & \textbf{1199.38} & \\
+        \textbf{Min route} & \textbf{588.58}  & & \textbf{Min route} & \textbf{588.58}  & \\
+        \textbf{Time gap}  & \textbf{610.80}  & & \textbf{Time gap}  & \textbf{610.80}  & \\
+        \textbf{Mean}      & \textbf{1066.71} & & \textbf{Mean}      & \textbf{1067.71} & \\
+        \textbf{Std}       & \textbf{165.05}  & & \textbf{Std}       & \textbf{165.56}  & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\textbf{Nhận xét:}
+\begin{itemize}
+    \item \textbf{Với c101\_21 và r101\_21:} Cả hai phiên bản đều dùng số lượng xe như nhau (12 xe cho c101 và 19 xe cho r101) với Makespan và Time gap giống hệt nhau. Time gap khá lớn (610.80 ở c101 và 63.02 ở r101). Sự khác biệt chủ yếu nằm ở việc phân bổ các route ở giữa, giúp bản FULL có chỉ số Gini $Z_3$ thấp hơn (công bằng hơn).
+    \item \textbf{Với rc101\_21:} Bản No-EQ có Time gap nhỏ hơn (71.06 so với 115.73 của FULL), do route ngắn nhất của No-EQ dài hơn. Tuy nhiên, nếu xét toàn cục bằng chỉ số Gini $Z_3$, bản FULL vẫn vượt trội hơn (0.1098 so với 0.1226). Điều này cho thấy Gini phản ánh mức độ bình đẳng của toàn bộ các xe tốt hơn là chỉ nhìn vào khoảng cách Max - Min (Time gap).
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{fig_route_length_comparison_c101_21.png}
+    \caption{So sánh độ dài route FULL vs No-EQ trên instance c101\_21}
+    \label{fig:route_length_c101}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{fig_route_length_comparison_r101_21.png}
+    \caption{So sánh độ dài route FULL vs No-EQ trên instance r101\_21}
+    \label{fig:route_length_r101}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{fig_route_length_comparison_rc101_21.png}
+    \caption{So sánh độ dài route FULL vs No-EQ trên instance rc101\_21}
+    \label{fig:route_length_rc101}
+\end{figure}
+
+
+\section{Kết luận}
+Phiên bản FULL của MO-ALNS đã thể hiện ưu thế vượt trội khi mở rộng không gian nghiệm tập Pareto, cải thiện độ cân bằng khối lượng công việc, đồng thời tiết kiệm thời gian chạy (chạy nhanh hơn trên tập các bộ dữ liệu lớn \_21). Sự suy giảm nhẹ về quãng đường $Z_2$ là chi phí chấp nhận được để đạt được sự công bằng trong EVRPTW-PR.
+
+\end{document}

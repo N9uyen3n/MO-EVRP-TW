@@ -1,0 +1,348 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{478EDCEA-7EC6-39D4-BE82-BE953CDC87B8}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>alns_lib</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Work\SLSCM-LaB\24092025\untitled\build\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">alns_lib.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">alns_lib</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Work\SLSCM-LaB\24092025\untitled\build\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">alns_lib.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">alns_lib</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Work\SLSCM-LaB\24092025\untitled\build\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">alns_lib.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">alns_lib</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Work\SLSCM-LaB\24092025\untitled\build\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">alns_lib.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">alns_lib</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="MinSizeRel"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="RelWithDebInfo"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Work\SLSCM-LaB\24092025\untitled\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Work\SLSCM-LaB\24092025\untitled\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/Work/SLSCM-LaB/24092025/untitled/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"D:\Program Files\CMake\bin\cmake.exe" -SD:/Work/SLSCM-LaB/24092025/untitled -BD:/Work/SLSCM-LaB/24092025/untitled/build --check-stamp-file D:/Work/SLSCM-LaB/24092025/untitled/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCXXInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeLanguageInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeRCInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCXXLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCommonLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeCXXCompiler.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeRCCompiler.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/Work/SLSCM-LaB/24092025/untitled/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"D:\Program Files\CMake\bin\cmake.exe" -SD:/Work/SLSCM-LaB/24092025/untitled -BD:/Work/SLSCM-LaB/24092025/untitled/build --check-stamp-file D:/Work/SLSCM-LaB/24092025/untitled/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCXXInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeLanguageInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeRCInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCXXLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCommonLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeCXXCompiler.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeRCCompiler.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/Work/SLSCM-LaB/24092025/untitled/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"D:\Program Files\CMake\bin\cmake.exe" -SD:/Work/SLSCM-LaB/24092025/untitled -BD:/Work/SLSCM-LaB/24092025/untitled/build --check-stamp-file D:/Work/SLSCM-LaB/24092025/untitled/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCXXInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeLanguageInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeRCInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCXXLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCommonLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeCXXCompiler.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeRCCompiler.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/Work/SLSCM-LaB/24092025/untitled/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"D:\Program Files\CMake\bin\cmake.exe" -SD:/Work/SLSCM-LaB/24092025/untitled -BD:/Work/SLSCM-LaB/24092025/untitled/build --check-stamp-file D:/Work/SLSCM-LaB/24092025/untitled/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCXXInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeGenericSystem.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeInitializeConfigs.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeLanguageInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeRCInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\CMakeSystemSpecificInitialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Compiler\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCXXLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Internal\CMakeCommonLinkerInformation.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Linker\MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Linker\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-Initialize.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows-MSVC.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\Windows.cmake;D:\Program Files\CMake\share\cmake-4.1\Modules\Platform\WindowsPaths.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeCXXCompiler.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeRCCompiler.cmake;D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\4.1.2\CMakeSystem.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\Work\SLSCM-LaB\24092025\untitled\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\ALNSSolver.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\LocalSearch.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\ParetoArchive.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\ScatterSearch.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\SolutionPool.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\EnergyCriticalRemoval.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\InefficientRouteRemoval.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\RandomRemoval.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\RandomRouteRemoval.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\RouteMergingDestroy.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\ShawDestroy.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\TargetedStationRemoval.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\TimeSlackDestroy.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\UnifiedCostDestroy.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\VehicleReductionAwareDestroy.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\destroy\WholeRouteDestroy.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\repair\AdaptiveInsertion.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\repair\ChargingAwareRouteBuilder.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\repair\GreedyEnergyInsertion.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\repair\ParetoFocusRepair.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\repair\RegretKRepair.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\repair\SmartStationRepair.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\repair\SmartTimeAwareStationRepair.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\alns\operators\repair\VehiclePackingRepair.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\app\AppController.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Customer.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Depot.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Instance.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Node.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Route.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Solution.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Solver.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Station.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\core\Vehicle.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\io\Parser.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\logger\ComprehensiveLogger.cpp" />
+    <ClCompile Include="D:\Work\SLSCM-LaB\24092025\untitled\src\utils\Utils.cpp" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="D:\Work\SLSCM-LaB\24092025\untitled\build\ZERO_CHECK.vcxproj">
+      <Project>{B25E24BC-42D6-3A7D-B31E-B383D8EAF2F1}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

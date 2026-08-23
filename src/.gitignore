@@ -1,0 +1,35 @@
+# CMake
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
+# Build output
+build/
+cmake-build-debug/
+cmake-build-release/
+logs_testLS3/
+bin/
+lib/
+*.exe
+*.dll
+*.so
+*.a
+*.lib
+*.pdb
+
+# IDE files
+.idea/
+*.suo
+*.user
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# Other
+*.log
+*.tmp
+*.temp

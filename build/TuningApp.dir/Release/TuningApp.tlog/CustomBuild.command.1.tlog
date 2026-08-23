@@ -1,0 +1,10 @@
+^D:\WORK\SLSCM-LAB\24092025\UNTITLED\CMAKELISTS.TXT
+setlocal
+"D:\Program Files\CMake\bin\cmake.exe" -SD:/Work/SLSCM-LaB/24092025/untitled -BD:/Work/SLSCM-LaB/24092025/untitled/build --check-stamp-file D:/Work/SLSCM-LaB/24092025/untitled/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

@@ -1,0 +1,259 @@
+{
+  "source_manifest": "artifacts\\alns_p5\\cache_20261020\\experiment\\manifest.json",
+  "iterations": 200,
+  "runs": 21,
+  "identical_groups": 6,
+  "solutions": 168,
+  "routes": 2070,
+  "invalid": 0,
+  "median_reduction_percent": 11.92886883638199,
+  "min_reduction_percent": 7.929956946398908,
+  "max_reduction_percent": 20.106564192366505,
+  "cases": {
+    "r104_21": {
+      "pairs": [
+        {
+          "seed": 1,
+          "before_seconds": 25.721618340999996,
+          "off_seconds": 25.03897942399999,
+          "on_seconds": 20.00450095299999,
+          "reduction_percent": 20.106564192366505,
+          "speedup": 1.2516672864186098,
+          "cache": {
+            "mode": 2,
+            "capacity": 4096,
+            "max_key_nodes": 512,
+            "requests": 159251,
+            "computations": 94620,
+            "successes": 422,
+            "failures": 94198,
+            "repeated_failures": 64631,
+            "hits": 64631,
+            "inserts": 94198,
+            "sessions": 77,
+            "capacity_clears": 14,
+            "peak_entries": 4096,
+            "oversized": 0
+          }
+        },
+        {
+          "seed": 2,
+          "before_seconds": 29.862484464000005,
+          "off_seconds": 29.412734340999975,
+          "on_seconds": 27.08031717099999,
+          "reduction_percent": 7.929956946398908,
+          "speedup": 1.0861296104942872,
+          "cache": {
+            "mode": 2,
+            "capacity": 4096,
+            "max_key_nodes": 512,
+            "requests": 161824,
+            "computations": 98668,
+            "successes": 414,
+            "failures": 98254,
+            "repeated_failures": 63156,
+            "hits": 63156,
+            "inserts": 98254,
+            "sessions": 84,
+            "capacity_clears": 15,
+            "peak_entries": 4096,
+            "oversized": 0
+          }
+        }
+      ],
+      "off_total_seconds": 54.451713764999965,
+      "on_total_seconds": 47.08481812399998,
+      "reduction_percent": 13.529226412953088,
+      "speedup": 1.1564601061344006,
+      "hits": 127787,
+      "requests": 321075,
+      "hit_percent": 39.79973526434634,
+      "diagnostic": {
+        "reconstruction_seconds": 14.826794785,
+        "reconstruction_ls_percent": 61.312391676121365,
+        "cache": {
+          "mode": 1,
+          "capacity": 4096,
+          "max_key_nodes": 512,
+          "requests": 159251,
+          "computations": 159251,
+          "successes": 422,
+          "failures": 158829,
+          "repeated_failures": 64631,
+          "hits": 0,
+          "inserts": 94198,
+          "sessions": 77,
+          "capacity_clears": 14,
+          "peak_entries": 4096,
+          "oversized": 0
+        }
+      }
+    },
+    "r101_21": {
+      "pairs": [
+        {
+          "seed": 1,
+          "before_seconds": 12.066555697000013,
+          "off_seconds": 13.452477242999976,
+          "on_seconds": 12.133708574000025,
+          "reduction_percent": 9.803165953588023,
+          "speedup": 1.1086863641859501,
+          "cache": {
+            "mode": 2,
+            "capacity": 4096,
+            "max_key_nodes": 512,
+            "requests": 61941,
+            "computations": 38759,
+            "successes": 303,
+            "failures": 38456,
+            "repeated_failures": 23182,
+            "hits": 23182,
+            "inserts": 38456,
+            "sessions": 96,
+            "capacity_clears": 2,
+            "peak_entries": 4096,
+            "oversized": 0
+          }
+        },
+        {
+          "seed": 2,
+          "before_seconds": 23.875554341999987,
+          "off_seconds": 23.206779600000004,
+          "on_seconds": 18.891517109000006,
+          "reduction_percent": 18.59483549798524,
+          "speedup": 1.2284232899931677,
+          "cache": {
+            "mode": 2,
+            "capacity": 4096,
+            "max_key_nodes": 512,
+            "requests": 290419,
+            "computations": 178811,
+            "successes": 905,
+            "failures": 177906,
+            "repeated_failures": 111608,
+            "hits": 111608,
+            "inserts": 177906,
+            "sessions": 90,
+            "capacity_clears": 18,
+            "peak_entries": 4096,
+            "oversized": 0
+          }
+        }
+      ],
+      "off_total_seconds": 36.65925684299998,
+      "on_total_seconds": 31.02522568300003,
+      "reduction_percent": 15.368645316866969,
+      "speedup": 1.1815951708962769,
+      "hits": 134790,
+      "requests": 352360,
+      "hit_percent": 38.253490748098535,
+      "diagnostic": {
+        "reconstruction_seconds": 2.651998949,
+        "reconstruction_ls_percent": 24.704254914187402,
+        "cache": {
+          "mode": 1,
+          "capacity": 4096,
+          "max_key_nodes": 512,
+          "requests": 61941,
+          "computations": 61941,
+          "successes": 303,
+          "failures": 61638,
+          "repeated_failures": 23182,
+          "hits": 0,
+          "inserts": 38456,
+          "sessions": 96,
+          "capacity_clears": 2,
+          "peak_entries": 4096,
+          "oversized": 0
+        }
+      }
+    },
+    "c109_21": {
+      "pairs": [
+        {
+          "seed": 1,
+          "before_seconds": 13.347045046999995,
+          "off_seconds": 13.496712677999994,
+          "on_seconds": 12.233551933000001,
+          "reduction_percent": 9.359025231817963,
+          "speedup": 1.1032538016692126,
+          "cache": {
+            "mode": 2,
+            "capacity": 4096,
+            "max_key_nodes": 512,
+            "requests": 37527,
+            "computations": 26418,
+            "successes": 243,
+            "failures": 26175,
+            "repeated_failures": 11109,
+            "hits": 11109,
+            "inserts": 26175,
+            "sessions": 90,
+            "capacity_clears": 0,
+            "peak_entries": 1909,
+            "oversized": 0
+          }
+        },
+        {
+          "seed": 2,
+          "before_seconds": 15.789445281999974,
+          "off_seconds": 15.032922113999973,
+          "on_seconds": 12.920109293999985,
+          "reduction_percent": 14.054571719175957,
+          "speedup": 1.163529020685697,
+          "cache": {
+            "mode": 2,
+            "capacity": 4096,
+            "max_key_nodes": 512,
+            "requests": 49271,
+            "computations": 32645,
+            "successes": 268,
+            "failures": 32377,
+            "repeated_failures": 16626,
+            "hits": 16626,
+            "inserts": 32377,
+            "sessions": 107,
+            "capacity_clears": 0,
+            "peak_entries": 3559,
+            "oversized": 0
+          }
+        }
+      ],
+      "off_total_seconds": 28.529634791999968,
+      "on_total_seconds": 25.153661226999986,
+      "reduction_percent": 11.833216897492992,
+      "speedup": 1.1342140030643413,
+      "hits": 27735,
+      "requests": 86798,
+      "hit_percent": 31.9535012327473,
+      "diagnostic": {
+        "reconstruction_seconds": 4.360963208,
+        "reconstruction_ls_percent": 34.63156081317407,
+        "cache": {
+          "mode": 1,
+          "capacity": 4096,
+          "max_key_nodes": 512,
+          "requests": 37527,
+          "computations": 37527,
+          "successes": 243,
+          "failures": 37284,
+          "repeated_failures": 11109,
+          "hits": 0,
+          "inserts": 26175,
+          "sessions": 90,
+          "capacity_clears": 0,
+          "peak_entries": 1909,
+          "oversized": 0
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Two seeds per case; not a statistical claim for all instances or long runs.",
+    "200 is the configured iteration budget, including adaptive search thresholds.",
+    "Charging repair disabled; deadline-bound subroutines can differ under wall-time budgets.",
+    "Observe runs have profiling enabled and are excluded from timing comparisons.",
+    "Cache stores heuristic failures, not proofs of route infeasibility.",
+    "Instance data immutable within each local search entry point."
+  ]
+}

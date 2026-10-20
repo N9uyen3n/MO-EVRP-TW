@@ -56,6 +56,7 @@ struct ALNSConfig {
   int localSearchIntensity = 30;
   bool useChargingRepairLS = false;
   bool profileLocalSearch = false;
+  ReconstructionCacheMode reconstructionCacheMode = ReconstructionCacheMode::Enabled;
   ChargingRepairBudget chargingRepairBudget;
   int chargingRepairTrialsPerLS = 8;
 
@@ -98,6 +99,7 @@ struct ALNSRunStatistics {
   long long totalMs = 0;
   ChargingRepairStatistics chargingRepair;
   LocalSearchProfile localSearchProfile;
+  ReconstructionCacheStatistics reconstructionCache;
 };
 
 // Lớp con trợ giúp để quản lý các toán tử và trọng số

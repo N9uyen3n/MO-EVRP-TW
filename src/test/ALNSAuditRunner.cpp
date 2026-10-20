@@ -9,7 +9,7 @@
 
 int main(int argc,char** argv) {
   try {
-    if(argc<5) throw std::runtime_error("Usage: ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1]");
+    if(argc<5) throw std::runtime_error("Usage: ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1] [reconstructionCache=0|1|2]");
     const std::filesystem::path output=argv[2];
     if(std::filesystem::exists(output)) throw std::runtime_error("Refusing to overwrite output directory");
     std::filesystem::create_directories(output);
@@ -23,6 +23,9 @@ int main(int argc,char** argv) {
     const int profileLS=argc>7?std::stoi(argv[7]):0;
     audit::require(profileLS==0 || profileLS==1,"profileLS must be 0 or 1");
     cfg.profileLocalSearch=profileLS==1;
+    const int cacheMode=argc>8?std::stoi(argv[8]):static_cast<int>(cfg.reconstructionCacheMode);
+    audit::require(cacheMode>=0 && cacheMode<=2,"reconstructionCache must be 0 (off), 1 (observe), or 2 (enabled)");
+    cfg.reconstructionCacheMode=static_cast<alns::ReconstructionCacheMode>(cacheMode);
     cfg.decayParameter=.85; cfg.scoreDominating=40; cfg.scoreNonDominated=25;
     cfg.scoreDominated=10; cfg.scoreIdentical=15; cfg.minRemoval=.15; cfg.maxRemoval=.55;
     cfg.localSearchIntensity=25; cfg.startTemperature=200; cfg.coolingRate=.9993;
@@ -34,6 +37,7 @@ int main(int argc,char** argv) {
                  <<",\"max_iterations\":"<<cfg.maxIterations<<",\"hv_stagnation_limit\":"<<cfg.hvStagnationLimit
                  <<",\"charging_repair\":"<<cfg.useChargingRepairLS
                  <<",\"profile_local_search\":"<<cfg.profileLocalSearch
+                 <<",\"reconstruction_cache_mode\":"<<cacheMode
                  <<",\"repair_max_evaluations\":"<<cfg.chargingRepairBudget.maxEvaluations
                  <<",\"repair_max_stations\":"<<cfg.chargingRepairBudget.maxStations
                  <<",\"repair_station_candidates\":"<<cfg.chargingRepairBudget.stationCandidates
@@ -46,6 +50,16 @@ int main(int argc,char** argv) {
     auto front=solver.solve();
     const auto elapsed=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-start).count();
     const auto& stats=solver.getRunStatistics();
+    const auto& cache=stats.reconstructionCache;
+    std::ofstream cacheReport(output/"reconstruction_cache.json");
+    cacheReport<<"{\"mode\":"<<cacheMode<<",\"capacity\":"<<alns::ReconstructionCache::MaxEntries
+      <<",\"max_key_nodes\":"<<alns::ReconstructionCache::MaxKeyNodes
+      <<",\"requests\":"<<cache.requests<<",\"computations\":"<<cache.computations
+      <<",\"successes\":"<<cache.successes<<",\"failures\":"<<cache.failures
+      <<",\"repeated_failures\":"<<cache.repeatedFailures<<",\"hits\":"<<cache.hits
+      <<",\"inserts\":"<<cache.inserts<<",\"sessions\":"<<cache.sessions
+      <<",\"capacity_clears\":"<<cache.capacityClears<<",\"peak_entries\":"<<cache.peakEntries
+      <<",\"oversized\":"<<cache.oversized<<"}\n";
     std::ofstream profile(output/"local_search_profile.json");
     profile<<"{\"enabled\":"<<(stats.localSearchProfile.enabled?"true":"false")
            <<",\"clock\":\"steady_wall_nanoseconds\",\"metrics\":{";

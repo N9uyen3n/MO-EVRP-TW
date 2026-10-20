@@ -1,5 +1,7 @@
 # P5 — Profiling local search trước khi chọn cache
 
+Đây là báo cáo mốc profiling trước khi cài cache. Bước tiếp đã triển khai và đo xong cache tái dựng; xem [báo cáo cache P5](alns_p5_cache_report.md). Các số đo dưới đây được giữ nguyên để truy vết baseline.
+
 Phạm vi: EVRPTW-PR chỉ giao hàng, sạc một phần, khoảng cách Euclidean đối xứng. Đợt này bổ sung và kiểm chứng công cụ đo; chưa triển khai cache kết quả tìm kiếm. Charging repair giữ mặc định tắt.
 
 ## Thay đổi

@@ -58,6 +58,7 @@ def run(before, after, root, iterations=200):
                 args = [str(binary), str(data), str(out), "3600", str(seed), str(iterations), "0"]
                 if mode != "before":
                     args.append(str(int(mode == "on")))
+                    args.append("0")  # Reproduce profiling-only audit without reconstruction cache.
                 start = time.monotonic()
                 with (target/f"{out.name}.log").open("x") as log:
                     subprocess.run(args, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=3700)

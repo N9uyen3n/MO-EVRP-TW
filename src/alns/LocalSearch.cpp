@@ -255,6 +255,7 @@ bool LocalSearch::tryRepairRelocate(Solution& solution, int r1, int i, int r2, i
 
 void LocalSearch::run(Solution &solution) {
   alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Run);
+  alns::ReconstructionCache::Session cacheSession(reconstructionCache_);
   repairTrialsRemaining_ = repairTrialsPerRun_;
   diag_.reset();
   // ⭐ VITAL: Must invalidate context from previous ALNS iterations
@@ -2476,6 +2477,7 @@ bool LocalSearch::runVehicleReduction(Solution &solution) {
 bool LocalSearch::runIntensifiedVehicleReduction(Solution &solution,
                                                  int maxEjectionDepth) {
   alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::IntensifiedReduction);
+  alns::ReconstructionCache::Session cacheSession(reconstructionCache_);
   if (solution.getNumRoutes() < 2)
     return false;
 
@@ -4679,6 +4681,31 @@ void LocalSearch::preprocessTWNext() {
 // =============================================================================
 
 bool LocalSearch::reconstructRouteWithTwoStations(
+    Route &route, const std::vector<int> &newCustomers, int maxStations) const {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Reconstruction);
+  if (!reconstructionCache_.active()) return reconstructRouteUncached(route, newCustomers, maxStations);
+  auto& stats = reconstructionCache_.stats;
+  ++stats.requests;
+  // Bound key storage as well as the number of entries. Oversized requests
+  // simply take the original path; no neighborhood or budget is changed.
+  if (route.size()+newCustomers.size() > alns::ReconstructionCache::MaxKeyNodes) {
+    ++stats.oversized; ++stats.computations;
+    const bool result = reconstructRouteUncached(route, newCustomers, maxStations);
+    if (result) ++stats.successes; else ++stats.failures;
+    return result;
+  }
+  const auto vehicle = route.getVehicle();
+  alns::ReconstructionCache::Key key{route.getNodes(), newCustomers,
+    {vehicle->getCapacity(), vehicle->getBatteryCapacity(), vehicle->getEnergyConsumptionRate()}, maxStations};
+  if (reconstructionCache_.skip(key)) return false;
+  ++stats.computations;
+  const bool result = reconstructRouteUncached(route, newCustomers, maxStations);
+  if (result) ++stats.successes;
+  else { ++stats.failures; reconstructionCache_.failed(std::move(key)); }
+  return result;
+}
+
+bool LocalSearch::reconstructRouteUncached(
     Route &route, const std::vector<int> &newCustomers, int maxStations) const {
   if (newCustomers.empty())
     return false;

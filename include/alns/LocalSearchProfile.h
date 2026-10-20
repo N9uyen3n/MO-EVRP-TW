@@ -12,7 +12,7 @@ enum class LSMetric : std::size_t {
   Relocate, Swap, OrOpt, TwoOpt, InterTwoOpt, IntraOrOpt, CrossExchange,
   OrOptReversed, EmptySmallest, Ejection, EliminateSmallest, SmartMerge,
   TriMerge, SegmentExchange, ContextRebuild, ContextPatch, RemovalRanking,
-  EvaluateMove, ApplyMove, ChargingRepair, Count
+  EvaluateMove, ApplyMove, ChargingRepair, Reconstruction, Count
 };
 inline constexpr std::array<const char*, static_cast<std::size_t>(LSMetric::Count)> lsMetricNames{
   "run", "distance", "charging", "vehicle_reduction", "intensified_reduction",
@@ -20,7 +20,7 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(LSMetric::Coun
   "cross_exchange", "or_opt_reversed", "empty_smallest", "ejection",
   "eliminate_smallest", "smart_merge", "tri_merge", "segment_exchange",
   "context_rebuild", "context_patch", "removal_ranking", "evaluate_move",
-  "apply_move", "charging_repair"
+  "apply_move", "charging_repair", "reconstruction"
 };
 struct LSProfileEntry {
   std::uint64_t calls = 0, improvements = 0;

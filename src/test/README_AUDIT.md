@@ -6,7 +6,7 @@ Phạm vi thí nghiệm hiện tại: chỉ giao hàng, sạc một phần, dữ
 
 ```powershell
 wsl -d Ubuntu-22.04 --exec cmake -S . -B build-audit-wsl-p34-after -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-wsl -d Ubuntu-22.04 --exec cmake --build build-audit-wsl-p34-after --target ALNSAuditRunner RouteRegressionTests LocalSearchRegressionTests ChargingRepairTests -j 6
+wsl -d Ubuntu-22.04 --exec cmake --build build-audit-wsl-p34-after --target ALNSAuditRunner RouteRegressionTests LocalSearchRegressionTests ChargingRepairTests ReconstructionCacheTests -j 6
 wsl -d Ubuntu-22.04 --exec ctest --test-dir build-audit-wsl-p34-after --output-on-failure
 ```
 
@@ -17,10 +17,10 @@ Các kiểm tra dùng exception thay vì assert nên vẫn hoạt động trong 
 CLI của ALNSAuditRunner:
 
 ```text
-ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1]
+ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1] [reconstructionCache=0|1|2]
 ```
 
-Runner ghi `results.csv`, `schedules.csv`, `validation.txt`, `run_statistics.json` và `audit_parameters.json`; từ chối ghi đè thư mục output. Charging repair mặc định tắt. Ngân sách thời gian là giới hạn mềm của vòng ALNS, khởi tạo và một LS đang chạy có thể khiến wall time lớn hơn ngân sách.
+Runner ghi `results.csv`, `schedules.csv`, `validation.txt`, `run_statistics.json` và `audit_parameters.json`; từ chối ghi đè thư mục output. Charging repair và profiling mặc định tắt. Cache tái dựng dùng mode 0=tắt, 1=chỉ quan sát, 2=bật; `ALNSConfig` mặc định bật mode 2 sau kiểm chứng P5. Ngân sách thời gian là giới hạn mềm của vòng ALNS, khởi tạo và một LS đang chạy có thể khiến wall time lớn hơn ngân sách.
 
 Kiểm tra độc lập sau khi run hoàn tất (Python stdlib, không phụ thuộc code evaluator):
 
@@ -65,3 +65,18 @@ python3 src/test/summarize_ls_profile_audit.py artifacts/alns_p5/new_profile/exp
 ```
 
 Runner lưu bản copy executable, nguồn, input, SHA-256, Git HEAD, cấu hình, log và kết quả; từ chối ghi đè thư mục thí nghiệm. Script yêu cầu đủ vòng và dừng bởi `iteration_limit`, không chấp nhận run bị cắt do thời gian. Đo overhead bật/tắt cùng executable; so bản trước sửa để phát hiện ảnh hưởng của instrumentation khi tắt. Hai seed chỉ hỗ trợ xác định chỗ cần khảo sát tiếp, chưa đủ kết luận tốc độ tổng quát hoặc chất lượng thuật toán.
+
+## Cache tái dựng tuyến P5
+
+`reconstructionCache=0|1|2` lần lượt là tắt, quan sát và bật cache thất bại của helper xác định. `reconstruction_cache.json` ghi số yêu cầu, số phép tính thật, thành công/thất bại đã tính, đầu vào thất bại trùng, hit, insert, session và mức đầy bảng. Mode quan sát vẫn tính mọi yêu cầu; dùng để xác nhận cơ hội cache. Mode bật chỉ trả lại thất bại đã gặp với cùng đầu vào trong một entry point LS. Không giảm số ứng viên hoặc độ sâu ejection.
+
+Khóa dùng full sequence, thứ tự khách thêm, thông số xe và giới hạn trạm, kiểm tra bằng nội dung đầy đủ sau hash. Cache tối đa 4.096 mục và 512 node/khóa, hết hiệu lực sau mỗi `run` hoặc intensified reduction; dữ liệu instance phải cố định trong lời gọi. Helper ngoài session đi đường cũ. Cấu hình solver có `reconstructionCacheMode`; để quay baseline tính toán cũ, đặt `alns::ReconstructionCacheMode::Off`.
+
+```text
+mkdir -p artifacts/alns_p5/new_cache
+cp path/to/preserved/ALNSAuditRunner artifacts/alns_p5/new_cache/ALNSAuditRunner_before
+python3 src/test/run_reconstruction_cache_audit.py artifacts/alns_p5/new_cache/ALNSAuditRunner_before build-audit-wsl-p5-cache/ALNSAuditRunner artifacts/alns_p5/new_cache 200
+python3 src/test/summarize_reconstruction_cache_audit.py artifacts/alns_p5/new_cache/experiment update/new_cache_results.json
+```
+
+Đợt chuẩn có 21 run: ba run quan sát có profiling trên seed 1, rồi sáu bộ bản trước sửa/bản mới tắt cache/bản mới bật cache trên r104/r101/c109, seed 1/2. Các run so tốc độ tắt profiling; mọi run cùng ngân sách 200 vòng và được replay độc lập. Các bộ phải cho cùng mục tiêu và cùng lịch từng byte; số đầu vào thất bại lặp ở mode quan sát phải khớp số hit ở mode bật. Nguồn và executable được đóng băng, hash được kiểm tra cuối đợt. Không build trong lúc đo.

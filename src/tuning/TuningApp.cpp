@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
       std::cout << "Solution #" << (&sol - &paretoFront[0] + 1) << ": "
                 << "Veh=" << sol.getTotalVehicles()
                 << ", Dist=" << sol.getTotalDistance()
-                << ", Workload=" << sol.getWorkloadVariance()
+                << ", Workload=" << sol.getWorkloadGini()
                 << ", MaxTime=" << sol.getMaxTime() << std::endl;
     }
   }

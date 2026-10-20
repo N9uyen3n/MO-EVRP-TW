@@ -68,6 +68,7 @@
 #include "../../include/core/Customer.h"
 #include "../../include/core/Station.h"
 #include <algorithm>
+#include <functional>
 #include <chrono>
 #include <climits>
 #include <cmath>
@@ -79,6 +80,15 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+
+namespace {
+double reversedInternalDelta(const Instance& instance,const std::vector<int>& nodes,int first,int last) {
+  double delta=0;
+  for(int i=first;i<last;++i)
+    delta+=instance.getDistance(nodes[i+1],nodes[i])-instance.getDistance(nodes[i],nodes[i+1]);
+  return delta;
+}
+} // namespace
 
 LocalSearch::LocalSearch(std::shared_ptr<Instance> inst) : instance(inst) {
   for (const auto &node : instance->getNodes()) {
@@ -313,6 +323,9 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
                          instance->getDistance(prev_node, next_node);
     }
 
+    Route source = routes[move.routeIdx1];
+    source.removeNode(move.nodeIdx1);
+    if (!source.isFeasible()) return;
     move.eval.isFeasible = true;
     move.eval.distanceDelta = result.deltaDistance - distance_removed;
     move.eval.objectiveDelta = move.eval.distanceDelta * weights.dist;
@@ -367,6 +380,7 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
     double newDist = instance->getDistance(prev, nodeJ) +
                      instance->getDistance(nodeI, next_node);
 
+    newDist += reversedInternalDelta(*instance,nodes,move.nodeIdx1,move.nodeIdx2);
     if (newDist >= oldDist - 1e-9)
       return;
     // Nếu không có station → không cần evaluate() đầy đủ (logic cũ giữ
@@ -974,14 +988,16 @@ bool LocalSearch::searchRelocate(Solution &solution,
           if (move.eval.isFeasible && move.eval.objectiveDelta < -1e-9) {
             applyMove(solution, move);
             return true;
-          } else if (!move.eval.isFeasible && preEval.distanceDelta < -1.0) {
+          } else if (r1 != r2 && !move.eval.isFeasible && preEval.distanceDelta < -1.0) {
             // [FIX-2] Relaxed from -5.0 → -1.0
             auto &routes = solution.getRoutes();
             Route testRouteFrom = routes[r1];
             Route testRouteTo = routes[r2];
 
             if (tryRelocateWithEnergyBoost(testRouteFrom, i, testRouteTo, j,
-                                           30.0)) {
+                                           30.0) &&
+                testRouteFrom.getTotalDistance()+testRouteTo.getTotalDistance() <
+                routes[r1].getTotalDistance()+routes[r2].getTotalDistance()-1e-9) {
               routes[r1] = testRouteFrom;
               routes[r2] = testRouteTo;
               solution.evaluateRoutes();
@@ -1124,6 +1140,7 @@ bool LocalSearch::searchTwoOpt(Solution &solution,
         double newDist = instance->getDistance(prev, nodeJ) +
                          instance->getDistance(nodeI, next);
 
+        newDist += reversedInternalDelta(*instance,nodes,i,j);
         if (newDist >= oldDist - 1e-6)
           continue;
 
@@ -2359,7 +2376,7 @@ bool LocalSearch::runIntensifiedVehicleReduction(Solution &solution,
 
   // Pass 1: Single deep ejection chain at max depth
   // This is the most powerful operator for vehicle reduction
-  if (maxEjectionDepth >= 3 && ejectionChain(solution)) {
+  if (maxEjectionDepth > 0 && ejectionChain(solution,maxEjectionDepth)) {
     anyImproved = true;
     // After successful ejection, try to eliminate empty routes
     if (tryEliminateSmallestRoute(solution)) {
@@ -2790,7 +2807,8 @@ bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
 // ejectionChain — Strategy 3 Vehicle Reduction
 // [OPT-4] swap-and-pop for pool removal; [OPT-8] single getNodeById call
 // ============================================================================
-bool LocalSearch::ejectionChain(Solution &solution) {
+bool LocalSearch::ejectionChain(Solution &solution,int maxDepth) {
+  maxDepth=std::clamp(maxDepth,0,MAX_EJECTION_DEPTH);
   auto &routes = solution.getRoutes();
   int numRoutes = static_cast<int>(routes.size());
   if (numRoutes < 2)
@@ -2844,28 +2862,7 @@ bool LocalSearch::ejectionChain(Solution &solution) {
   const double vehCap = instance->getVehicleCapacity();
 
   // =========================================================================
-  // Shared slack cache — one instance per victim, reused across all stages.
-  // slackDirty[r]=true means cachedSlacks[r] must be rebuilt before use.
-  // =========================================================================
-  std::vector<std::vector<double>> cachedSlacks;
-  std::vector<bool> slackDirty;
-
-  // Rebuild only dirty slots — O(dirty_count * N) instead of O(R * N).
-  auto rebuildSlacks = [&]() {
-    for (size_t r = 0; r < cachedSlacks.size(); ++r) {
-      if (slackDirty[r]) {
-        // Note: workRoutes captured by ref in each stage lambda below
-        // This lambda is always called with workRoutes in scope via capture
-        slackDirty[r] = false; // will be set per-stage below
-      }
-    }
-  };
-  (void)rebuildSlacks; // suppress unused warning — inlined per-stage
-
-  // =========================================================================
-  // HELPER 1: findDirect
-  // Accepts pre-computed cachedSlacks to avoid redundant getTimeSlack() calls.
-  // =========================================================================
+  // Candidate placement records include any required station.
   struct PlaceResult {
     int r = -1;
     size_t pos = 0;
@@ -2874,134 +2871,6 @@ bool LocalSearch::ejectionChain(Solution &solution) {
     bool statBefore = false;
   };
 
-  auto findDirect = [&](int cId, const std::vector<Route> &workRoutes,
-                        const std::vector<std::vector<double>> &slacks,
-                        int excludeR = -1) -> PlaceResult {
-    PlaceResult best;
-    double dem = demandById_[cId];
-    // [OPT-9] Use flat TW arrays — no shared_ptr copy, no atomic inc/dec.
-    double cDue = dueDateById_[cId];
-    double cReady = readyTimeById_[cId];
-    double cSvc = serviceTimeById_[cId];
-    double twWindow = cDue - cReady;
-    bool isTightTW = (twWindow <= 30.0);
-
-    for (int r = 0; r < (int)workRoutes.size(); ++r) {
-      if (r == excludeR)
-        continue;
-      if (workRoutes[r].getTotalDemand() + dem > vehCap)
-        continue;
-
-      const auto &wnodes = workRoutes[r].getNodes();
-      const auto &states = workRoutes[r].getStates();
-      const std::vector<double> &sl = slacks[r];
-
-      for (size_t pos = 1; pos < workRoutes[r].size(); ++pos) {
-        int prevId = wnodes[pos - 1];
-        int nextId = wnodes[pos];
-        double arrC =
-            states[pos - 1].departureTime + instance->getTime(prevId, cId);
-
-        if (arrC > cDue)
-          continue;
-
-        double waitC = std::max(0.0, cReady - arrC);
-        double depC = arrC + waitC + cSvc;
-        double arrNextNew = depC + instance->getTime(cId, nextId);
-        double delay = std::max(0.0, arrNextNew - states[pos].arrivalTime);
-        double effectiveSlack = sl[pos] + states[pos].timeWait;
-
-        if (delay > effectiveSlack)
-          continue;
-        if (!workRoutes[r].canPossiblyInsert(cId, pos))
-          continue;
-
-        InsertionResult res = workRoutes[r].checkInsertionCost(cId, pos);
-        if (!res.isFeasible)
-          continue;
-
-        double totalCost = res.deltaDistance;
-        if (isTightTW) {
-          double travel = instance->getTime(wnodes[pos - 1], cId);
-          double arrival = states[pos - 1].departureTime + travel;
-          totalCost += std::max(0.0, cReady - arrival) * 0.3;
-        }
-        if (totalCost < best.cost)
-          best = {r, pos, totalCost, -1, false};
-      }
-    }
-    return best;
-  };
-
-  // =========================================================================
-  // HELPER 2: tryInsertFast
-  // checkInsertionCost guarantees feasibility — no evaluate()+isFeasible()
-  // loop. Uses pre-built slacks passed in to avoid redundant getTimeSlack()
-  // call.
-  // =========================================================================
-  auto tryInsertFast = [&](Route &route, int cId,
-                           const std::vector<double> &slacks) -> bool {
-    struct PosCost {
-      size_t pos;
-      double cost;
-    };
-    const auto &nodes = route.getNodes();
-    const auto &states = route.getStates();
-    // [OPT-9] Flat TW arrays — no shared_ptr copy.
-    double cDue = dueDateById_[cId];
-    double cReady = readyTimeById_[cId];
-    double cSvc = serviceTimeById_[cId];
-
-    PosCost best{0, 1e18};
-
-    for (size_t pos = 1; pos < nodes.size(); ++pos) {
-      int prevId = nodes[pos - 1];
-      int nextId = nodes[pos];
-      double arrC =
-          states[pos - 1].departureTime + instance->getTime(prevId, cId);
-
-      if (arrC > cDue)
-        continue;
-
-      double waitC = std::max(0.0, cReady - arrC);
-      double depC = arrC + waitC + cSvc;
-      double arrNextNew = depC + instance->getTime(cId, nextId);
-      double delay = std::max(0.0, arrNextNew - states[pos].arrivalTime);
-      double effectiveSlack = slacks[pos] + states[pos].timeWait;
-
-      if (delay > effectiveSlack)
-        continue;
-      if (!route.canPossiblyInsert(cId, pos))
-        continue;
-
-      InsertionResult res = route.checkInsertionCost(cId, pos);
-      if (!res.isFeasible)
-        continue;
-      if (res.deltaDistance < best.cost)
-        best = {pos, res.deltaDistance};
-    }
-
-    if (best.cost >= 1e17)
-      return false;
-
-    route.addNode(cId, best.pos);
-#ifndef NDEBUG
-    route.evaluate();
-    if (!route.isFeasible()) {
-      std::cerr << "[WARNING] Feasibility mismatch in Route " << route.getId()
-                << " for Customer " << cId << " at pos " << best.pos << "!\n";
-      route.removeNode(best.pos);
-      return false;
-    }
-#endif
-    return true;
-  };
-
-  // =========================================================================
-  // HELPER 3: buildCands
-  // Returns span into thread_local storage — zero heap allocation.
-  // WARNING: span is invalidated on the next buildCands call.
-  // =========================================================================
   struct Cand3 {
     int id, pos;
     double savings;
@@ -3085,30 +2954,7 @@ bool LocalSearch::ejectionChain(Solution &solution) {
   };
 
   // =========================================================================
-  // HELPER 5: markDirtyAndRebuild
-  // Mark one or more route indices dirty then rebuild all dirty slots.
-  // Centralises the "dirty → rebuild" pattern used across all stages.
-  // =========================================================================
-  auto markDirty = [&](std::vector<Route> &workRoutes,
-                       std::initializer_list<int> idxs) {
-    for (int i : idxs) {
-      if (i >= 0 && i < (int)slackDirty.size())
-        slackDirty[i] = true;
-    }
-    for (size_t r = 0; r < workRoutes.size(); ++r) {
-      if (slackDirty[r]) {
-        cachedSlacks[r] = workRoutes[r].getTimeSlack();
-        slackDirty[r] = false;
-      }
-    }
-  };
-
-  // =========================================================================
-  // ejectPenalty — flat array (O(1)) instead of unordered_map
-  // =========================================================================
-  std::vector<int> ejectPenalty(nodeTypeById_.size(), 0);
-
-  // ── Victim loop ───────────────────────────────────────────────────────────
+  // Try each selected victim transactionally.
   for (int vi = 0; vi < MAX_VICTIMS; ++vi) {
     int smallestIdx = victimCands[vi].idx;
 
@@ -3119,12 +2965,8 @@ bool LocalSearch::ejectionChain(Solution &solution) {
       if (r != smallestIdx)
         workRoutes.push_back(routes[r]);
 
-    // Init slack cache — all dirty at start of each victim attempt
+    // Working routes — all dirty at start of each victim attempt
     const int WR = (int)workRoutes.size();
-    cachedSlacks.assign(WR, {});
-    slackDirty.assign(WR, true);
-    // Initial full build
-    markDirty(workRoutes, {}); // no extra dirty, just rebuilds all-true slots
 
     std::vector<int> unplaced = pool;
 
@@ -3133,9 +2975,6 @@ bool LocalSearch::ejectionChain(Solution &solution) {
       bool progress = true;
       while (!up.empty() && progress) {
         progress = false;
-
-        // cachedSlacks already up-to-date (markDirty called after each
-        // mutation)
 
         int bestIdx = -1;
         double maxRegret = -1e18;
@@ -3147,8 +2986,6 @@ bool LocalSearch::ejectionChain(Solution &solution) {
           // [OPT-9] Flat TW arrays — no shared_ptr copy per customer per
           // iteration.
           double cDue = dueDateById_[cId];
-          double cReady = readyTimeById_[cId];
-          double cSvc = serviceTimeById_[cId];
           PlaceResult rank1, rank2;
           rank2.cost = 1e18;
 
@@ -3156,33 +2993,17 @@ bool LocalSearch::ejectionChain(Solution &solution) {
             if (workRoutes[r].getTotalDemand() + dem > vehCap)
               continue;
             const auto &wnodes = workRoutes[r].getNodes();
-            const auto &states = workRoutes[r].getStates();
-            const std::vector<double> &slacks = cachedSlacks[r];
 
             for (size_t pos = 1; pos < workRoutes[r].size(); ++pos) {
               double effectiveCost = 1e18;
+              int selectedStation=-1;
+              bool selectedBefore=false;
 
               int prevId = wnodes[pos - 1];
               int nextId = wnodes[pos];
-              double arrC = states[pos - 1].departureTime +
-                            instance->getTime(prevId, cId);
-
-              if (arrC <= cDue) {
-                double waitC = std::max(0.0, cReady - arrC);
-                double depC = arrC + waitC + cSvc;
-                double arrNextNew = depC + instance->getTime(cId, nextId);
-                double delay =
-                    std::max(0.0, arrNextNew - states[pos].arrivalTime);
-                double effSlack = slacks[pos] + states[pos].timeWait;
-
-                if (delay <= effSlack) {
-                  if (workRoutes[r].canPossiblyInsert(cId, pos)) {
-                    InsertionResult res =
-                        workRoutes[r].checkInsertionCost(cId, pos);
-                    if (res.isFeasible)
-                      effectiveCost = res.deltaDistance;
-                  }
-                }
+              if (workRoutes[r].canPossiblyInsert(cId,pos)) {
+                auto result=workRoutes[r].checkInsertionCost(cId,pos);
+                if(result.isFeasible) effectiveCost=result.deltaDistance;
               }
 
               // Station-assisted fallback
@@ -3207,11 +3028,13 @@ bool LocalSearch::ejectionChain(Solution &solution) {
                       copy.addNode(sid, bef ? pos : pos + 1);
                       copy.evaluate();
                       if (copy.isFeasible()) {
-                        removeRedundantStations(copy);
                         double dc = copy.getTotalDistance() -
                                     workRoutes[r].getTotalDistance();
-                        if (dc < effectiveCost)
+                        if (dc < effectiveCost) {
                           effectiveCost = dc;
+                          selectedStation=sid;
+                          selectedBefore=bef;
+                        }
                       }
                     }
                   }
@@ -3222,17 +3045,16 @@ bool LocalSearch::ejectionChain(Solution &solution) {
                 continue;
               if (effectiveCost < rank1.cost) {
                 rank2 = rank1;
-                rank1 = {r, pos, effectiveCost};
+                rank1 = {r, pos, effectiveCost, selectedStation, selectedBefore};
               } else if (effectiveCost < rank2.cost) {
-                rank2 = {r, pos, effectiveCost};
+                rank2 = {r, pos, effectiveCost, selectedStation, selectedBefore};
               }
             }
           }
           if (rank1.r == -1)
             continue;
 
-          // [OPT-9] cDue / cReady already in scope from flat arrays above.
-          double twWidth = cDue - cReady;
+          double twWidth = cDue - readyTimeById_[cId];
           double twPenalty = 100.0 / std::max(1.0, twWidth);
           double regret =
               ((rank2.r == -1) ? 1e15 : (rank2.cost - rank1.cost)) + twPenalty;
@@ -3248,12 +3070,12 @@ bool LocalSearch::ejectionChain(Solution &solution) {
           break;
 
         workRoutes[bestPlace.r].addNode(up[bestIdx], bestPlace.pos);
+        if(bestPlace.stationId!=-1)
+          workRoutes[bestPlace.r].addNode(bestPlace.stationId,bestPlace.statBefore?bestPlace.pos:bestPlace.pos+1);
         workRoutes[bestPlace.r].evaluate();
         up[bestIdx] = up.back();
         up.pop_back();
 
-        // Only the modified route needs slack rebuild
-        markDirty(workRoutes, {bestPlace.r});
         progress = true;
       }
     };
@@ -3271,536 +3093,73 @@ bool LocalSearch::ejectionChain(Solution &solution) {
                       unplaced.end());
 
         size_t beforeSize = unplaced.size();
-        std::fill(slackDirty.begin(), slackDirty.end(), true);
-        markDirty(workRoutes, {}); // rebuild all after fill
         runStageA(unplaced);
 
         if (unplaced.size() >= beforeSize) {
           workRoutes = workSnap;
           unplaced = upSnap;
-          std::fill(slackDirty.begin(), slackDirty.end(), true);
-          markDirty(workRoutes, {}); // rebuild after snap restore
         }
       }
     }
 
-    // ── Stage B: Ejection depth-1 ──────────────────────────────────────────
-    if (!unplaced.empty()) {
-      std::fill(ejectPenalty.begin(), ejectPenalty.end(), 0);
-      std::vector<int> stillUnplaced;
-
-      for (int xId : unplaced) {
-        double demX = demandById_[xId];
-        bool placed = false;
-
-        for (int r = 0; r < WR && !placed; ++r) {
-          int bestY = -1, bestYPos = -1;
-          double bestYScore = -1e18;
-          const auto &rnodes = workRoutes[r].getNodes();
-
-          for (int i = 1; i < (int)rnodes.size() - 1; ++i) {
-            int yId = rnodes[i];
-            if (nodeTypeById_[yId] != NodeType::CUSTOMER)
-              continue;
-            double demY = demandById_[yId];
-            if (workRoutes[r].getTotalDemand() - demY + demX > vehCap)
-              continue;
-
-            // [OPT-9] Flat TW arrays for yId — no shared_ptr copy.
-            int receivable = 0;
-            for (int r2 = 0; r2 < WR; ++r2) {
-              if (r2 == r)
-                continue;
-              if (workRoutes[r2].getTotalDemand() + demY <= vehCap)
-                receivable++;
-            }
-            double twWidth = dueDateById_[yId] - readyTimeById_[yId];
-            double scoreY =
-                receivable + twWidth / 100.0 - ejectPenalty[yId] * 1000.0;
-            if (scoreY > bestYScore) {
-              bestYScore = scoreY;
-              bestY = yId;
-              bestYPos = i;
-            }
-          }
-          if (bestY == -1)
-            continue;
-
-          Route backup_r = workRoutes[r];
-          workRoutes[r].removeNode((size_t)bestYPos);
-          workRoutes[r].evaluate();
-          // Rebuild slack for r before passing to tryInsertFast
-          markDirty(workRoutes, {r});
-
-          if (!tryInsertFast(workRoutes[r], xId, cachedSlacks[r])) {
-            workRoutes[r] = backup_r;
-            markDirty(workRoutes, {r}); // restore → rebuild
-            continue;
-          }
-          // r was mutated by tryInsertFast (addNode) — mark dirty again
-          markDirty(workRoutes, {r});
-
-          PlaceResult yPlace = findDirect(bestY, workRoutes, cachedSlacks, r);
-          if (yPlace.r != -1) {
-            Route backup_yp = workRoutes[yPlace.r];
-            workRoutes[yPlace.r].addNode(bestY, yPlace.pos);
-            workRoutes[yPlace.r].evaluate();
-            // Only verify the 2 modified routes — not all R
-            if (workRoutes[r].isFeasible() &&
-                workRoutes[yPlace.r].isFeasible()) {
-              markDirty(workRoutes, {yPlace.r});
-              placed = true;
-              break;
-            }
-            workRoutes[yPlace.r] = backup_yp;
-            markDirty(workRoutes, {yPlace.r});
-          } else {
-            if (!applyStation(bestY, workRoutes, r)) {
-              workRoutes[r] = backup_r;
-              markDirty(workRoutes, {r});
-              ejectPenalty[bestY]++;
-              continue;
-            }
-            // applyStation modified some route — rebuild all to be safe
-            std::fill(slackDirty.begin(), slackDirty.end(), true);
-            markDirty(workRoutes, {});
-            if (workRoutes[r].isFeasible()) {
-              placed = true;
-              break;
-            }
-          }
-
-          if (!placed) {
-            workRoutes[r] = backup_r;
-            markDirty(workRoutes, {r});
-          }
+    // Stage B: each recursive edge displaces one customer. Protect inserted
+    // chain members, restore snapshots on failure, and bound the search effort.
+    int searchAttempts=0;
+    constexpr int MAX_CHAIN_ATTEMPTS=2000;
+    std::vector<bool> protectedCustomer(nodeTypeById_.size(),false);
+    auto directInto = [&](int customer,Route& target) {
+      size_t bestPos=0; double bestCost=1e18;
+      for(size_t pos=1;pos<target.size();++pos) {
+        auto result=target.checkInsertionCost(customer,pos);
+        if(result.isFeasible && result.deltaDistance<bestCost) {
+          bestCost=result.deltaDistance; bestPos=pos;
         }
-        if (!placed)
-          stillUnplaced.push_back(xId);
       }
-      unplaced = stillUnplaced;
-    }
-
-    // ── Stage B2: Ejection depth-2 (top-5 Y/Z) ────────────────────────────
-    if (!unplaced.empty()) {
-      std::vector<int> stillUnplaced;
-      for (int xId : unplaced) {
-        bool placed = false;
-
-        for (int r1 = 0; r1 < WR && !placed; ++r1) {
-          int nYCands = buildCands(workRoutes, r1, 5, demandById_[xId]);
-          // [BUG-FIX] Snapshot Y-candidates before inner buildCands overwrites tl_cands
-          struct SnapCand { int id, pos; };
-          std::vector<SnapCand> yCands(nYCands);
-          for (int i = 0; i < nYCands; ++i) yCands[i] = {tl_cands[i].id, tl_cands[i].pos};
-
-          for (int yi = 0; yi < nYCands && !placed; ++yi) {
-            int yId = yCands[yi].id, yPos = yCands[yi].pos;
-
-            Route backup_r1 = workRoutes[r1];
-            workRoutes[r1].removeNode(yPos);
-            workRoutes[r1].evaluate();
-            markDirty(workRoutes, {r1});
-
-            if (!tryInsertFast(workRoutes[r1], xId, cachedSlacks[r1])) {
-              workRoutes[r1] = backup_r1;
-              markDirty(workRoutes, {r1});
-              continue;
+      if(bestPos==0) return false;
+      target.addNode(customer,bestPos); target.evaluate();
+      return true;
+    };
+    std::function<bool(int,int,int)> place;
+    place = [&](int incoming,int depthLeft,int excludedRoute) -> bool {
+      if(searchAttempts>=MAX_CHAIN_ATTEMPTS) return false;
+      for(int r=0;r<WR;++r) {
+        if(r==excludedRoute) continue;
+        if(directInto(incoming,workRoutes[r])) return true;
+      }
+      if(depthLeft==0) return false;
+      for(int r=0;r<WR;++r) {
+        if(r==excludedRoute) continue;
+        const int count=buildCands(workRoutes,r,5,demandById_[incoming]);
+        const std::vector<Cand3> candidates(tl_cands.begin(),tl_cands.begin()+count);
+        for(const auto& candidate:candidates) {
+          if(protectedCustomer[candidate.id]) continue;
+          if(++searchAttempts>MAX_CHAIN_ATTEMPTS) return false;
+          const auto snapshot=workRoutes;
+          workRoutes[r].removeNode(candidate.pos);
+          if(directInto(incoming,workRoutes[r])) {
+            protectedCustomer[incoming]=true;
+            if(place(candidate.id,depthLeft-1,r)) {
+              protectedCustomer[incoming]=false;
+              return true;
             }
-            markDirty(workRoutes, {r1});
-
-            PlaceResult yp = findDirect(yId, workRoutes, cachedSlacks, r1);
-            if (yp.r != -1) {
-              Route backup_yp = workRoutes[yp.r];
-              workRoutes[yp.r].addNode(yId, yp.pos);
-              workRoutes[yp.r].evaluate();
-              if (workRoutes[yp.r].isFeasible()) {
-                markDirty(workRoutes, {yp.r});
-                placed = true;
-                break;
-              }
-              workRoutes[yp.r] = backup_yp;
-              markDirty(workRoutes, {yp.r});
-            }
-
-            if (!placed) {
-              for (int r2 = 0; r2 < WR && !placed; ++r2) {
-                if (r2 == r1)
-                  continue;
-                int nZCands = buildCands(workRoutes, r2, 5, demandById_[yId]);
-
-                for (int zi = 0; zi < nZCands && !placed; ++zi) {
-                  int zId = tl_cands[zi].id, zPos = tl_cands[zi].pos;
-
-                  Route backup_r2 = workRoutes[r2];
-                  workRoutes[r2].removeNode(zPos);
-                  workRoutes[r2].evaluate();
-                  markDirty(workRoutes, {r2});
-
-                  if (!tryInsertFast(workRoutes[r2], yId, cachedSlacks[r2])) {
-                    workRoutes[r2] = backup_r2;
-                    markDirty(workRoutes, {r2});
-                    continue;
-                  }
-                  markDirty(workRoutes, {r2});
-
-                  PlaceResult zp =
-                      findDirect(zId, workRoutes, cachedSlacks, r2);
-                  if (zp.r == -1) {
-                    std::vector<Route> full_backup = workRoutes;
-                    if (applyStation(zId, workRoutes, r2)) {
-                      std::fill(slackDirty.begin(), slackDirty.end(), true);
-                      markDirty(workRoutes, {});
-                      placed = true;
-                      break;
-                    }
-                    workRoutes = full_backup;
-                    std::fill(slackDirty.begin(), slackDirty.end(), true);
-                    markDirty(workRoutes, {});
-                  } else {
-                    Route backup_zp = workRoutes[zp.r];
-                    workRoutes[zp.r].addNode(zId, zp.pos);
-                    workRoutes[zp.r].evaluate();
-                    if (workRoutes[zp.r].isFeasible()) {
-                      markDirty(workRoutes, {zp.r});
-                      placed = true;
-                      break;
-                    }
-                    workRoutes[zp.r] = backup_zp;
-                    markDirty(workRoutes, {zp.r});
-                  }
-
-                  if (!placed) {
-                    workRoutes[r2] = backup_r2;
-                    markDirty(workRoutes, {r2});
-                  }
-                }
-              }
-            }
-            if (!placed) {
-              workRoutes[r1] = backup_r1;
-              markDirty(workRoutes, {r1});
-            }
+            protectedCustomer[incoming]=false;
           }
+          workRoutes=snapshot;
         }
-        if (!placed)
-          stillUnplaced.push_back(xId);
       }
-      unplaced = stillUnplaced;
-    }
-
-    // ── Stage B3: Ejection depth-3 (top-3 Y/Z/W) ─────────────────────────
-    if (!unplaced.empty()) {
-      std::vector<int> stillUnplaced;
-      for (int xId : unplaced) {
-        bool placed = false;
-
-        for (int r1 = 0; r1 < WR && !placed; ++r1) {
-          int nYCands = buildCands(workRoutes, r1, 3, demandById_[xId]);
-          // [BUG-FIX] Snapshot Y-candidates before inner buildCands overwrites tl_cands
-          struct SnapCand3 { int id, pos; };
-          std::vector<SnapCand3> yCands3(nYCands);
-          for (int i = 0; i < nYCands; ++i) yCands3[i] = {tl_cands[i].id, tl_cands[i].pos};
-
-          for (int yi = 0; yi < nYCands && !placed; ++yi) {
-            int yId = yCands3[yi].id, yPos = yCands3[yi].pos;
-
-            Route backup_r1 = workRoutes[r1];
-            workRoutes[r1].removeNode(yPos);
-            workRoutes[r1].evaluate();
-            markDirty(workRoutes, {r1});
-
-            if (!tryInsertFast(workRoutes[r1], xId, cachedSlacks[r1])) {
-              workRoutes[r1] = backup_r1;
-              markDirty(workRoutes, {r1});
-              continue;
-            }
-            markDirty(workRoutes, {r1});
-
-            PlaceResult yp = findDirect(yId, workRoutes, cachedSlacks, r1);
-            if (yp.r != -1) {
-              Route backup_yp = workRoutes[yp.r];
-              workRoutes[yp.r].addNode(yId, yp.pos);
-              workRoutes[yp.r].evaluate();
-              if (workRoutes[yp.r].isFeasible()) {
-                markDirty(workRoutes, {yp.r});
-                placed = true;
-                break;
-              }
-              workRoutes[yp.r] = backup_yp;
-              markDirty(workRoutes, {yp.r});
-            }
-
-            if (!placed) {
-              for (int r2 = 0; r2 < WR && !placed; ++r2) {
-                if (r2 == r1)
-                  continue;
-                int nZCands = buildCands(workRoutes, r2, 3, demandById_[yId]);
-                // [BUG-FIX] Snapshot Z-candidates before inner buildCands(r3) overwrites
-                std::vector<SnapCand3> zCands3(nZCands);
-                for (int i = 0; i < nZCands; ++i) zCands3[i] = {tl_cands[i].id, tl_cands[i].pos};
-
-                for (int zi = 0; zi < nZCands && !placed; ++zi) {
-                  int zId = zCands3[zi].id, zPos = zCands3[zi].pos;
-
-                  Route backup_r2 = workRoutes[r2];
-                  workRoutes[r2].removeNode(zPos);
-                  workRoutes[r2].evaluate();
-                  markDirty(workRoutes, {r2});
-
-                  if (!tryInsertFast(workRoutes[r2], yId, cachedSlacks[r2])) {
-                    workRoutes[r2] = backup_r2;
-                    markDirty(workRoutes, {r2});
-                    continue;
-                  }
-                  markDirty(workRoutes, {r2});
-
-                  PlaceResult zp =
-                      findDirect(zId, workRoutes, cachedSlacks, r2);
-                  if (zp.r != -1) {
-                    Route backup_zp = workRoutes[zp.r];
-                    workRoutes[zp.r].addNode(zId, zp.pos);
-                    workRoutes[zp.r].evaluate();
-                    if (workRoutes[zp.r].isFeasible()) {
-                      markDirty(workRoutes, {zp.r});
-                      placed = true;
-                      break;
-                    }
-                    workRoutes[zp.r] = backup_zp;
-                    markDirty(workRoutes, {zp.r});
-                  }
-
-                  if (!placed) {
-                    for (int r3 = 0; r3 < WR && !placed; ++r3) {
-                      if (r3 == r1 || r3 == r2)
-                        continue;
-                      int nWCands =
-                          buildCands(workRoutes, r3, 3, demandById_[zId]);
-                      // tl_cands is now r3's candidates — safe to read directly (innermost level)
-
-                      for (int wi = 0; wi < nWCands && !placed; ++wi) {
-                        int wId = tl_cands[wi].id, wPos = tl_cands[wi].pos;
-
-                        Route backup_r3 = workRoutes[r3];
-                        workRoutes[r3].removeNode(wPos);
-                        workRoutes[r3].evaluate();
-                        markDirty(workRoutes, {r3});
-
-                        if (!tryInsertFast(workRoutes[r3], zId,
-                                           cachedSlacks[r3])) {
-                          workRoutes[r3] = backup_r3;
-                          markDirty(workRoutes, {r3});
-                          continue;
-                        }
-                        markDirty(workRoutes, {r3});
-
-                        PlaceResult wp =
-                            findDirect(wId, workRoutes, cachedSlacks, r3);
-                        if (wp.r == -1) {
-                          std::vector<Route> full_backup = workRoutes;
-                          if (applyStation(wId, workRoutes, r3)) {
-                            std::fill(slackDirty.begin(), slackDirty.end(),
-                                      true);
-                            markDirty(workRoutes, {});
-                            placed = true;
-                            break;
-                          }
-                          workRoutes = full_backup;
-                          std::fill(slackDirty.begin(), slackDirty.end(), true);
-                          markDirty(workRoutes, {});
-                        } else {
-                          Route backup_wp = workRoutes[wp.r];
-                          workRoutes[wp.r].addNode(wId, wp.pos);
-                          workRoutes[wp.r].evaluate();
-                          if (workRoutes[wp.r].isFeasible()) {
-                            markDirty(workRoutes, {wp.r});
-                            placed = true;
-                            break;
-                          }
-                          workRoutes[wp.r] = backup_wp;
-                          markDirty(workRoutes, {wp.r});
-                        }
-
-                        if (!placed) {
-                          workRoutes[r3] = backup_r3;
-                          markDirty(workRoutes, {r3});
-                        }
-                      }
-                    }
-                  }
-                  if (!placed) {
-                    workRoutes[r2] = backup_r2;
-                    markDirty(workRoutes, {r2});
-                  }
-                }
-              }
-            }
-            if (!placed) {
-              workRoutes[r1] = backup_r1;
-              markDirty(workRoutes, {r1});
-            }
-          }
-        }
-        if (!placed)
-          stillUnplaced.push_back(xId);
+      return false;
+    };
+    std::vector<int> remaining;
+    for(int incoming:unplaced) {
+      bool placed=false;
+      for(int depth=1;depth<=maxDepth && !placed;++depth) {
+        const auto snapshot=workRoutes;
+        placed=place(incoming,depth,-1);
+        if(!placed) workRoutes=snapshot;
       }
-      unplaced = stillUnplaced;
+      if(!placed) remaining.push_back(incoming);
     }
-
-    // ── Stage B4: Ejection depth-4 (top-2 W candidates) ──────────────────
-    if (!unplaced.empty()) {
-      std::vector<int> stillUnplaced;
-      for (int xId : unplaced) {
-        bool placed = false;
-
-        for (int r1 = 0; r1 < WR && !placed; ++r1) {
-          int nYCands = buildCands(workRoutes, r1, 2, demandById_[xId]);
-          // [BUG-FIX] Snapshot Y-candidates before inner buildCands overwrites tl_cands
-          struct SnapCand4 { int id, pos; };
-          std::vector<SnapCand4> yCands4(nYCands);
-          for (int i = 0; i < nYCands; ++i) yCands4[i] = {tl_cands[i].id, tl_cands[i].pos};
-
-          for (int yi = 0; yi < nYCands && !placed; ++yi) {
-            int yId = yCands4[yi].id, yPos = yCands4[yi].pos;
-
-            Route backup_r1 = workRoutes[r1];
-            workRoutes[r1].removeNode(yPos);
-            workRoutes[r1].evaluate();
-            markDirty(workRoutes, {r1});
-
-            if (!tryInsertFast(workRoutes[r1], xId, cachedSlacks[r1])) {
-              workRoutes[r1] = backup_r1;
-              markDirty(workRoutes, {r1});
-              continue;
-            }
-            markDirty(workRoutes, {r1});
-
-            for (int r2 = 0; r2 < WR && !placed; ++r2) {
-              if (r2 == r1)
-                continue;
-              int nZCands = buildCands(workRoutes, r2, 2, demandById_[yId]);
-              // [BUG-FIX] Snapshot Z-candidates before inner buildCands(r3) overwrites
-              std::vector<SnapCand4> zCands4(nZCands);
-              for (int i = 0; i < nZCands; ++i) zCands4[i] = {tl_cands[i].id, tl_cands[i].pos};
-
-              for (int zi = 0; zi < nZCands && !placed; ++zi) {
-                int zId = zCands4[zi].id, zPos = zCands4[zi].pos;
-                Route backup_r2 = workRoutes[r2];
-                workRoutes[r2].removeNode(zPos);
-                workRoutes[r2].evaluate();
-                markDirty(workRoutes, {r2});
-
-                if (!tryInsertFast(workRoutes[r2], yId, cachedSlacks[r2])) {
-                  workRoutes[r2] = backup_r2;
-                  markDirty(workRoutes, {r2});
-                  continue;
-                }
-                markDirty(workRoutes, {r2});
-
-                for (int r3 = 0; r3 < WR && !placed; ++r3) {
-                  if (r3 == r1 || r3 == r2)
-                    continue;
-                  int nWCands = buildCands(workRoutes, r3, 2, demandById_[zId]);
-                  for (int wi = 0; wi < nWCands && !placed; ++wi) {
-                    int wId = tl_cands[wi].id, wPos = tl_cands[wi].pos;
-                    Route backup_r3 = workRoutes[r3];
-                    workRoutes[r3].removeNode(wPos);
-                    workRoutes[r3].evaluate();
-                    markDirty(workRoutes, {r3});
-
-                    if (!tryInsertFast(workRoutes[r3], zId, cachedSlacks[r3])) {
-                      workRoutes[r3] = backup_r3;
-                      markDirty(workRoutes, {r3});
-                      continue;
-                    }
-                    markDirty(workRoutes, {r3});
-
-                    PlaceResult wp =
-                        findDirect(wId, workRoutes, cachedSlacks, r3);
-                    if (wp.r != -1) {
-                      Route backup_wp = workRoutes[wp.r];
-                      workRoutes[wp.r].addNode(wId, wp.pos);
-                      workRoutes[wp.r].evaluate();
-                      if (workRoutes[wp.r].isFeasible()) {
-                        markDirty(workRoutes, {wp.r});
-                        placed = true;
-                        break;
-                      }
-                      workRoutes[wp.r] = backup_wp;
-                      markDirty(workRoutes, {wp.r});
-                    }
-                    if (!placed) {
-                      workRoutes[r3] = backup_r3;
-                      markDirty(workRoutes, {r3});
-                    }
-                  }
-                }
-                if (!placed) {
-                  workRoutes[r2] = backup_r2;
-                  markDirty(workRoutes, {r2});
-                }
-              }
-            }
-            if (!placed) {
-              workRoutes[r1] = backup_r1;
-              markDirty(workRoutes, {r1});
-            }
-          }
-        }
-        if (!placed)
-          stillUnplaced.push_back(xId);
-      }
-      unplaced = stillUnplaced;
-    }
-
-    // ── Stage B5: Ejection depth-5 (top-1 V candidate) ───────────────────
-    if (!unplaced.empty()) {
-      std::vector<int> stillUnplaced;
-      for (int xId : unplaced) {
-        bool placed = false;
-
-        for (int r1 = 0; r1 < WR && !placed; ++r1) {
-          int nYCands = buildCands(workRoutes, r1, 1, demandById_[xId]);
-          if (nYCands == 0)
-            continue;
-
-          int yId = tl_cands[0].id, yPos = tl_cands[0].pos;
-          Route backup_r1 = workRoutes[r1];
-          workRoutes[r1].removeNode(yPos);
-          workRoutes[r1].evaluate();
-          markDirty(workRoutes, {r1});
-
-          if (!tryInsertFast(workRoutes[r1], xId, cachedSlacks[r1])) {
-            workRoutes[r1] = backup_r1;
-            markDirty(workRoutes, {r1});
-            continue;
-          }
-          markDirty(workRoutes, {r1});
-
-          // Try ALL insertion positions for displaced y across all routes
-          PlaceResult yp = findDirect(yId, workRoutes, cachedSlacks, r1);
-          if (yp.r != -1) {
-            Route backup_yp = workRoutes[yp.r];
-            workRoutes[yp.r].addNode(yId, yp.pos);
-            workRoutes[yp.r].evaluate();
-            if (workRoutes[yp.r].isFeasible()) {
-              markDirty(workRoutes, {yp.r});
-              placed = true;
-            } else {
-              workRoutes[yp.r] = backup_yp;
-              markDirty(workRoutes, {yp.r});
-            }
-          }
-          if (!placed) {
-            workRoutes[r1] = backup_r1;
-            markDirty(workRoutes, {r1});
-          }
-        }
-        if (!placed)
-          stillUnplaced.push_back(xId);
-      }
-      unplaced = stillUnplaced;
-    }
+    unplaced=std::move(remaining);
 
     // ── Stage C: Station-assisted fallback ────────────────────────────────
     if (!unplaced.empty()) {
@@ -4912,39 +4271,16 @@ MoveEvaluation LocalSearch::evaluateRelocateDelta(const Solution &solution,
 
   int nodeId = r1.getNodeAt(move.nodeIdx1);
 
-  if (!r2.canPossiblyInsert(nodeId, move.nodeIdx2)) {
+  if (!r2.canPossiblyInsert(nodeId,move.nodeIdx2,isIntraMove?nodeId:-1)) return result;
+  const auto& nodes=r1.getNodes();
+  if(isIntraMove && (move.nodeIdx2==move.nodeIdx1 || move.nodeIdx2==move.nodeIdx1+1)) {
+    result.isFeasible=true;
     return result;
   }
-
-  double distanceDelta = 0.0;
-
-  if (move.cachedRemovalSavings != 0.0) {
-    distanceDelta -= move.cachedRemovalSavings;
-  } else {
-    int r1_prev = r1.getNodeAt(move.nodeIdx1 - 1);
-    int r1_next = r1.getNodeAt(move.nodeIdx1 + 1);
-    distanceDelta -= (instance->getDistance(r1_prev, nodeId) +
-                      instance->getDistance(nodeId, r1_next));
-    distanceDelta += instance->getDistance(r1_prev, r1_next);
-  }
-
-  if (isIntraMove) {
-    int insertPos = move.nodeIdx2;
-    if (move.nodeIdx1 < move.nodeIdx2)
-      insertPos--;
-    const auto &r1_nodes = r1.getNodes();
-    int r2_prev = r1_nodes[insertPos - 1];
-    int r2_next = r1_nodes[insertPos];
-    distanceDelta -= instance->getDistance(r2_prev, r2_next);
-    distanceDelta += (instance->getDistance(r2_prev, nodeId) +
-                      instance->getDistance(nodeId, r2_next));
-  } else {
-    int r2_prev = r2.getNodeAt(move.nodeIdx2 - 1);
-    int r2_next = r2.getNodeAt(move.nodeIdx2);
-    distanceDelta -= instance->getDistance(r2_prev, r2_next);
-    distanceDelta += (instance->getDistance(r2_prev, nodeId) +
-                      instance->getDistance(nodeId, r2_next));
-  }
+  const int prev=nodes[move.nodeIdx1-1],next=nodes[move.nodeIdx1+1];
+  double distanceDelta=instance->getDistance(prev,next)-instance->getDistance(prev,nodeId)-instance->getDistance(nodeId,next);
+  const int insertPrev=r2.getNodeAt(move.nodeIdx2-1),insertNext=r2.getNodeAt(move.nodeIdx2);
+  distanceDelta+=instance->getDistance(insertPrev,nodeId)+instance->getDistance(nodeId,insertNext)-instance->getDistance(insertPrev,insertNext);
 
   result.isFeasible = true;
   result.distanceDelta = distanceDelta;
@@ -5287,7 +4623,7 @@ bool LocalSearch::reconstructRouteWithTwoStations(
   // Helper: simulate arrival time tại node `to` sau khi đến từ `from` lúc `t`.
   // [OPT-9] Flat TW arrays — no shared_ptr copy inside inner loop.
   auto arrivalAt = [&](int from, int to, double t) -> double {
-    double travel = instance->getDistance(from, to); // dist = time (speed=1)
+    double travel = instance->getTime(from, to);
     double arrive = t + travel;
     return std::max(arrive, readyTimeById_[to]); // wait if early
   };
@@ -5318,7 +4654,7 @@ bool LocalSearch::reconstructRouteWithTwoStations(
     // arrTime[i] = arrival at seq[i] following depot→seq[0]→...→seq[i]
     std::vector<double> arrTime(szSeq);
     {
-      double t = 0.0;
+      double t = instance->getNodeRaw(depotId)->getReadyTime();
       int prev = depotId;
       for (int i = 0; i < szSeq; ++i) {
         arrTime[i] = arrivalAt(prev, seq[i], t);
@@ -5346,8 +4682,8 @@ bool LocalSearch::reconstructRouteWithTwoStations(
       // [OPT-9] serviceTimeById_ replaces
       // getNodeById(seq[pos-1])->getServiceTime()
       double tPrev =
-          (pos > 0) ? (arrTime[pos - 1] + serviceTimeById_[seq[pos - 1]]) : 0.0;
-      double arrCNew = tPrev + instance->getDistance(prevId, cNew);
+          (pos > 0) ? (arrTime[pos - 1] + serviceTimeById_[seq[pos - 1]]) : instance->getNodeRaw(depotId)->getReadyTime();
+      double arrCNew = tPrev + instance->getTime(prevId, cNew);
       double depCNew = std::max(arrCNew, newReady) + newSvc;
 
       if (arrCNew > newDue)
@@ -5357,7 +4693,7 @@ bool LocalSearch::reconstructRouteWithTwoStations(
       double tNext = depCNew;
       bool twOk = true;
       for (int k = pos; k < szSeq; ++k) {
-        double arrK = tNext + instance->getDistance(
+        double arrK = tNext + instance->getTime(
                                   (k == pos) ? cNew : seq[k - 1], seq[k]);
         // [OPT-9] flat arrays — no getNodeById() per k.
         if (arrK > dueDateById_[seq[k]]) {
@@ -5578,6 +4914,7 @@ bool LocalSearch::reconstructRouteWithTwoStations(
             (instance->getDistance(b, c) + instance->getDistance(d, e)) -
             (instance->getDistance(b, d) + instance->getDistance(c, e));
 
+        gain -= reversedInternalDelta(*instance,seq,i+1,j);
         if (gain < 1.0)
           continue; // threshold: net gain > 1 unit
 
@@ -6218,6 +5555,7 @@ bool LocalSearch::searchOrOptReversed(Solution &solution,
                                    instance->getDistance(revTail, next2) -
                                    instance->getDistance(prev2, next2);
 
+            insertCostRev += reversedInternalDelta(*instance,nodes1,i,i+segLen-1);
             if (insertCostRev - removalSaving >= -EPSILON)
               continue;
 

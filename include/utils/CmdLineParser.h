@@ -1,5 +1,6 @@
 #ifndef CMDLINEPARSER_H
 #define CMDLINEPARSER_H
+#include <algorithm>
 
 #include <iostream>
 #include <string>

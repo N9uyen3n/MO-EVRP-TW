@@ -100,6 +100,7 @@ bool runIntensifiedVehicleReduction(Solution &solution, int maxEjectionDepth);
   // Force eliminate smallest route (BKS+1 desperate measure)
   bool forceRouteElimination(Solution &solution);
 private:
+  friend struct LocalSearchTestAccess;
   std::shared_ptr<Instance> instance;
   std::vector<int> stationIds;
 
@@ -213,7 +214,7 @@ private:
   bool tryTriRouteMerge(Solution &solution);
   bool tryEmptySmallestRoute(Solution &solution);    // Phase 6: targeted smallest-route emptying
   bool tryEliminateSmallestRoute(Solution &solution);
-  bool ejectionChain(Solution &solution);
+  bool ejectionChain(Solution &solution, int maxDepth = 5);
   bool segmentCrossExchangeForVehicleReduction(Solution &solution);
 
   // [OPT-10] Adaptive threshold calculation for vehicle reduction

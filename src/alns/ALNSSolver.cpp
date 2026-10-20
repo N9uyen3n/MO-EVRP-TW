@@ -49,6 +49,17 @@ namespace alns {
 // ** 1. HELPER: OperatorPool Implementation
 // ******************************************************************
 
+int ALNSConfig::localSearchProbability(int iteration,int numRoutes) const {
+  if(!useLocalSearch) return 0;
+  double scale=1.0;
+  if(iteration<=2000) scale=1.5;
+  else if(iteration<maxIterations*0.25) scale=1.2;
+  if(numRoutes<=5 && iteration>=7000) scale=0.85;
+  if(numRoutes<=5 && iteration>=10000) scale=0.5;
+  if(iteration>=maxIterations*0.7) scale=0.45;
+  return std::clamp(static_cast<int>(localSearchIntensity*scale),0,100);
+}
+
 int OperatorPool::select(std::mt19937 &rng) {
   double totalWeight = std::accumulate(weights.begin(), weights.end(), 0.0);
   if (totalWeight <= 1e-9) {
@@ -185,11 +196,17 @@ int ALNSSolver::calculateNodesToRemove() {
 // ** 3. MAIN SOLVE LOOP
 // ******************************************************************
 std::vector<Solution> ALNSSolver::solve() {
+  runStatistics_={};
+  const auto totalStart=std::chrono::high_resolution_clock::now();
 
   // ── Initial Solution
   // ────────────────────────────────────────────────────────
   auto initialSolutions = generateInitialSolution();
+  runStatistics_.initializationMs=std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::high_resolution_clock::now()-totalStart).count();
   if (initialSolutions.empty()) {
+    runStatistics_.stopReason="initialization_failed";
+    runStatistics_.totalMs=runStatistics_.initializationMs;
     std::cerr << "[ERROR] Could not find any feasible initial solution!\n";
     return {};
   }
@@ -260,6 +277,7 @@ std::vector<Solution> ALNSSolver::solve() {
   int per = 2;
   // ── Main loop
   // ───────────────────────────────────────────────────────────────
+  runStatistics_.stopReason="iteration_limit";
   for (int i = 0; i < config.maxIterations; ++i) {
     auto now_time = std::chrono::high_resolution_clock::now();
     long long elapsed_ms =
@@ -268,31 +286,18 @@ std::vector<Solution> ALNSSolver::solve() {
             .count();
 
     if (elapsed_ms >= config.maxTime) {
+      runStatistics_.stopReason="time_limit";
       if (config.enableLogging)
         std::cout << "[TIME STOP] Reached maxTime = " << config.maxTime
                   << " ms at iteration " << i << "\n";
       break;
     }
 
+    runStatistics_.completedIterations=i+1;
     Solution &s_new = solutionPool.acquire();
     s_new = s_current;
-    int lsIntensity = 0;
-    if (i <= 2000)
-      lsIntensity = config.localSearchIntensity * 1.5;
-    if (2000 < i && i < config.maxIterations * 0.22)
-      lsIntensity = config.localSearchIntensity * 1.2;
-    if (i >= config.maxIterations * 0.25 && i < config.maxIterations * 0.7) {
-      lsIntensity = config.localSearchIntensity;
-      // localSearch.setVehicleReductionFeq(3);
-    }
-
-    if (s_new.getNumRoutes() <= 5 && i >= 7000) {
-      lsIntensity = config.localSearchIntensity * 0.85;
-      per = 1;
-    }
-    if (s_new.getNumRoutes() <= 5 && i >= 10000)  lsIntensity = config.localSearchIntensity * 0.5;
-    if (i >= config.maxIterations * 0.7)
-      lsIntensity = config.localSearchIntensity * 0.45;
+    const int lsIntensity=config.localSearchProbability(i,s_new.getNumRoutes());
+    if(s_new.getNumRoutes()<=5 && i>=7000) per=1;
 
     int wIdx =
         (i / std::max(1, config.segmentIterations)) % weightVectors.size();
@@ -778,6 +783,8 @@ std::vector<Solution> ALNSSolver::solve() {
           //         << "\n";
 
           if (hvStagnationCount_ >= config.hvStagnationLimit) {
+            runStatistics_.stopReason="hypervolume_stagnation";
+            solutionPool.release(s_new);
             std::cout << "[HV-Stop] Converged at segment " << (i + 1) << " ("
                       << hvStagnationCount_ << " segments stagnant).\n";
             break;
@@ -830,8 +837,16 @@ std::vector<Solution> ALNSSolver::solve() {
     repairPool.resetScores();
   }
 
+  runStatistics_.searchMs=total_ms;
+  runStatistics_.totalMs=std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::high_resolution_clock::now()-totalStart).count();
   logger->logFinalFront(archive);
-  logger->logSummary(total_ms, config.maxIterations, archive.getSize());
+  logger->logSummary(runStatistics_.totalMs, runStatistics_.completedIterations, archive.getSize());
+  std::cout<<"[RUN] stop="<<runStatistics_.stopReason
+           <<" iterations="<<runStatistics_.completedIterations
+           <<" init_ms="<<runStatistics_.initializationMs
+           <<" search_ms="<<runStatistics_.searchMs
+           <<" total_ms="<<runStatistics_.totalMs<<"\n";
   std::cout << "ALNS Finished. Total perturbations: " << perturbationCount_
             << "\n";
   return archive.getFront();

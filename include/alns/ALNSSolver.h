@@ -31,6 +31,7 @@ namespace alns {
  * @brief Cấu hình chi tiết cho thuật toán ALNSSolver.
  */
 struct ALNSConfig {
+  int localSearchProbability(int iteration, int numRoutes) const;
   // 1. Tham số Vòng lặp
   int maxIterations = 25000;
   int segmentIterations = 100;
@@ -83,6 +84,14 @@ double lambdaTW_max = 500.0;  // Maximum TW penalty coefficient (increased from 
 double lambdaPin = 5.0;       // Initial battery penalty coefficient
 double lambdaPin_max = 200.0; // Maximum battery penalty coefficient (increased from 50)
 bool usePenaltyRelaxation = true; // Enable penalty relaxation mechanism
+};
+
+struct ALNSRunStatistics {
+  int completedIterations = 0;
+  std::string stopReason = "not_started";
+  long long initializationMs = 0;
+  long long searchMs = 0;
+  long long totalMs = 0;
 };
 
 // Lớp con trợ giúp để quản lý các toán tử và trọng số
@@ -153,7 +162,9 @@ public:
   void addRepairOperator(std::shared_ptr<IRepairOperator> op,
                          double initialWeight);
   double getHV();
+  const ALNSRunStatistics& getRunStatistics() const { return runStatistics_; }
 private:
+  ALNSRunStatistics runStatistics_;
   std::shared_ptr<Instance> instance;
   ALNSConfig config;
 

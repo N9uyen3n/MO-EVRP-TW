@@ -83,6 +83,11 @@ if(BUILD_TESTING)
     add_executable(RouteRegressionTests src/test/RouteRegressionTests.cpp)
     target_link_libraries(RouteRegressionTests PRIVATE alns_lib)
     add_test(NAME RouteRegressionTests COMMAND RouteRegressionTests)
+    add_executable(LocalSearchRegressionTests src/test/LocalSearchRegressionTests.cpp)
+    target_link_libraries(LocalSearchRegressionTests PRIVATE alns_lib)
+    add_test(NAME LocalSearchRegressionTests COMMAND LocalSearchRegressionTests)
+    add_executable(ALNSAuditRunner src/test/ALNSAuditRunner.cpp)
+    target_link_libraries(ALNSAuditRunner PRIVATE alns_lib)
 endif()
 
 # -------------------------------------------------------------

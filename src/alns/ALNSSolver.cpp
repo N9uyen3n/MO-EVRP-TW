@@ -110,6 +110,8 @@ ALNSSolver::ALNSSolver(std::shared_ptr<Instance> instance, ALNSConfig config,
           ? config.randomSeed
           : std::chrono::system_clock::now().time_since_epoch().count();
   this->randomEngine.seed(seed);
+  localSearch.configureChargingRepair(config.useChargingRepairLS, config.chargingRepairBudget,
+                                     config.chargingRepairTrialsPerLS);
 
   if (config.enableLogging) {
     this->logger = std::make_unique<logging::ComprehensiveLogger>(
@@ -197,13 +199,14 @@ int ALNSSolver::calculateNodesToRemove() {
 // ******************************************************************
 std::vector<Solution> ALNSSolver::solve() {
   runStatistics_={};
-  const auto totalStart=std::chrono::high_resolution_clock::now();
+  localSearch.resetChargingRepairStatistics();
+  const auto totalStart=std::chrono::steady_clock::now();
 
   // ── Initial Solution
   // ────────────────────────────────────────────────────────
   auto initialSolutions = generateInitialSolution();
   runStatistics_.initializationMs=std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::high_resolution_clock::now()-totalStart).count();
+      std::chrono::steady_clock::now()-totalStart).count();
   if (initialSolutions.empty()) {
     runStatistics_.stopReason="initialization_failed";
     runStatistics_.totalMs=runStatistics_.initializationMs;
@@ -211,7 +214,8 @@ std::vector<Solution> ALNSSolver::solve() {
     return {};
   }
 
-  auto startTime = std::chrono::high_resolution_clock::now();
+  auto startTime = std::chrono::steady_clock::now();
+  localSearch.setChargingRepairDeadline(std::chrono::steady_clock::now() + std::chrono::milliseconds(config.maxTime));
 
   s_current = initialSolutions.front();
   double bestCost = s_current.getTotalDistance();
@@ -255,7 +259,7 @@ std::vector<Solution> ALNSSolver::solve() {
     long long destroy_us = 0, repair_us = 0, evaluate_us = 0, ls_us = 0,
               acceptance_us = 0;
   } stats;
-  auto now = std::chrono::high_resolution_clock::now;
+  auto now = std::chrono::steady_clock::now;
   decltype(now()) t1, t2, t3, t4, t5, t6;
 
   std::uniform_real_distribution<> dis(0.0, 1.0);
@@ -279,7 +283,7 @@ std::vector<Solution> ALNSSolver::solve() {
   // ───────────────────────────────────────────────────────────────
   runStatistics_.stopReason="iteration_limit";
   for (int i = 0; i < config.maxIterations; ++i) {
-    auto now_time = std::chrono::high_resolution_clock::now();
+    auto now_time = std::chrono::steady_clock::now();
     long long elapsed_ms =
         std::chrono::duration_cast<std::chrono::milliseconds>(now_time -
                                                               startTime)
@@ -646,7 +650,7 @@ std::vector<Solution> ALNSSolver::solve() {
         }
       }
 
-      auto now_progress = std::chrono::high_resolution_clock::now();
+      auto now_progress = std::chrono::steady_clock::now();
       long long time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                               now_progress - startTime)
                               .count();
@@ -798,7 +802,7 @@ std::vector<Solution> ALNSSolver::solve() {
 
   // ── Profiling output
   // ────────────────────────────────────────────────────────
-  auto endTime = std::chrono::high_resolution_clock::now();
+  auto endTime = std::chrono::steady_clock::now();
   long long total_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime)
           .count();
@@ -837,9 +841,10 @@ std::vector<Solution> ALNSSolver::solve() {
     repairPool.resetScores();
   }
 
+  runStatistics_.chargingRepair=localSearch.getChargingRepairStatistics();
   runStatistics_.searchMs=total_ms;
   runStatistics_.totalMs=std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::high_resolution_clock::now()-totalStart).count();
+      std::chrono::steady_clock::now()-totalStart).count();
   logger->logFinalFront(archive);
   logger->logSummary(runStatistics_.totalMs, runStatistics_.completedIterations, archive.getSize());
   std::cout<<"[RUN] stop="<<runStatistics_.stopReason

@@ -132,6 +132,29 @@ void Instance::setTravelMatrices(std::vector<double> distances,
   distanceMatrix->maxDistance = *std::max_element(distanceMatrix->distances.begin(), distanceMatrix->distances.end());
   distanceMatrix->maxTimeWindow = *std::max_element(distanceMatrix->times.begin(), distanceMatrix->times.end());
   nearestStationCache.clear();
+  stationCandidateCache_.clear();
+}
+
+std::vector<int> Instance::getCandidateStations(int from, int to, int topK) const {
+  if (topK <= 0) return {};
+  getNodeById(from);
+  getNodeById(to);
+  const auto key = (static_cast<std::uint64_t>(from) << 32) | static_cast<std::uint32_t>(to);
+  auto found = stationCandidateCache_.find(key);
+  if (found == stationCandidateCache_.end()) {
+    constexpr size_t maxCachedEdges = 4096;
+    if (stationCandidateCache_.size() >= maxCachedEdges) stationCandidateCache_.clear();
+    std::vector<int> ranked;
+    for (const auto& station : stations) ranked.push_back(station->getId());
+    std::sort(ranked.begin(), ranked.end(), [&](int a, int b) {
+      const double da = getDistance(from, a) + getDistance(a, to);
+      const double db = getDistance(from, b) + getDistance(b, to);
+      return da != db ? da < db : a < b;
+    });
+    found = stationCandidateCache_.emplace(key, std::move(ranked)).first;
+  }
+  const auto& ranked = found->second;
+  return {ranked.begin(), ranked.begin() + std::min(ranked.size(), static_cast<size_t>(topK))};
 }
 
 const std::vector<std::shared_ptr<Node>> &Instance::getNodes() const {

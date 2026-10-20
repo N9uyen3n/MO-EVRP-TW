@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <array>
+#include "ChargingRepair.h"
 
 enum class MoveType {
   NONE,
@@ -79,6 +80,10 @@ class LocalSearch {
 public:
   explicit LocalSearch(std::shared_ptr<Instance> inst);
   void run(Solution &solution);
+  void configureChargingRepair(bool enabled, const alns::ChargingRepairBudget& budget = {}, int trialsPerRun = 8);
+  void setChargingRepairDeadline(std::chrono::steady_clock::time_point deadline) { repairDeadline_ = deadline; }
+  const alns::ChargingRepairStatistics& getChargingRepairStatistics() const { return repairStats_; }
+  void resetChargingRepairStatistics() { repairStats_ = {}; }
   bool reconstructRouteWithTwoStations(Route &route,
   const std::vector<int> &newCustomers, int maxStations = 2) const;
   // bool forceReduceVehicles(Solution &solution, int targetVehicles,
@@ -103,6 +108,14 @@ private:
   friend struct LocalSearchTestAccess;
   std::shared_ptr<Instance> instance;
   std::vector<int> stationIds;
+  bool useChargingRepair_ = false;
+  alns::ChargingRepairBudget repairBudget_;
+  alns::ChargingRepairStatistics repairStats_;
+  int repairTrialsPerRun_ = 8;
+  int repairTrialsRemaining_ = 8;
+  std::chrono::steady_clock::time_point repairDeadline_ = std::chrono::steady_clock::time_point::max();
+  bool tryRepairRoutes(Solution& solution, int r1, int r2, Route first, Route second, bool relocate);
+  bool tryRepairRelocate(Solution& solution, int r1, int i, int r2, int j);
 
   // [OPT-10] Iteration tracking for adaptive thresholds
   int currentIteration_ = 0;

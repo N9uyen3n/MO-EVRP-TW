@@ -182,7 +182,78 @@ void LocalSearch::DiagCounters::print() const {
          stationSegTotal ? 100.0 * stationSegReject / stationSegTotal : 0.0);
 }
 
+void LocalSearch::configureChargingRepair(bool enabled, const alns::ChargingRepairBudget& budget, int trialsPerRun) {
+  useChargingRepair_ = enabled;
+  repairBudget_ = budget;
+  repairTrialsPerRun_ = std::max(0, trialsPerRun);
+  repairTrialsRemaining_ = repairTrialsPerRun_;
+}
+
+bool LocalSearch::tryRepairRoutes(Solution& solution, int r1, int r2, Route first, Route second, bool relocate) {
+  using Clock = std::chrono::steady_clock;
+  if (!useChargingRepair_ || r1 == r2 || repairTrialsRemaining_ <= 0 || Clock::now() >= repairDeadline_) return false;
+  const Solution& original = solution;
+  const double oldDistance = original.getRoutes()[r1].getTotalDistance() + original.getRoutes()[r2].getTotalDistance();
+  auto distanceHint = [&](const Route& route, bool stripStations) {
+    double total = 0; int previous = 0;
+    for (size_t i = 1; i + 1 < route.size(); ++i) {
+      int node = route.getNodeAt(i);
+      if (stripStations && instance->getNodeType(node) == NodeType::STATION) continue;
+      total += instance->getDistance(previous,node); previous = node;
+    }
+    return total + instance->getDistance(previous,0);
+  };
+  // Ranking heuristic only; acceptance below always uses the exact repaired cost.
+  if (std::min(distanceHint(first,false)+distanceHint(second,false),
+               distanceHint(first,true)+distanceHint(second,true)) >= oldDistance-1e-9) return false;
+  if (first.isFeasible() && second.isFeasible()) return false;
+  --repairTrialsRemaining_;
+  auto repair = [&](Route& candidate) {
+    const auto customers = candidate.getCustomers();
+    if (customers.empty()) { candidate.clear(); return true; }
+    if (candidate.isFeasible()) return true;
+    auto budget = repairBudget_;
+    budget.deadline = std::min(budget.deadline, repairDeadline_);
+    ++repairStats_.calls;
+    const auto result = alns::repairChargingForCustomerSequence(candidate, instance, customers, budget);
+    repairStats_.evaluations += result.evaluations;
+    repairStats_.elapsedUs += result.elapsedUs;
+    if (result.budgetExhausted) ++repairStats_.exhausted;
+    if (!result.route) return false;
+    ++repairStats_.feasible;
+    candidate = *result.route;
+    return true;
+  };
+  if (!repair(first) || !repair(second)) return false;
+  const double newDistance = first.getTotalDistance() + second.getTotalDistance();
+  if (newDistance >= oldDistance - 1e-9) return false;
+  const int before = static_cast<int>(!original.getRoutes()[r1].getCustomers().empty()) +
+                     static_cast<int>(!original.getRoutes()[r2].getCustomers().empty());
+  const int after = static_cast<int>(!first.getCustomers().empty()) + static_cast<int>(!second.getCustomers().empty());
+  repairStats_.vehiclesReduced += before - after;
+  if (relocate) ++repairStats_.relocateAccepted;
+  else ++repairStats_.interTwoOptAccepted;
+  auto& routes = solution.getRoutes();
+  routes[r1] = std::move(first);
+  routes[r2] = std::move(second);
+  solution.markDirty();
+  searchContext_.markDirty(r1, r2);
+  return true;
+}
+
+bool LocalSearch::tryRepairRelocate(Solution& solution, int r1, int i, int r2, int j) {
+  if (!useChargingRepair_ || r1 == r2 || repairTrialsRemaining_ <= 0) return false;
+  const Solution& original = solution;
+  Route first = original.getRoutes()[r1], second = original.getRoutes()[r2];
+  const int customer = first.getNodeAt(i);
+  if (second.getTotalDemand() + demandById_[customer] > instance->getVehicleCapacity() + 1e-9) return false;
+  first.removeNode(i);
+  second.addNode(customer, j);
+  return tryRepairRoutes(solution, r1, r2, std::move(first), std::move(second), true);
+}
+
 void LocalSearch::run(Solution &solution) {
+  repairTrialsRemaining_ = repairTrialsPerRun_;
   diag_.reset();
   // ⭐ VITAL: Must invalidate context from previous ALNS iterations
   searchContext_.invalidate();
@@ -955,16 +1026,23 @@ bool LocalSearch::searchRelocate(Solution &solution,
           if (r1 == r2 && (j == i || j == i + 1))
             continue;
 
+          auto rescue = [&]() {
+            return r1 != r2 && tryRepairRelocate(solution,r1,i,r2,static_cast<int>(j));
+          };
+
           // [PRUNE-1] twNext_ O(1) before canPossiblyInsert
           {
             int prev2 = routes[r2].getNodeAt((int)j - 1);
             int next2 = routes[r2].getNodeAt((int)j);
-            if (!twNext_[prev2][nodeId] || !twNext_[nodeId][next2])
+            if (!twNext_[prev2][nodeId] || !twNext_[nodeId][next2]) {
+              if (rescue()) return true;
               continue;
+            }
           }
 
           if (!routes[r2].canPossiblyInsert(nodeId, j,
                                             (r1 == r2) ? nodeId : -1)) {
+            if (rescue()) return true;
             continue;
           }
 
@@ -980,10 +1058,12 @@ bool LocalSearch::searchRelocate(Solution &solution,
           MoveEvaluation preEval = evaluateRelocateDelta(solution, move);
 
           if (!preEval.isFeasible || preEval.distanceDelta >= -1e-9) {
+            if (rescue()) return true;
             continue;
           }
 
           evaluateMove(solution, move, weights);
+          if (!move.eval.isFeasible && rescue()) return true;
 
           if (move.eval.isFeasible && move.eval.objectiveDelta < -1e-9) {
             applyMove(solution, move);
@@ -1224,8 +1304,8 @@ bool LocalSearch::searchInterTwoOpt(Solution &solution,
           double newEdges = instance->getDistance(nodes1[i], nodes2[j + 1]) +
                             instance->getDistance(nodes2[j], nodes1[i + 1]);
 
-          if (newEdges >= oldEdges - 1e-6)
-            continue;
+          if (newEdges >= oldEdges - 1e-6 &&
+              (!useChargingRepair_ || repairTrialsRemaining_ <= 0)) continue;
 
           // [PRUNE-4] Granularity: both new edges must be below threshold
           if (instance->getDistance(nodes1[i], nodes2[j + 1]) >=
@@ -1270,8 +1350,10 @@ bool LocalSearch::searchInterTwoOpt(Solution &solution,
           newR1.evaluate();
           newR2.evaluate();
 
-          if (!newR1.isFeasible() || !newR2.isFeasible())
+          if (!newR1.isFeasible() || !newR2.isFeasible()) {
+            if (tryRepairRoutes(solution,r1,r2,newR1,newR2,false)) return true;
             continue;
+          }
 
           double oldDist =
               routes[r1].getTotalDistance() + routes[r2].getTotalDistance();

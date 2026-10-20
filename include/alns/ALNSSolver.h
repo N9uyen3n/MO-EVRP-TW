@@ -54,6 +54,9 @@ struct ALNSConfig {
   // 5. Tham số Tìm kiếm Cục bộ (Local Search)
   bool useLocalSearch = true;
   int localSearchIntensity = 30;
+  bool useChargingRepairLS = false;
+  ChargingRepairBudget chargingRepairBudget;
+  int chargingRepairTrialsPerLS = 8;
 
   // 6. Simulated Annealing
   double startTemperature = 150.0;
@@ -92,6 +95,7 @@ struct ALNSRunStatistics {
   long long initializationMs = 0;
   long long searchMs = 0;
   long long totalMs = 0;
+  ChargingRepairStatistics chargingRepair;
 };
 
 // Lớp con trợ giúp để quản lý các toán tử và trọng số

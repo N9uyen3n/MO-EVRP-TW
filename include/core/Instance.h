@@ -5,6 +5,8 @@
 #include <tuple>
 #include <map>
 #include <string>
+#include <cstdint>
+#include <unordered_map>
 #include "Node.h"
 #include "Station.h"
 #include "Customer.h"
@@ -82,6 +84,8 @@ public:
     std::string toString() const;
 
     int getNearestStationId(int nodeId) const;
+    // Ranked by station detour; cached per edge, with bounded storage.
+    std::vector<int> getCandidateStations(int from, int to, int topK) const;
     inline const Node* getNodeRaw(int id) const {
         return nodes[id].get();  // không copy shared_ptr
     }
@@ -112,4 +116,5 @@ private:
     std::unique_ptr<DistanceMatrix> distanceMatrix;
 
     mutable std::vector<int> nearestStationCache;
+    mutable std::unordered_map<std::uint64_t, std::vector<int>> stationCandidateCache_;
 };

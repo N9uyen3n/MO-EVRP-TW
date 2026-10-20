@@ -78,6 +78,13 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/TestALNS.cpp")
     target_link_libraries(TestALNS PRIVATE alns_lib)
 endif()
 
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(RouteRegressionTests src/test/RouteRegressionTests.cpp)
+    target_link_libraries(RouteRegressionTests PRIVATE alns_lib)
+    add_test(NAME RouteRegressionTests COMMAND RouteRegressionTests)
+endif()
+
 # -------------------------------------------------------------
 # 5. Tạo file thực thi Tuning (Tuning Executable)
 # -------------------------------------------------------------

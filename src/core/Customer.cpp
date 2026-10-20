@@ -3,7 +3,7 @@
 #include <string>
 Customer::Customer(int id, std::string stringId, double x, double y,
     double demand, double readyTime, double dueDate, double serviceTime)
-    : Node(id, stringId, x, y), demand(demand), readyTime(readyTime), dueDate(dueDate), serviceTime(serviceTime) {}
+    : Node(id, stringId, x, y, readyTime, dueDate, serviceTime), demand(demand), readyTime(readyTime), dueDate(dueDate), serviceTime(serviceTime) {}
 
 double Customer::getDemand() const {
     return demand;
@@ -27,4 +27,4 @@ std::string Customer::toString() const {
     ss << "Customer(id: " << getId() << " , stringId: " << getStringId() << " , x: " << getX() << ", y: " <<
         getY() << ", demand: " << demand << ", readyTime: " << readyTime << ", dueDate: " << dueDate << ", serviceTime: " << serviceTime << ")";
     return ss.str();
-}   
+}

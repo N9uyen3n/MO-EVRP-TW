@@ -3,7 +3,7 @@
 #include <string>
 
 Node::Node(int id, std::string stringId, double x, double y)
-    : id(id), stringId(stringId), x(x), y(y) {}
+    : Node(id, stringId, x, y, 0.0, 0.0, 0.0) {}
 
 Node::Node(int id, std::string stringId, double x, double y, double readyTime, double dueDate, double serviceTime)
     : id(id), stringId(stringId),  x(x), y(y), readyTime(readyTime), dueDate(dueDate), serviceTime(serviceTime) {}

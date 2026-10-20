@@ -68,7 +68,7 @@ public:
   double getTotalTime() const;
   double getActiveTime() const;
   double getTotalDemand() const;
-  void evaluate() const;                        // public signature unchanged
+  void evaluate() const; // Completes the canonical schedule before any getter returns.
   const std::vector<NodeState> &getStates() const;
   int getNodeAt(size_t pos) const;
   int getLastNodeId() const;
@@ -96,9 +96,6 @@ public:
   void pruneRedundantStations();
 
 private:
-  // ── Internal helpers ──────────────────────────────────────────────────────
-  void runAbsorptionIfNeeded() const; // Lazy slack-time absorption pass
-
   // ── Identity / ownership ──────────────────────────────────────────────────
   int id;
   std::shared_ptr<Vehicle>  vehicle;
@@ -115,7 +112,6 @@ private:
   // ── Lazy-eval flags ───────────────────────────────────────────────────────
   mutable EvaluationResult evalResult;
   mutable bool isDirty          = true;  // forward+backward pass needed
-  mutable bool absorptionDirty_ = true;  // slack-time absorption pass needed
 
   // ── Cached derived fields (invalidated on sequence mutation) ──────────────
   mutable double           cachedTotalDemand_    = 0.0;

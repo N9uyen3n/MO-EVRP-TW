@@ -1,10 +1,13 @@
+
 # Kế hoạch nâng cấp ALNS từ việc đối chiếu HMA
 
-Ngày lập: 2026-10-20. Cập nhật: P0-P2 đã triển khai và kiểm chứng; P3-P7 chưa thực hiện. Xem [báo cáo P0-P2](update/alns_p0_p2_report.md) và [kết quả trước/sau](update/alns_p0_p2_results.json).
+Ngày lập: 2026-10-20. Cập nhật: P0–P4 đã triển khai và kiểm chứng; P3–P4 giữ dạng tùy chọn, mặc định tắt vì lợi ích phụ thuộc seed/mục tiêu. P5–P7 chưa triển khai. Xem [báo cáo P0-P2](update/alns_p0_p2_report.md), [báo cáo P3–P4](update/alns_p3_p4_report.md) và [run r104 đã kiểm chứng](update/r104_unlimited_run.md).
 
 ## 1. Mục tiêu và phạm vi
 
 Mô hình đích là EVRPTW-PR: chỉ giao hàng, có cửa sổ thời gian và sạc một phần. Mỗi khách có một demand giao; tổng demand trên tuyến không vượt tải trọng xe. Không bổ sung pickup hoặc simultaneous pickup-delivery.
+
+Phạm vi được người dùng chốt lại: dữ liệu Solomon với khoảng cách Euclidean đối xứng, thời gian di chuyển theo vận tốc của instance. P3–P4 và benchmark tập trung đúng mô hình này; không phát triển thêm yêu cầu ma trận có hướng hoặc mở rộng JD/SPD. Những kiểm thử directed đã làm trong P0–P2 là lịch sử kiểm chứng triển khai, không phải yêu cầu của bài toán đích.
 
 Nâng cấp local search để đánh giá nghiệm nhất quán, giảm việc bỏ sót move khả thi do năng lượng, sau đó tăng tốc các bước tìm kiếm lặp lại. Giữ thứ tự mục tiêu hiện tại: ít xe hơn được ưu tiên tuyệt đối; khi bằng số xe, xét Pareto trên Distance, Gini của active time và MaxTime.
 
@@ -51,7 +54,6 @@ Không lấy kết quả của evaluator cũ làm chuẩn tính đúng. Lưu k�
 - Thêm bộ kiểm chứng lịch độc lập: nhận node sequence, thời gian đến/rời và lượng sạc; kiểm tra từng cạnh, pin, tải, cửa sổ thời gian và customer coverage.
 - Kiểm chứng cả lịch xuất ra và chỉ số Distance/Gini/MaxTime. Validator JD hiện chỉ dựng lại lịch sạc tối thiểu nên chưa phát hiện hết lỗi trạng thái do absorption.
 - Đo thời gian tổng gồm khởi tạo, local search và Scatter Search nếu bật; ghi riêng thời gian vòng ALNS. Ghi số vòng thực chạy và lý do dừng.
-- Nếu thử dữ liệu JD, chỉ dùng demand giao hàng (`delivery`); không cộng hoặc lấy trung bình delivery/pickup. Directed và symmetric là hai chế độ ma trận riêng.
 
 **File dự kiến:** `CMakeLists.txt`, `src/test/RouteRegressionTests.cpp`, công cụ validator/benchmark trong `src/test/`, logger và runner nếu cần thêm trường đo.
 
@@ -106,6 +108,7 @@ Không lấy kết quả của evaluator cũ làm chuẩn tính đúng. Lưu k�
 ```cpp
 ChargingRepairResult repairChargingForCustomerSequence(
     const Route& original,
+    const std::shared_ptr<Instance>& instance,
     const std::vector<int>& orderedCustomers,
     const ChargingRepairBudget& budget);
 ```
@@ -119,12 +122,12 @@ ChargingRepairResult repairChargingForCustomerSequence(
 - Thử cấu hình trạm hiện có, sau đó chèn tuần tự quanh đoạn thiếu pin; nếu cần, chạy tìm kiếm có giới hạn bằng beam hoặc nhãn trạng thái.
 - Ngân sách phải giới hạn số ứng viên/trạng thái và số trạm; có deadline để local search không chạy quá lâu trong một lần gọi.
 - Mọi tuyến đầu ra đi qua evaluator chuẩn P1 và kiểm tra đúng tập khách. Hàm không sửa nghiệm gốc nếu thất bại.
-- Tạo cache ứng viên trạm theo cạnh có hướng trong `Instance`, trả top-K theo detour; dùng chiến lược lazy/capped để tránh bảng O(N²S) không cần thiết. Xóa cache khi thay travel matrices.
+- Tạo cache ứng viên trạm trong `Instance`, trả top-K theo detour Euclidean; dùng chiến lược lazy/capped để tránh bảng O(N²S) không cần thiết.
 - Top-K là giới hạn heuristic, có cơ chế mở rộng khi ngân sách cho phép. Đừng chỉ chọn trạm gần khách theo Euclidean.
 
 **File dự kiến:** `include/alns/ChargingRepair.h`, `src/alns/ChargingRepair.cpp`, `include/core/Instance.h`, `src/core/Instance.cpp`; chuyển logic dùng chung từ local search và các repair hiện có theo từng bước.
 
-**Kiểm chứng:** giữ thứ tự khách; không sửa đầu vào khi fail; zero/new/multiple stations; ba trạm bắt buộc trong ví dụ nhỏ; directed distance và time khác distance; giới hạn ngân sách. Với ví dụ rất nhỏ, so tập ứng viên với vét cạn cấu hình trạm giới hạn.
+**Kiểm chứng:** giữ thứ tự khách; không sửa đầu vào khi fail; zero/new/multiple station visits; ba lượt ghé trạm bắt buộc trong ví dụ Euclidean nhỏ; thời gian di chuyển theo vận tốc; giới hạn ngân sách. Với ví dụ rất nhỏ, so tập ứng viên với vét cạn cấu hình trạm giới hạn.
 
 **Hoàn thành khi:** có API dùng chung, kết quả và ngân sách rõ ràng; hỗ trợ được ví dụ cấu hình trạm cũ thất bại nhưng bố trí khác thành công.
 
@@ -168,7 +171,6 @@ ChargingRepairResult repairChargingForCustomerSequence(
 - Thử prefix/suffix cho Inter-relocate và Inter-2-opt trước; giữ cờ tắt/bật để đối chiếu.
 - Lưu distance, customer demand và thuộc tính TW phù hợp với chuỗi khách; ghép một số đoạn cố định để lọc ứng viên.
 - Xác định rõ ràng thuộc tính là chính xác trong miền nào. Thuộc tính bỏ trạm không phải chứng nhận khả thi pin hoặc thời gian sạc.
-- Directed reversal cần thuộc tính chiều ngược; chưa có thì dùng đánh giá đầy đủ.
 - Chỉ xây bảng mọi đoạn O(n²) khi profiling cho thấy thời gian tiết kiệm vượt chi phí rebuild và bộ nhớ.
 - Giữ evaluator chuẩn và charging repair làm bước kiểm tra cuối.
 
@@ -180,7 +182,7 @@ ChargingRepairResult repairChargingForCustomerSequence(
 
 - Bộ nhỏ: chọn đại diện C/R/RC có 5, 10, 15 khách; dùng cho regression và đối chiếu move.
 - Bộ vừa: chọn đại diện C/R/RC trong `data/test-100` và các instance đã dùng trước đó; chốt manifest đường dẫn thực tế trước khi chạy.
-- Bộ lớn: nếu dùng JD200, chỉ xét demand giao hàng với chế độ `delivery`; kiểm tra riêng directed/symmetric.
+- Nếu mở rộng kích thước sau này, tiếp tục dùng dữ liệu Euclidean đối xứng của cùng mô hình EVRPTW-PR; đợt này chỉ benchmark ba instance 100 khách đã chọn.
 - Smoke test ban đầu: ba instance, hai seed, 10 giây mỗi run. Đánh giá chất lượng: năm seed ghép cặp, 60 giây; xác nhận trên tập chọn trước ở 180 giây khi cần.
 - Chạy tuần tự trên cùng máy/build; ghi wall time tổng, thời gian riêng ALNS, mức vượt deadline và lý do dừng. Kiểm tra deadline bên trong các tìm kiếm tốn thời gian; đặt giới hạn vòng đủ lớn và ghi rõ run nào dừng do vòng/HV thay vì thời gian.
 - Dùng thư mục kết quả mới cho mỗi biến thể. Lưu baseline cũ để truy vết, baseline P1-P2 để đánh giá nâng cấp.
@@ -196,7 +198,7 @@ ChargingRepairResult repairChargingForCustomerSequence(
 | Đa mục tiêu | HV 3D với cùng reference box cho các biến thể trên cùng instance và cùng mức xe; ghi riêng HV 2D nếu giữ điều kiện dừng cũ |
 | Chi phí | Wall time, số move đánh giá, số lần full evaluate/repair, thời gian từng toán tử, cache hit, bộ nhớ nếu dùng bảng đoạn |
 
-Để so với HMA: cả hai phải giải phiên bản chỉ giao hàng trên cùng demand, pickup phía HMA phải bằng 0; thống nhất ma trận sau tiền xử lý, mô hình sạc và tiêu chí chấm. Nếu dùng hyperarc, kiểm chứng đường mở rộng tương ứng. Chưa thống nhất thì chỉ đối chiếu cơ chế, không kết luận thuật toán nào tốt hơn từ tổng cost khác định nghĩa.
+HMA chỉ là nguồn tham khảo cơ chế. Đợt này so sánh bật/tắt charging repair trong ALNS trên cùng dữ liệu Solomon đối xứng, không thực hiện so sánh chất lượng với HMA-SPD.
 
 **Điều kiện bật mặc định**
 
@@ -205,8 +207,10 @@ ChargingRepairResult repairChargingForCustomerSequence(
 - Bản chỉ tăng tốc giữ ngữ nghĩa tìm kiếm và giảm thời gian đo được; nếu chi phí cache/rebuild vượt lợi ích thì để tắt.
 - Giữ các cờ thử nghiệm để tháo riêng từng cơ chế; không đặt lại lỗi evaluator thành tùy chọn mặc định cũ.
 
-## 4. Mốc cần làm đầu tiên
+## 4. Trạng thái sau P3–P4
 
-Đợt triển khai đầu tiên P0-P2 đã có regression tests, evaluator nhất quán, bộ lọc an toàn và các sửa lỗi điều khiển. Hai target CTest đạt tổng cộng 20 ca; bảy run trước/sau được lưu trong báo cáo, 65 nghiệm của bản sau đều qua validator. Mốc tiếp theo là charging repair P3-P4, rồi quyết định mức đầu tư cache/thuộc tính đoạn bằng profiling. Ngân sách wall time vẫn là giới hạn mềm như nêu trong báo cáo.
+P0–P2 đã có evaluator nhất quán và các sửa lỗi điều khiển. P3–P4 bổ sung charging repair với ba target CTest đạt 34 ca; 18 run đối chiếu trên r104/r101/c109 trả về 221 nghiệm, 2.792 tuyến đều qua validator. Mode on có distance đại diện tốt hơn ở 4/9 cặp, HV 3D tốt hơn ở 6/9 cặp; số xe cuối không đổi. Chưa có lợi ích nhất quán để bật mặc định. Code ở commit 28a9057, API và cờ thử nghiệm được giữ để nghiên cứu tiếp.
+
+Nếu triển khai P5 tiếp theo, cần profiling chi tiết trước khi chọn cache/cập nhật gia tăng. Ngân sách wall time vẫn mềm; các phép đo đã dùng đồng hồ monotonic và ghi cả mức vượt ngân sách. Không mở rộng mô hình ra khỏi EVRPTW-PR Euclidean đối xứng đã chốt.
 
 Kế hoạch này không cam kết trước tỷ lệ tăng tốc hoặc mức giảm xe. Các quyết định bật tính năng dựa trên tính đúng và thí nghiệm ghép cặp đã mô tả.

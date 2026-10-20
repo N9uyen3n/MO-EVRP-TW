@@ -200,6 +200,8 @@ int ALNSSolver::calculateNodesToRemove() {
 std::vector<Solution> ALNSSolver::solve() {
   runStatistics_={};
   localSearch.resetChargingRepairStatistics();
+  localSearch.enableProfiling(config.profileLocalSearch);
+  localSearch.resetProfile();
   const auto totalStart=std::chrono::steady_clock::now();
 
   // ── Initial Solution
@@ -842,6 +844,7 @@ std::vector<Solution> ALNSSolver::solve() {
   }
 
   runStatistics_.chargingRepair=localSearch.getChargingRepairStatistics();
+  runStatistics_.localSearchProfile=localSearch.getProfile();
   runStatistics_.searchMs=total_ms;
   runStatistics_.totalMs=std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now()-totalStart).count();

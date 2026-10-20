@@ -55,6 +55,7 @@ struct ALNSConfig {
   bool useLocalSearch = true;
   int localSearchIntensity = 30;
   bool useChargingRepairLS = false;
+  bool profileLocalSearch = false;
   ChargingRepairBudget chargingRepairBudget;
   int chargingRepairTrialsPerLS = 8;
 
@@ -96,6 +97,7 @@ struct ALNSRunStatistics {
   long long searchMs = 0;
   long long totalMs = 0;
   ChargingRepairStatistics chargingRepair;
+  LocalSearchProfile localSearchProfile;
 };
 
 // Lớp con trợ giúp để quản lý các toán tử và trọng số

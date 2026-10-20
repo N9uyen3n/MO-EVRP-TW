@@ -1,7 +1,7 @@
 
 # Kế hoạch nâng cấp ALNS từ việc đối chiếu HMA
 
-Ngày lập: 2026-10-20. Cập nhật: P0–P4 đã triển khai và kiểm chứng; P3–P4 giữ dạng tùy chọn, mặc định tắt vì lợi ích phụ thuộc seed/mục tiêu. P5–P7 chưa triển khai. Xem [báo cáo P0-P2](update/alns_p0_p2_report.md), [báo cáo P3–P4](update/alns_p3_p4_report.md) và [run r104 đã kiểm chứng](update/r104_unlimited_run.md).
+Ngày lập: 2026-10-20. Cập nhật: P0–P4 đã triển khai và kiểm chứng; P3–P4 giữ dạng tùy chọn, mặc định tắt vì lợi ích phụ thuộc seed/mục tiêu. P5 đã hoàn tất profiling; cache chưa triển khai. P6–P7 chưa bắt đầu. Xem [báo cáo P0-P2](update/alns_p0_p2_report.md), [báo cáo P3–P4](update/alns_p3_p4_report.md), [profiling P5](update/alns_p5_profiling_report.md) và [run r104 đã kiểm chứng](update/r104_unlimited_run.md).
 
 ## 1. Mục tiêu và phạm vi
 
@@ -150,6 +150,8 @@ ChargingRepairResult repairChargingForCustomerSequence(
 
 ## P5. Cache lân cận và cập nhật gia tăng
 
+**Trạng thái:** hoàn tất công cụ profiling tùy chọn và 18 run trước/tắt/bật trên r104/r101/c109, hai seed, 200 vòng. 36 regression đạt; 153 nghiệm / 1.899 tuyến hợp lệ; sáu bộ mục tiêu/lịch giữ nguyên. Segment exchange giảm xe chiếm 37,50–60,11% thời gian LS, ejection 23,61–33,03%; self của context/ranking chỉ 0,108–0,171%. Ưu tiên đo thời gian helper tái dựng và tỷ lệ đầu vào lặp trong nhánh giảm xe trước khi chọn cache. Chưa triển khai cache, chưa đo cache hit hoặc chứng minh tăng tốc. Chi tiết: [báo cáo profiling](update/alns_p5_profiling_report.md).
+
 **Công việc**
 
 - Đo profiling trước; chọn toán tử có nhiều lần đánh giá lại để làm đầu tiên.
@@ -211,6 +213,6 @@ HMA chỉ là nguồn tham khảo cơ chế. Đợt này so sánh bật/tắt ch
 
 P0–P2 đã có evaluator nhất quán và các sửa lỗi điều khiển. P3–P4 bổ sung charging repair với ba target CTest đạt 34 ca; 18 run đối chiếu trên r104/r101/c109 trả về 221 nghiệm, 2.792 tuyến đều qua validator. Mode on có distance đại diện tốt hơn ở 4/9 cặp, HV 3D tốt hơn ở 6/9 cặp; số xe cuối không đổi. Chưa có lợi ích nhất quán để bật mặc định. Code ở commit 28a9057, API và cờ thử nghiệm được giữ để nghiên cứu tiếp.
 
-Nếu triển khai P5 tiếp theo, cần profiling chi tiết trước khi chọn cache/cập nhật gia tăng. Ngân sách wall time vẫn mềm; các phép đo đã dùng đồng hồ monotonic và ghi cả mức vượt ngân sách. Không mở rộng mô hình ra khỏi EVRPTW-PR Euclidean đối xứng đã chốt.
+Khi triển khai tiếp phần cache P5, cần đo riêng helper tái dựng và tỷ lệ đầu vào lặp trong nhánh giảm xe theo kết quả profiling đã có. Ngân sách wall time vẫn mềm; các phép đo đã dùng đồng hồ monotonic và ghi cả mức vượt ngân sách. Không mở rộng mô hình ra khỏi EVRPTW-PR Euclidean đối xứng đã chốt.
 
 Kế hoạch này không cam kết trước tỷ lệ tăng tốc hoặc mức giảm xe. Các quyết định bật tính năng dựa trên tính đúng và thí nghiệm ghép cặp đã mô tả.

@@ -17,7 +17,7 @@ Các kiểm tra dùng exception thay vì assert nên vẫn hoạt động trong 
 CLI của ALNSAuditRunner:
 
 ```text
-ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1]
+ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1]
 ```
 
 Runner ghi `results.csv`, `schedules.csv`, `validation.txt`, `run_statistics.json` và `audit_parameters.json`; từ chối ghi đè thư mục output. Charging repair mặc định tắt. Ngân sách thời gian là giới hạn mềm của vòng ALNS, khởi tạo và một LS đang chạy có thể khiến wall time lớn hơn ngân sách.
@@ -50,3 +50,18 @@ python src/test/validate_legacy_front.py data/solomon/r103_21.txt logs_testLS5/r
 Phần này cần NumPy/SciPy. Nó phân biệt ba câu hỏi: lịch log có nhất quán sau xét làm tròn; chỉ sửa trạng thái pin có đủ không; giữ nguyên thứ tự khách/trạm nhưng lập lại lịch sạc có khả thi không. LP chỉ dùng để kiểm chứng/lập lịch lại log cũ, không nằm trong thuật toán ALNS hoặc benchmark charging repair.
 
 Gini của lịch LP tái lập là một giá trị khả thi, không được coi là Gini tối ưu hoặc mặc nhiên thay thế chỉ số của lần chạy cũ. Xem `update/audit_r103_21_legacy_report.md`.
+
+## Profiling local search trước khi chọn cache P5
+
+`profileLS=1` bật đo bằng `steady_clock`; mặc định tắt. Runner ghi thêm `local_search_profile.json` ở cả hai mode. Mỗi hàm có `calls`, `inclusive_ns` (bao gồm các hàm con được đo), `self_ns` (đã trừ các hàm con) và `vnd_improvements` (số lượt tìm kiếm VND trả về cải thiện, chỉ áp dụng cho tám toán tử VND). Không cộng thời gian inclusive của hàm cha với hàm con. Đây là wall time, không phải CPU time; số lần `evaluate_move` không bao gồm những ứng viên được helper khác đánh giá trực tiếp.
+
+Đợt đo độc lập dùng r104/r101/c109, seed 1/2, 200 vòng cố định, charging repair tắt, giới hạn thời gian dự phòng 3.600 giây. Cấu hình tổng số vòng cũng ảnh hưởng các ngưỡng thích ứng; đây không phải 200 vòng đầu của cấu hình 25.000 vòng. Mỗi bộ chạy bản trước sửa, bản mới tắt và bản mới bật profiling; đối chiếu lịch từng byte và mục tiêu, rồi replay vật lý độc lập. Chạy tuần tự, tránh build hay benchmark khác đồng thời.
+
+```text
+mkdir -p artifacts/alns_p5/new_profile
+cp path/to/preserved/ALNSAuditRunner artifacts/alns_p5/new_profile/ALNSAuditRunner_before
+python3 src/test/run_ls_profile_audit.py artifacts/alns_p5/new_profile/ALNSAuditRunner_before build-audit-wsl-p5-profile/ALNSAuditRunner artifacts/alns_p5/new_profile 200
+python3 src/test/summarize_ls_profile_audit.py artifacts/alns_p5/new_profile/experiment update/new_profile_results.json
+```
+
+Runner lưu bản copy executable, nguồn, input, SHA-256, Git HEAD, cấu hình, log và kết quả; từ chối ghi đè thư mục thí nghiệm. Script yêu cầu đủ vòng và dừng bởi `iteration_limit`, không chấp nhận run bị cắt do thời gian. Đo overhead bật/tắt cùng executable; so bản trước sửa để phát hiện ảnh hưởng của instrumentation khi tắt. Hai seed chỉ hỗ trợ xác định chỗ cần khảo sát tiếp, chưa đủ kết luận tốc độ tổng quát hoặc chất lượng thuật toán.

@@ -38,4 +38,4 @@ Báo cáo: `update/alns_p3_p4_report.md`, JSON/CSV cạnh đó. Raw và snapshot
 - Giữ các untracked user files: .idea/vcs.xml, JD_DATA_TRANSFORMATION.md, build-jd, data datasets, logs_jd, main_final.tex, script JD cũ.
 - Raw legacy ở `update/audit_r103_21_legacy/` vẫn giữ để không làm hỏng link đã đưa người dùng; raw này chưa nhất thiết nằm trong Git.
 
-P5–P7 chưa triển khai. Nếu được yêu cầu tiếp, profiling chi tiết trước khi chọn cache/cập nhật gia tăng. Giữ nguyên phạm vi mô hình; không tune theo seed vừa đo rồi coi cùng bảng là đánh giá độc lập. Chưa chứng minh tối ưu hoặc ưu thế tổng quát.
+P5 đã hoàn tất phần profiling theo yêu cầu tiếp tục: xem `update/alns_p5_profiling_report.md` và JSON cạnh đó. 18 run / sáu bộ trước/tắt/bật có mục tiêu và lịch giống nhau, 153 nghiệm / 1.899 tuyến hợp lệ; 36 regression đạt. Phần giảm xe chiếm thời gian nhiều nhất. Cache P5 chưa triển khai, P6–P7 chưa bắt đầu; không còn run đang chạy. Giữ nguyên phạm vi mô hình; không tune theo seed vừa đo rồi coi cùng bảng là đánh giá độc lập. Chưa chứng minh tăng tốc, tối ưu hoặc ưu thế tổng quát.

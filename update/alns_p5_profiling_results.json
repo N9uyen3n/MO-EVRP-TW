@@ -1,0 +1,720 @@
+{
+  "source_manifest": "artifacts\\alns_p5\\profiling_20261020\\experiment\\manifest.json",
+  "iterations": 200,
+  "runs": 18,
+  "identical_triplets": 6,
+  "solutions": 153,
+  "routes": 1899,
+  "invalid": 0,
+  "median_on_vs_off_percent": 1.9960171072122113,
+  "median_off_vs_before_percent": -1.348711625000365,
+  "cases": {
+    "r104_21": {
+      "ls_seconds": 43.373831729,
+      "phase_percent": {
+        "distance": 13.371319488755976,
+        "charging": 0.03314569966938786,
+        "vehicle_reduction": 74.65808839376567,
+        "intensified_reduction": 11.90863021342543
+      },
+      "metrics": {
+        "run": {
+          "calls": 76,
+          "vnd_improvements": 0,
+          "inclusive_ns": 38208602499,
+          "self_ns": 5199507
+        },
+        "distance": {
+          "calls": 1487,
+          "vnd_improvements": 0,
+          "inclusive_ns": 5799653615,
+          "self_ns": 2806119
+        },
+        "charging": {
+          "calls": 520,
+          "vnd_improvements": 0,
+          "inclusive_ns": 14376560,
+          "self_ns": 14335698
+        },
+        "vehicle_reduction": {
+          "calls": 123,
+          "vnd_improvements": 0,
+          "inclusive_ns": 32382073632,
+          "self_ns": 283090
+        },
+        "intensified_reduction": {
+          "calls": 85,
+          "vnd_improvements": 0,
+          "inclusive_ns": 5165229230,
+          "self_ns": 134383
+        },
+        "relocate": {
+          "calls": 9724,
+          "vnd_improvements": 6753,
+          "inclusive_ns": 2930513600,
+          "self_ns": 2798894375
+        },
+        "swap": {
+          "calls": 2971,
+          "vnd_improvements": 758,
+          "inclusive_ns": 111538281,
+          "self_ns": 95333336
+        },
+        "or_opt": {
+          "calls": 2213,
+          "vnd_improvements": 135,
+          "inclusive_ns": 1413283834,
+          "self_ns": 1305289407
+        },
+        "two_opt": {
+          "calls": 2078,
+          "vnd_improvements": 72,
+          "inclusive_ns": 78386589,
+          "self_ns": 67813103
+        },
+        "inter_two_opt": {
+          "calls": 2006,
+          "vnd_improvements": 474,
+          "inclusive_ns": 207674385,
+          "self_ns": 204238952
+        },
+        "intra_or_opt": {
+          "calls": 1532,
+          "vnd_improvements": 12,
+          "inclusive_ns": 88388816,
+          "self_ns": 77208995
+        },
+        "cross_exchange": {
+          "calls": 1520,
+          "vnd_improvements": 26,
+          "inclusive_ns": 307400464,
+          "self_ns": 284826131
+        },
+        "or_opt_reversed": {
+          "calls": 1494,
+          "vnd_improvements": 7,
+          "inclusive_ns": 625454211,
+          "self_ns": 625454211
+        },
+        "empty_smallest": {
+          "calls": 208,
+          "vnd_improvements": 0,
+          "inclusive_ns": 9730908,
+          "self_ns": 9730908
+        },
+        "ejection": {
+          "calls": 195,
+          "vnd_improvements": 0,
+          "inclusive_ns": 10239316540,
+          "self_ns": 10239316540
+        },
+        "eliminate_smallest": {
+          "calls": 95,
+          "vnd_improvements": 0,
+          "inclusive_ns": 1094444910,
+          "self_ns": 1094444910
+        },
+        "smart_merge": {
+          "calls": 170,
+          "vnd_improvements": 0,
+          "inclusive_ns": 39862583,
+          "self_ns": 39862583
+        },
+        "tri_merge": {
+          "calls": 170,
+          "vnd_improvements": 0,
+          "inclusive_ns": 89610073,
+          "self_ns": 89610073
+        },
+        "segment_exchange": {
+          "calls": 85,
+          "vnd_improvements": 0,
+          "inclusive_ns": 26073920375,
+          "self_ns": 26073920375
+        },
+        "context_rebuild": {
+          "calls": 657,
+          "vnd_improvements": 0,
+          "inclusive_ns": 7919081,
+          "self_ns": 7919081
+        },
+        "context_patch": {
+          "calls": 8237,
+          "vnd_improvements": 0,
+          "inclusive_ns": 34207316,
+          "self_ns": 33587420
+        },
+        "removal_ranking": {
+          "calls": 20111,
+          "vnd_improvements": 0,
+          "inclusive_ns": 5226633,
+          "self_ns": 5226633
+        },
+        "evaluate_move": {
+          "calls": 511182,
+          "vnd_improvements": 0,
+          "inclusive_ns": 289982587,
+          "self_ns": 289982587
+        },
+        "apply_move": {
+          "calls": 7763,
+          "vnd_improvements": 0,
+          "inclusive_ns": 4977879,
+          "self_ns": 4977879
+        },
+        "charging_repair": {
+          "calls": 128557,
+          "vnd_improvements": 0,
+          "inclusive_ns": 3435433,
+          "self_ns": 3435433
+        }
+      },
+      "timing": [
+        {
+          "seed": 1,
+          "before": 22.562194244999972,
+          "off": 22.456960307999992,
+          "on": 22.245741247000012,
+          "on_vs_off_percent": -0.9405505380206569,
+          "off_vs_before_percent": -0.46641712174471106
+        },
+        {
+          "seed": 2,
+          "before": 24.10755829599998,
+          "on": 23.899299325000015,
+          "off": 23.698625297000035,
+          "on_vs_off_percent": 0.8467749731685181,
+          "off_vs_before_percent": -1.6962854303987918
+        }
+      ],
+      "self_percent": {
+        "run": 0.011987658901077856,
+        "distance": 0.0064696128705728625,
+        "charging": 0.033051490791889314,
+        "vehicle_reduction": 0.0006526746397891435,
+        "intensified_reduction": 0.00030982505958806203,
+        "relocate": 6.452956225974019,
+        "swap": 0.21979459088522163,
+        "or_opt": 3.0093938095104376,
+        "two_opt": 0.15634565888413257,
+        "inter_two_opt": 0.4708805836571839,
+        "intra_or_opt": 0.17800824119575678,
+        "cross_exchange": 0.6566773550918804,
+        "or_opt_reversed": 1.4420082018758273,
+        "empty_smallest": 0.022434974296941947,
+        "ejection": 23.60712930315984,
+        "eliminate_smallest": 2.5232838934731414,
+        "smart_merge": 0.09190468402483251,
+        "tri_merge": 0.20659939283179857,
+        "segment_exchange": 60.11440385970516,
+        "context_rebuild": 0.018257739019873716,
+        "context_patch": 0.0774370597687897,
+        "removal_ranking": 0.012050198914073442,
+        "evaluate_move": 0.6685657582936486,
+        "apply_move": 0.011476687213391297,
+        "charging_repair": 0.007920519961124507
+      },
+      "inclusive_percent": {
+        "run": 88.09136978657457,
+        "distance": 13.371319488755976,
+        "charging": 0.03314569966938786,
+        "vehicle_reduction": 74.65808839376567,
+        "intensified_reduction": 11.90863021342543,
+        "relocate": 6.756409298375733,
+        "swap": 0.25715570092329393,
+        "or_opt": 3.2583790217802457,
+        "two_opt": 0.18072322844280844,
+        "inter_two_opt": 0.47880110361830835,
+        "intra_or_opt": 0.20378373889642476,
+        "cross_exchange": 0.7087233286665569,
+        "or_opt_reversed": 1.4420082018758273,
+        "empty_smallest": 0.022434974296941947,
+        "ejection": 23.60712930315984,
+        "eliminate_smallest": 2.5232838934731414,
+        "smart_merge": 0.09190468402483251,
+        "tri_merge": 0.20659939283179857,
+        "segment_exchange": 60.11440385970516,
+        "context_rebuild": 0.018257739019873716,
+        "context_patch": 0.0788662533062044,
+        "removal_ranking": 0.012050198914073442,
+        "evaluate_move": 0.6685657582936486,
+        "apply_move": 0.011476687213391297,
+        "charging_repair": 0.007920519961124507
+      }
+    },
+    "r101_21": {
+      "ls_seconds": 31.657948781,
+      "phase_percent": {
+        "distance": 18.617307393387687,
+        "charging": 0.06417416725430136,
+        "vehicle_reduction": 66.77912129824416,
+        "intensified_reduction": 14.48495364536107
+      },
+      "metrics": {
+        "run": {
+          "calls": 88,
+          "vnd_improvements": 0,
+          "inclusive_ns": 27072309575,
+          "self_ns": 3678945
+        },
+        "distance": {
+          "calls": 1760,
+          "vnd_improvements": 0,
+          "inclusive_ns": 5893857639,
+          "self_ns": 2786176
+        },
+        "charging": {
+          "calls": 616,
+          "vnd_improvements": 0,
+          "inclusive_ns": 20316225,
+          "self_ns": 20266076
+        },
+        "vehicle_reduction": {
+          "calls": 125,
+          "vnd_improvements": 0,
+          "inclusive_ns": 21140900017,
+          "self_ns": 285950
+        },
+        "intensified_reduction": {
+          "calls": 98,
+          "vnd_improvements": 0,
+          "inclusive_ns": 4585639206,
+          "self_ns": 142263
+        },
+        "relocate": {
+          "calls": 7300,
+          "vnd_improvements": 3413,
+          "inclusive_ns": 2417360619,
+          "self_ns": 2324242561
+        },
+        "swap": {
+          "calls": 3887,
+          "vnd_improvements": 631,
+          "inclusive_ns": 180141168,
+          "self_ns": 146011590
+        },
+        "or_opt": {
+          "calls": 3256,
+          "vnd_improvements": 118,
+          "inclusive_ns": 1718203600,
+          "self_ns": 1587953800
+        },
+        "two_opt": {
+          "calls": 3138,
+          "vnd_improvements": 36,
+          "inclusive_ns": 122134187,
+          "self_ns": 79644102
+        },
+        "inter_two_opt": {
+          "calls": 3102,
+          "vnd_improvements": 1282,
+          "inclusive_ns": 512611860,
+          "self_ns": 500750600
+        },
+        "intra_or_opt": {
+          "calls": 1820,
+          "vnd_improvements": 30,
+          "inclusive_ns": 82794218,
+          "self_ns": 71484448
+        },
+        "cross_exchange": {
+          "calls": 1790,
+          "vnd_improvements": 30,
+          "inclusive_ns": 231867064,
+          "self_ns": 210438914
+        },
+        "or_opt_reversed": {
+          "calls": 1760,
+          "vnd_improvements": 0,
+          "inclusive_ns": 590005636,
+          "self_ns": 590005636
+        },
+        "empty_smallest": {
+          "calls": 223,
+          "vnd_improvements": 0,
+          "inclusive_ns": 52041706,
+          "self_ns": 52041706
+        },
+        "ejection": {
+          "calls": 198,
+          "vnd_improvements": 0,
+          "inclusive_ns": 9267229642,
+          "self_ns": 9267229642
+        },
+        "eliminate_smallest": {
+          "calls": 106,
+          "vnd_improvements": 0,
+          "inclusive_ns": 1320713938,
+          "self_ns": 1320713938
+        },
+        "smart_merge": {
+          "calls": 188,
+          "vnd_improvements": 0,
+          "inclusive_ns": 21657522,
+          "self_ns": 21657522
+        },
+        "tri_merge": {
+          "calls": 166,
+          "vnd_improvements": 0,
+          "inclusive_ns": 73147047,
+          "self_ns": 73147047
+        },
+        "segment_exchange": {
+          "calls": 68,
+          "vnd_improvements": 0,
+          "inclusive_ns": 14991321155,
+          "self_ns": 14991321155
+        },
+        "context_rebuild": {
+          "calls": 771,
+          "vnd_improvements": 0,
+          "inclusive_ns": 14475169,
+          "self_ns": 14475169
+        },
+        "context_patch": {
+          "calls": 5540,
+          "vnd_improvements": 0,
+          "inclusive_ns": 35953111,
+          "self_ns": 35034691
+        },
+        "removal_ranking": {
+          "calls": 23835,
+          "vnd_improvements": 0,
+          "inclusive_ns": 4677938,
+          "self_ns": 4677938
+        },
+        "evaluate_move": {
+          "calls": 582469,
+          "vnd_improvements": 0,
+          "inclusive_ns": 325625342,
+          "self_ns": 325625342
+        },
+        "apply_move": {
+          "calls": 4260,
+          "vnd_improvements": 0,
+          "inclusive_ns": 2472310,
+          "self_ns": 2472310
+        },
+        "charging_repair": {
+          "calls": 434233,
+          "vnd_improvements": 0,
+          "inclusive_ns": 11861260,
+          "self_ns": 11861260
+        }
+      },
+      "timing": [
+        {
+          "seed": 1,
+          "before": 11.313754676999963,
+          "off": 11.160862049000002,
+          "on": 11.511900093999998,
+          "on_vs_off_percent": 3.1452592412559044,
+          "off_vs_before_percent": -1.3513871598328064
+        },
+        {
+          "seed": 2,
+          "before": 22.201370648000022,
+          "on": 22.245558996,
+          "off": 23.10041479199998,
+          "on_vs_off_percent": -3.7006079920955837,
+          "off_vs_before_percent": 4.049498376718241
+        }
+      ],
+      "self_percent": {
+        "run": 0.011620920311198352,
+        "distance": 0.008800873421313278,
+        "charging": 0.06401575838091883,
+        "vehicle_reduction": 0.0009032486658504459,
+        "intensified_reduction": 0.0004493752927081028,
+        "relocate": 7.34173454217896,
+        "swap": 0.46121620516244904,
+        "or_opt": 5.015971852709026,
+        "two_opt": 0.2515769500764358,
+        "inter_two_opt": 1.5817531434649774,
+        "intra_or_opt": 0.2258025259138156,
+        "cross_exchange": 0.6647269393723264,
+        "or_opt_reversed": 1.8636887692297388,
+        "empty_smallest": 0.16438748562014738,
+        "ejection": 29.272994615374035,
+        "eliminate_smallest": 4.171824103754463,
+        "smart_merge": 0.06841100840051297,
+        "tri_merge": 0.2310542843631749,
+        "segment_exchange": 47.35405082213435,
+        "context_rebuild": 0.04572364779580253,
+        "context_patch": 0.11066633294013857,
+        "removal_ranking": 0.014776503785385918,
+        "evaluate_move": 1.0285737217296562,
+        "apply_move": 0.007809444689871362,
+        "charging_repair": 0.03746692523275139
+      },
+      "inclusive_percent": {
+        "run": 85.51504635463893,
+        "distance": 18.617307393387687,
+        "charging": 0.06417416725430136,
+        "vehicle_reduction": 66.77912129824416,
+        "intensified_reduction": 14.48495364536107,
+        "relocate": 7.635872544120154,
+        "swap": 0.5690234994255675,
+        "or_opt": 5.427400277529054,
+        "two_opt": 0.38579311579814257,
+        "inter_two_opt": 1.6192200686977287,
+        "intra_or_opt": 0.2615274241952473,
+        "cross_exchange": 0.7324134156763769,
+        "or_opt_reversed": 1.8636887692297388,
+        "empty_smallest": 0.16438748562014738,
+        "ejection": 29.272994615374035,
+        "eliminate_smallest": 4.171824103754463,
+        "smart_merge": 0.06841100840051297,
+        "tri_merge": 0.2310542843631749,
+        "segment_exchange": 47.35405082213435,
+        "context_rebuild": 0.04572364779580253,
+        "context_patch": 0.11356740529436261,
+        "removal_ranking": 0.014776503785385918,
+        "evaluate_move": 1.0285737217296562,
+        "apply_move": 0.007809444689871362,
+        "charging_repair": 0.03746692523275139
+      }
+    },
+    "c109_21": {
+      "ls_seconds": 24.365013084,
+      "phase_percent": {
+        "distance": 24.493529793829516,
+        "charging": 0.059062172264746075,
+        "vehicle_reduction": 57.744951014367366,
+        "intensified_reduction": 17.644865230231204
+      },
+      "metrics": {
+        "run": {
+          "calls": 94,
+          "vnd_improvements": 0,
+          "inclusive_ns": 20065839362,
+          "self_ns": 6986122
+        },
+        "distance": {
+          "calls": 1875,
+          "vnd_improvements": 0,
+          "inclusive_ns": 5967851739,
+          "self_ns": 2551132
+        },
+        "charging": {
+          "calls": 656,
+          "vnd_improvements": 0,
+          "inclusive_ns": 14390506,
+          "self_ns": 14337992
+        },
+        "vehicle_reduction": {
+          "calls": 127,
+          "vnd_improvements": 0,
+          "inclusive_ns": 14069564870,
+          "self_ns": 247578
+        },
+        "intensified_reduction": {
+          "calls": 103,
+          "vnd_improvements": 0,
+          "inclusive_ns": 4299173722,
+          "self_ns": 158859
+        },
+        "relocate": {
+          "calls": 7187,
+          "vnd_improvements": 3969,
+          "inclusive_ns": 2039381614,
+          "self_ns": 1974080792
+        },
+        "swap": {
+          "calls": 3218,
+          "vnd_improvements": 670,
+          "inclusive_ns": 126180597,
+          "self_ns": 114926998
+        },
+        "or_opt": {
+          "calls": 2548,
+          "vnd_improvements": 198,
+          "inclusive_ns": 1849941864,
+          "self_ns": 1790241469
+        },
+        "two_opt": {
+          "calls": 2350,
+          "vnd_improvements": 32,
+          "inclusive_ns": 98971106,
+          "self_ns": 83381044
+        },
+        "inter_two_opt": {
+          "calls": 2318,
+          "vnd_improvements": 405,
+          "inclusive_ns": 263723082,
+          "self_ns": 259697092
+        },
+        "intra_or_opt": {
+          "calls": 1913,
+          "vnd_improvements": 14,
+          "inclusive_ns": 116498060,
+          "self_ns": 104095526
+        },
+        "cross_exchange": {
+          "calls": 1899,
+          "vnd_improvements": 20,
+          "inclusive_ns": 479434515,
+          "self_ns": 469447733
+        },
+        "or_opt_reversed": {
+          "calls": 1879,
+          "vnd_improvements": 4,
+          "inclusive_ns": 970907674,
+          "self_ns": 970907674
+        },
+        "empty_smallest": {
+          "calls": 230,
+          "vnd_improvements": 0,
+          "inclusive_ns": 2864157,
+          "self_ns": 2864157
+        },
+        "ejection": {
+          "calls": 217,
+          "vnd_improvements": 0,
+          "inclusive_ns": 8048287920,
+          "self_ns": 8048287920
+        },
+        "eliminate_smallest": {
+          "calls": 94,
+          "vnd_improvements": 0,
+          "inclusive_ns": 1098708321,
+          "self_ns": 1098708321
+        },
+        "smart_merge": {
+          "calls": 188,
+          "vnd_improvements": 0,
+          "inclusive_ns": 72118141,
+          "self_ns": 72118141
+        },
+        "tri_merge": {
+          "calls": 186,
+          "vnd_improvements": 0,
+          "inclusive_ns": 10600183,
+          "self_ns": 10600183
+        },
+        "segment_exchange": {
+          "calls": 83,
+          "vnd_improvements": 0,
+          "inclusive_ns": 9135753433,
+          "self_ns": 9135753433
+        },
+        "context_rebuild": {
+          "calls": 787,
+          "vnd_improvements": 0,
+          "inclusive_ns": 7244280,
+          "self_ns": 7244280
+        },
+        "context_patch": {
+          "calls": 5312,
+          "vnd_improvements": 0,
+          "inclusive_ns": 20262095,
+          "self_ns": 20063940
+        },
+        "removal_ranking": {
+          "calls": 15926,
+          "vnd_improvements": 0,
+          "inclusive_ns": 4708210,
+          "self_ns": 4708210
+        },
+        "evaluate_move": {
+          "calls": 306289,
+          "vnd_improvements": 0,
+          "inclusive_ns": 166375547,
+          "self_ns": 166375547
+        },
+        "apply_move": {
+          "calls": 5001,
+          "vnd_improvements": 0,
+          "inclusive_ns": 3202951,
+          "self_ns": 3202951
+        },
+        "charging_repair": {
+          "calls": 155269,
+          "vnd_improvements": 0,
+          "inclusive_ns": 4025990,
+          "self_ns": 4025990
+        }
+      },
+      "timing": [
+        {
+          "seed": 1,
+          "before": 11.464004801000044,
+          "off": 11.309695159,
+          "on": 11.711202533000005,
+          "on_vs_off_percent": 3.5501166773756365,
+          "off_vs_before_percent": -1.3460360901679236
+        },
+        {
+          "seed": 2,
+          "before": 16.595632953999996,
+          "on": 14.837163427999997,
+          "off": 14.119560294000053,
+          "on_vs_off_percent": 5.082333437145925,
+          "off_vs_before_percent": -14.920025448038988
+        }
+      ],
+      "self_percent": {
+        "run": 0.02867276112643519,
+        "distance": 0.010470472522238355,
+        "charging": 0.0588466419064452,
+        "vehicle_reduction": 0.0010161209400810023,
+        "intensified_reduction": 0.0006519963664797677,
+        "relocate": 8.102112587398272,
+        "swap": 0.471688636504243,
+        "or_opt": 7.347590837846151,
+        "two_opt": 0.342216290680979,
+        "inter_two_opt": 1.065860671220151,
+        "intra_or_opt": 0.42723361420379197,
+        "cross_exchange": 1.9267288360632018,
+        "or_opt_reversed": 3.984843638920822,
+        "empty_smallest": 0.011755204030162548,
+        "ejection": 33.032151028415186,
+        "eliminate_smallest": 4.50936889388128,
+        "smart_merge": 0.29599056955712655,
+        "tri_merge": 0.043505755418456644,
+        "segment_exchange": 37.4953766759898,
+        "context_rebuild": 0.029732304985943835,
+        "context_patch": 0.08234733932146161,
+        "removal_ranking": 0.01932365061232733,
+        "evaluate_move": 0.682846122127697,
+        "apply_move": 0.01314569784533919,
+        "charging_repair": 0.01652365211592595
+      },
+      "inclusive_percent": {
+        "run": 82.3551347697688,
+        "distance": 24.493529793829516,
+        "charging": 0.059062172264746075,
+        "vehicle_reduction": 57.744951014367366,
+        "intensified_reduction": 17.644865230231204,
+        "relocate": 8.370123204814611,
+        "swap": 0.5178761717261715,
+        "or_opt": 7.592615926871053,
+        "two_opt": 0.40620173549175015,
+        "inter_two_opt": 1.0823843233360768,
+        "intra_or_opt": 0.47813666095054086,
+        "cross_exchange": 1.9677170430695756,
+        "or_opt_reversed": 3.984843638920822,
+        "empty_smallest": 0.011755204030162548,
+        "ejection": 33.032151028415186,
+        "eliminate_smallest": 4.50936889388128,
+        "smart_merge": 0.29599056955712655,
+        "tri_merge": 0.043505755418456644,
+        "segment_exchange": 37.4953766759898,
+        "context_rebuild": 0.029732304985943835,
+        "context_patch": 0.08316061612667755,
+        "removal_ranking": 0.01932365061232733,
+        "evaluate_move": 0.682846122127697,
+        "apply_move": 0.01314569784533919,
+        "charging_repair": 0.01652365211592595
+      }
+    }
+  },
+  "limitations": [
+    "Two seeds per case; fixed iterations, not a quality comparison.",
+    "Timing is monotonic wall time, includes profiling overhead and scheduling noise.",
+    "Inclusive columns overlap: do not sum parents and children.",
+    "evaluate_move excludes candidates checked directly by other helpers.",
+    "vnd_improvements counts successful VND searches, not vehicle reductions.",
+    "Charging repair disabled in this audit; no inference about its enabled overhead."
+  ]
+}

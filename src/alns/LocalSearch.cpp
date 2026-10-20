@@ -190,6 +190,7 @@ void LocalSearch::configureChargingRepair(bool enabled, const alns::ChargingRepa
 }
 
 bool LocalSearch::tryRepairRoutes(Solution& solution, int r1, int r2, Route first, Route second, bool relocate) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::ChargingRepair);
   using Clock = std::chrono::steady_clock;
   if (!useChargingRepair_ || r1 == r2 || repairTrialsRemaining_ <= 0 || Clock::now() >= repairDeadline_) return false;
   const Solution& original = solution;
@@ -253,6 +254,7 @@ bool LocalSearch::tryRepairRelocate(Solution& solution, int r1, int i, int r2, i
 }
 
 void LocalSearch::run(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Run);
   repairTrialsRemaining_ = repairTrialsPerRun_;
   diag_.reset();
   // ⭐ VITAL: Must invalidate context from previous ALNS iterations
@@ -364,6 +366,7 @@ void LocalSearch::run(Solution &solution) {
 
 void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
                                const LocalSearchWeights &weights) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::EvaluateMove);
   move.eval.reset();
   move.eval.isFeasible = false;
   const auto &routes = solution.getRoutes();
@@ -684,6 +687,7 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
 }
 
 void LocalSearch::applyMove(Solution &solution, const MoveDescriptor &move) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::ApplyMove);
   auto &routes = solution.getRoutes();
 
   switch (move.type) {
@@ -817,6 +821,7 @@ void LocalSearch::applyMove(Solution &solution, const MoveDescriptor &move) {
 // Phase 1: Distance Optimization — Variable Neighborhood Descent (VND)
 // ============================================================================
 bool LocalSearch::runDistanceOptimization(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Distance);
   // [CHANGE-3] Removed dead `bestMove` param — all operators use first-
   // improvement and apply moves immediately via activeMove scratch buffer.
   // outBestMove was never populated; passing it was misleading.
@@ -882,6 +887,15 @@ bool LocalSearch::runDistanceOptimization(Solution &solution) {
       break;
     }
 
+    if (improved && profiler_.data.enabled) {
+      static constexpr alns::LSMetric metrics[] = {
+        alns::LSMetric::Relocate, alns::LSMetric::Swap, alns::LSMetric::OrOpt,
+        alns::LSMetric::TwoOpt, alns::LSMetric::InterTwoOpt, alns::LSMetric::IntraOrOpt,
+        alns::LSMetric::CrossExchange, alns::LSMetric::OrOptReversed
+      };
+      ++profiler_.data.entries[static_cast<std::size_t>(metrics[k])].improvements;
+    }
+
     if (improved) {
       anyImproved = true;
 
@@ -905,6 +919,7 @@ bool LocalSearch::runDistanceOptimization(Solution &solution) {
 // cho các routes bị markDirty, thay vì invalidate() toàn bộ.
 // Phức tạp O(dirty_routes × R) thay vì O(R²).
 void LocalSearch::patchSearchContext(const Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::ContextPatch);
   if (!searchContext_.isValid) {
     updateSearchContext(solution);
     return;
@@ -985,6 +1000,7 @@ void LocalSearch::patchSearchContext(const Solution &solution) {
 bool LocalSearch::searchRelocate(Solution &solution,
                                  const LocalSearchWeights &weights,
                                  SearchContext &ctx) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Relocate);
   MoveDescriptor move; // [CHANGE-5] local — was member move
   const auto &routes = solution.getRoutes();
   int numRoutes = routes.size();
@@ -1155,6 +1171,7 @@ bool LocalSearch::searchRelocate(Solution &solution,
 
 bool LocalSearch::searchTwoOpt(Solution &solution,
                                const LocalSearchWeights &weights) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::TwoOpt);
   MoveDescriptor move;
   auto &routes = solution.getRoutes();
   const int maxId = (int)nodeTypeById_.size();
@@ -1273,6 +1290,7 @@ bool LocalSearch::searchTwoOpt(Solution &solution,
 bool LocalSearch::searchInterTwoOpt(Solution &solution,
                                     const LocalSearchWeights &weights,
                                     SearchContext &ctx) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::InterTwoOpt);
   auto &routes = solution.getRoutes();
   int numRoutes = routes.size();
 
@@ -1379,6 +1397,7 @@ bool LocalSearch::searchInterTwoOpt(Solution &solution,
 bool LocalSearch::searchSwap(Solution &solution,
                              const LocalSearchWeights &weights,
                              SearchContext &ctx) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Swap);
   MoveDescriptor move;
   int numRoutes = (int)solution.getRoutes()
                       .size(); // [FIX-1] không cache ref vì applyMove modify
@@ -1698,6 +1717,7 @@ bool LocalSearch::searchSwap(Solution &solution,
 
 bool LocalSearch::searchOrOpt(Solution &solution,
                               const LocalSearchWeights &weights) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::OrOpt);
   MoveDescriptor move; // [CHANGE-5] local — was member move
   static const int SEGMENT_LENGTHS[] = {1, 2, 3};
 
@@ -1812,6 +1832,7 @@ bool LocalSearch::searchOrOpt(Solution &solution,
 bool LocalSearch::searchIntraOrOpt(Solution &solution,
                                    const LocalSearchWeights &weights,
                                    SearchContext &ctx) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::IntraOrOpt);
   if (!ctx.isValid)
     return false;
 
@@ -1938,6 +1959,7 @@ bool LocalSearch::searchIntraOrOpt(Solution &solution,
 // Phase 2: Charging Optimization
 // ============================================================================
 bool LocalSearch::runChargingOptimization(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Charging);
   bool improved = false;
 
   if (removeRedundantStations(solution))
@@ -1972,6 +1994,7 @@ bool LocalSearch::runChargingOptimization(Solution &solution) {
 bool LocalSearch::searchCrossExchange(Solution &solution,
                                       const LocalSearchWeights &weights,
                                       SearchContext &ctx) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::CrossExchange);
   MoveDescriptor move;
   static const int SEGMENT_LENGTHS[] = {1, 2, 3};
 
@@ -2413,6 +2436,7 @@ bool LocalSearch::eliminateRedundantStations(Solution &solution) {
 }
 
 bool LocalSearch::runVehicleReduction(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::VehicleReduction);
   if (solution.getNumRoutes() < 2)
     return false;
 
@@ -2451,6 +2475,7 @@ bool LocalSearch::runVehicleReduction(Solution &solution) {
 // ============================================================================
 bool LocalSearch::runIntensifiedVehicleReduction(Solution &solution,
                                                  int maxEjectionDepth) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::IntensifiedReduction);
   if (solution.getNumRoutes() < 2)
     return false;
 
@@ -2490,6 +2515,7 @@ bool LocalSearch::runIntensifiedVehicleReduction(Solution &solution,
 // into best feasible positions on other routes, remove empty route.
 // ============================================================================
 bool LocalSearch::tryEmptySmallestRoute(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::EmptySmallest);
   auto &routes = solution.getRoutes();
   int numRoutes = (int)routes.size();
   if (numRoutes < 2)
@@ -2588,6 +2614,7 @@ bool LocalSearch::tryEmptySmallestRoute(Solution &solution) {
 // [OPT-4] swap-and-pop for customer pool removal (O(1) vs O(N))
 // ============================================================================
 bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::EliminateSmallest);
   auto &routes = solution.getRoutes();
   int numRoutes = routes.size();
   if (numRoutes < 2)
@@ -2890,6 +2917,7 @@ bool LocalSearch::tryEliminateSmallestRoute(Solution &solution) {
 // [OPT-4] swap-and-pop for pool removal; [OPT-8] single getNodeById call
 // ============================================================================
 bool LocalSearch::ejectionChain(Solution &solution,int maxDepth) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Ejection);
   maxDepth=std::clamp(maxDepth,0,MAX_EJECTION_DEPTH);
   auto &routes = solution.getRoutes();
   int numRoutes = static_cast<int>(routes.size());
@@ -3350,6 +3378,7 @@ double LocalSearch::calculateEuclideanDistance(const RouteCentroid &c1,
 // ============================================================================
 
 bool LocalSearch::runSmartMultiRouteMerge(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::SmartMerge);
   auto &routes = solution.getRoutes();
   int numRoutes = (int)routes.size();
   if (numRoutes < 2)
@@ -3608,6 +3637,7 @@ bool LocalSearch::runSmartMultiRouteMerge(Solution &solution) {
 // ============================================================================
 
 bool LocalSearch::tryTriRouteMerge(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::TriMerge);
   auto &routes = solution.getRoutes();
   int numRoutes = (int)routes.size();
   if (numRoutes < 3)
@@ -3851,6 +3881,7 @@ bool LocalSearch::tryTriRouteMerge(Solution &solution) {
 }
 
 bool LocalSearch::segmentCrossExchangeForVehicleReduction(Solution &solution) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::SegmentExchange);
   auto &routes = solution.getRoutes();
   int numRoutes = (int)routes.size();
   if (numRoutes < 2)
@@ -4010,6 +4041,7 @@ bool LocalSearch::areRoutesClose(const RouteCentroid &c1,
 void LocalSearch::updateSearchContext(const Solution &solution) {
   if (searchContext_.isValid)
     return;
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::ContextRebuild);
 
   const auto &routes = solution.getRoutes();
   int numRoutes = routes.size();
@@ -4070,6 +4102,7 @@ LocalSearch::getCachedRanking(int routeIdx, const Route &route,
 
 std::vector<std::pair<int, double>>
 LocalSearch::rankNodesByRemovalSavings(const Route &route) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::RemovalRanking);
   std::vector<std::pair<int, double>> rankings;
   const auto &nodes = route.getNodes();
   if (nodes.size() <= 2)
@@ -5572,6 +5605,7 @@ bool LocalSearch::searchStationInsertion(Solution &solution) {
 bool LocalSearch::searchOrOptReversed(Solution &solution,
                                       const LocalSearchWeights &weights,
                                       SearchContext &ctx) {
+  alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::OrOptReversed);
   if (!ctx.isValid)
     return false;
 

@@ -7,6 +7,7 @@
 #include <vector>
 #include <array>
 #include "ChargingRepair.h"
+#include "LocalSearchProfile.h"
 
 enum class MoveType {
   NONE,
@@ -80,6 +81,9 @@ class LocalSearch {
 public:
   explicit LocalSearch(std::shared_ptr<Instance> inst);
   void run(Solution &solution);
+  void enableProfiling(bool enabled) { profiler_.data.enabled = enabled; }
+  void resetProfile() { const bool enabled = profiler_.data.enabled; profiler_.data = {}; profiler_.data.enabled = enabled; }
+  const alns::LocalSearchProfile& getProfile() const { return profiler_.data; }
   void configureChargingRepair(bool enabled, const alns::ChargingRepairBudget& budget = {}, int trialsPerRun = 8);
   void setChargingRepairDeadline(std::chrono::steady_clock::time_point deadline) { repairDeadline_ = deadline; }
   const alns::ChargingRepairStatistics& getChargingRepairStatistics() const { return repairStats_; }
@@ -173,6 +177,7 @@ private:
   };
 
   SearchContext searchContext_;
+  alns::LocalSearchProfiler profiler_;
   void updateSearchContext(const Solution &solution);
 
   // --- Core Logic ---

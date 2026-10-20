@@ -129,6 +129,39 @@ int main() {
     audit::require(stats.totalMs>=stats.searchMs,"total includes initialization");
     for(const auto& sol:front) audit::validateSolution(sol,*inst);
   });
+  test("nested profiler accounts self time and disabled scopes",[] {
+    alns::LocalSearchProfiler profiler;
+    { alns::LocalSearchProfiler::Scope disabled(profiler,alns::LSMetric::Run); }
+    audit::require(profiler.data.entries[0].calls==0,"disabled records nothing");
+    profiler.data.enabled=true;
+    {
+      alns::LocalSearchProfiler::Scope outer(profiler,alns::LSMetric::Run);
+      { alns::LocalSearchProfiler::Scope inner(profiler,alns::LSMetric::Distance); }
+      { alns::LocalSearchProfiler::Scope inner(profiler,alns::LSMetric::Charging); }
+    }
+    std::int64_t self=0;
+    for(const auto& e:profiler.data.entries) {
+      audit::require(e.inclusiveNs>=e.selfNs && e.selfNs>=0,"nested time bounds");
+      self+=e.selfNs;
+    }
+    audit::require(self==profiler.data.entries[0].inclusiveNs,"self times partition root wall time");
+    audit::require(profiler.data.entries[0].calls==1,"root call count");
+  });
+  test("local search profiling preserves moves and resets statistics",[] {
+    auto inst=instance(8);
+    Solution off(inst); off.addRoute(makeRoute(inst,{4,1,3,2}));
+    off.addRoute(makeRoute(inst,{8,5,7,6})); off.evaluateRoutes();
+    auto on=off; LocalSearch a(inst),b(inst); b.enableProfiling(true);
+    a.run(off); b.run(on);
+    audit::validateSolution(off,*inst); audit::validateSolution(on,*inst);
+    audit::require(off.getHash()==on.getHash(),"profiling changed route sequences");
+    audit::near(off.getTotalDistance(),on.getTotalDistance(),"profiling distance");
+    audit::require(b.getProfile().entries[0].calls==1,"run counted");
+    for(const auto& e:a.getProfile().entries) audit::require(e.calls==0,"off remains empty");
+    b.resetProfile();
+    audit::require(b.getProfile().enabled,"reset preserves enabled flag");
+    for(const auto& e:b.getProfile().entries) audit::require(e.calls==0 && e.inclusiveNs==0,"reset counters");
+  });
   std::cout<<"RESULT passed="<<passed<<" failed="<<failed<<'\n';
   return failed?1:0;
 }

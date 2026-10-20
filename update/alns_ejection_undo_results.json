@@ -1,0 +1,364 @@
+{
+  "source_manifest": "artifacts\\alns_p5\\ejection_undo_20261020\\experiment\\manifest.json",
+  "iterations": 200,
+  "runs": 24,
+  "identical_groups": 6,
+  "solutions": 183,
+  "routes": 2241,
+  "invalid": 0,
+  "median_reduction_percent": 9.265517520128451,
+  "min_reduction_percent": 2.6613878990440654,
+  "max_reduction_percent": 37.668256893977926,
+  "median_vs_before_percent": 13.960395394865294,
+  "cases": {
+    "r104_21": {
+      "pairs": [
+        {
+          "seed": 1,
+          "before_seconds": 19.075468696999998,
+          "full_seconds": 16.57392348399999,
+          "selective_seconds": 16.132827089999992,
+          "reduction_percent": 2.6613878990440654,
+          "vs_before_percent": 15.42631352205147,
+          "full_undo": {
+            "selective": 0,
+            "checkpoints": 675843,
+            "full_snapshots": 675843,
+            "saved_routes": 7396111,
+            "restored_routes": 7386028,
+            "rollbacks": 674939,
+            "commits": 904,
+            "peak_undo_routes": 0,
+            "place_calls": 27540,
+            "branch_trials": 668159
+          },
+          "selective_undo": {
+            "selective": 1,
+            "checkpoints": 675843,
+            "full_snapshots": 0,
+            "saved_routes": 667887,
+            "restored_routes": 666983,
+            "rollbacks": 674939,
+            "commits": 904,
+            "peak_undo_routes": 6,
+            "place_calls": 27540,
+            "branch_trials": 668159
+          }
+        },
+        {
+          "seed": 2,
+          "before_seconds": 17.282009128,
+          "full_seconds": 24.821009771000007,
+          "selective_seconds": 22.179780118999986,
+          "reduction_percent": 10.64110475910589,
+          "vs_before_percent": -28.340287027534927,
+          "full_undo": {
+            "selective": 0,
+            "checkpoints": 788281,
+            "full_snapshots": 788281,
+            "saved_routes": 8714235,
+            "restored_routes": 8701765,
+            "rollbacks": 787159,
+            "commits": 1122,
+            "peak_undo_routes": 0,
+            "place_calls": 29717,
+            "branch_trials": 779219
+          },
+          "selective_undo": {
+            "selective": 1,
+            "checkpoints": 788281,
+            "full_snapshots": 0,
+            "saved_routes": 779068,
+            "restored_routes": 777946,
+            "rollbacks": 787159,
+            "commits": 1122,
+            "peak_undo_routes": 5,
+            "place_calls": 29717,
+            "branch_trials": 779219
+          }
+        }
+      ],
+      "profiles": {
+        "profile_full": {
+          "ls_seconds": 18.39454365,
+          "ejection_seconds": 5.451496745,
+          "snapshot_seconds": 0.669779197,
+          "restore_seconds": 0.356339174,
+          "copy_restore_ls_percent": 5.578384495556649,
+          "undo": {
+            "selective": 0,
+            "checkpoints": 675843,
+            "full_snapshots": 675843,
+            "saved_routes": 7396111,
+            "restored_routes": 7386028,
+            "rollbacks": 674939,
+            "commits": 904,
+            "peak_undo_routes": 0,
+            "place_calls": 27540,
+            "branch_trials": 668159
+          }
+        },
+        "profile_selective": {
+          "ls_seconds": 16.313714067,
+          "ejection_seconds": 4.054059263,
+          "snapshot_seconds": 0.066838113,
+          "restore_seconds": 0.05156506,
+          "copy_restore_ls_percent": 0.7257891888611094,
+          "undo": {
+            "selective": 1,
+            "checkpoints": 675843,
+            "full_snapshots": 0,
+            "saved_routes": 667887,
+            "restored_routes": 666983,
+            "rollbacks": 674939,
+            "commits": 904,
+            "peak_undo_routes": 6,
+            "place_calls": 27540,
+            "branch_trials": 668159
+          }
+        }
+      },
+      "full_total_seconds": 41.394933255,
+      "selective_total_seconds": 38.31260720899998,
+      "reduction_percent": 7.446143292495133,
+      "full_saved_routes": 16110346,
+      "selective_saved_routes": 1446955,
+      "saved_routes_reduction_percent": 91.01847347040218
+    },
+    "r101_21": {
+      "pairs": [
+        {
+          "seed": 1,
+          "before_seconds": 17.23044416799999,
+          "full_seconds": 14.033245127000015,
+          "selective_seconds": 8.74716630200001,
+          "reduction_percent": 37.668256893977926,
+          "vs_before_percent": 49.2342378599557,
+          "full_undo": {
+            "selective": 0,
+            "checkpoints": 739389,
+            "full_snapshots": 739389,
+            "saved_routes": 13237797,
+            "restored_routes": 13230781,
+            "rollbacks": 739006,
+            "commits": 383,
+            "peak_undo_routes": 0,
+            "place_calls": 14302,
+            "branch_trials": 733674
+          },
+          "selective_undo": {
+            "selective": 1,
+            "checkpoints": 739389,
+            "full_snapshots": 0,
+            "saved_routes": 733245,
+            "restored_routes": 732862,
+            "rollbacks": 739006,
+            "commits": 383,
+            "peak_undo_routes": 5,
+            "place_calls": 14302,
+            "branch_trials": 733674
+          }
+        },
+        {
+          "seed": 2,
+          "before_seconds": 18.475107167000004,
+          "full_seconds": 17.519590840000035,
+          "selective_seconds": 15.00860366500001,
+          "reduction_percent": 14.33245329717997,
+          "vs_before_percent": 18.763103621893016,
+          "full_undo": {
+            "selective": 0,
+            "checkpoints": 890709,
+            "full_snapshots": 890709,
+            "saved_routes": 15923943,
+            "restored_routes": 15917517,
+            "rollbacks": 890359,
+            "commits": 350,
+            "peak_undo_routes": 0,
+            "place_calls": 17955,
+            "branch_trials": 884409
+          },
+          "selective_undo": {
+            "selective": 1,
+            "checkpoints": 890709,
+            "full_snapshots": 0,
+            "saved_routes": 883753,
+            "restored_routes": 883403,
+            "rollbacks": 890359,
+            "commits": 350,
+            "peak_undo_routes": 6,
+            "place_calls": 17955,
+            "branch_trials": 884409
+          }
+        }
+      ],
+      "profiles": {
+        "profile_full": {
+          "ls_seconds": 12.062131642,
+          "ejection_seconds": 5.167911491,
+          "snapshot_seconds": 1.545906308,
+          "restore_seconds": 0.68169989,
+          "copy_restore_ls_percent": 18.46776559993375,
+          "undo": {
+            "selective": 0,
+            "checkpoints": 739389,
+            "full_snapshots": 739389,
+            "saved_routes": 13237797,
+            "restored_routes": 13230781,
+            "rollbacks": 739006,
+            "commits": 383,
+            "peak_undo_routes": 0,
+            "place_calls": 14302,
+            "branch_trials": 733674
+          }
+        },
+        "profile_selective": {
+          "ls_seconds": 12.803988071,
+          "ejection_seconds": 3.488370173,
+          "snapshot_seconds": 0.123569102,
+          "restore_seconds": 0.101815112,
+          "copy_restore_ls_percent": 1.7602657293197348,
+          "undo": {
+            "selective": 1,
+            "checkpoints": 739389,
+            "full_snapshots": 0,
+            "saved_routes": 733245,
+            "restored_routes": 732862,
+            "rollbacks": 739006,
+            "commits": 383,
+            "peak_undo_routes": 5,
+            "place_calls": 14302,
+            "branch_trials": 733674
+          }
+        }
+      },
+      "full_total_seconds": 31.55283596700005,
+      "selective_total_seconds": 23.75576996700002,
+      "reduction_percent": 24.71114168043308,
+      "full_saved_routes": 29161740,
+      "selective_saved_routes": 1616998,
+      "saved_routes_reduction_percent": 94.455070239293
+    },
+    "c109_21": {
+      "pairs": [
+        {
+          "seed": 1,
+          "before_seconds": 10.651371511999969,
+          "full_seconds": 10.148345682000013,
+          "selective_seconds": 9.347648283000012,
+          "reduction_percent": 7.889930281151014,
+          "vs_before_percent": 12.239956399334728,
+          "full_undo": {
+            "selective": 0,
+            "checkpoints": 791544,
+            "full_snapshots": 791544,
+            "saved_routes": 7216602,
+            "restored_routes": 7207858,
+            "rollbacks": 790601,
+            "commits": 943,
+            "peak_undo_routes": 0,
+            "place_calls": 49264,
+            "branch_trials": 777547
+          },
+          "selective_undo": {
+            "selective": 1,
+            "checkpoints": 791544,
+            "full_snapshots": 0,
+            "saved_routes": 777067,
+            "restored_routes": 776124,
+            "rollbacks": 790601,
+            "commits": 943,
+            "peak_undo_routes": 6,
+            "place_calls": 49264,
+            "branch_trials": 777547
+          }
+        },
+        {
+          "seed": 2,
+          "before_seconds": 12.810429854000006,
+          "full_seconds": 11.853632224000023,
+          "selective_seconds": 11.209833607999997,
+          "reduction_percent": 5.431234948360631,
+          "vs_before_percent": 12.494477267679116,
+          "full_undo": {
+            "selective": 0,
+            "checkpoints": 951211,
+            "full_snapshots": 951211,
+            "saved_routes": 8726818,
+            "restored_routes": 8717230,
+            "rollbacks": 950199,
+            "commits": 1012,
+            "peak_undo_routes": 0,
+            "place_calls": 60912,
+            "branch_trials": 934324
+          },
+          "selective_undo": {
+            "selective": 1,
+            "checkpoints": 951211,
+            "full_snapshots": 0,
+            "saved_routes": 933709,
+            "restored_routes": 932697,
+            "rollbacks": 950199,
+            "commits": 1012,
+            "peak_undo_routes": 6,
+            "place_calls": 60912,
+            "branch_trials": 934324
+          }
+        }
+      ],
+      "profiles": {
+        "profile_full": {
+          "ls_seconds": 9.624220155,
+          "ejection_seconds": 3.685857223,
+          "snapshot_seconds": 0.603256898,
+          "restore_seconds": 0.315787622,
+          "copy_restore_ls_percent": 9.549288204120472,
+          "undo": {
+            "selective": 0,
+            "checkpoints": 791544,
+            "full_snapshots": 791544,
+            "saved_routes": 7216602,
+            "restored_routes": 7207858,
+            "rollbacks": 790601,
+            "commits": 943,
+            "peak_undo_routes": 0,
+            "place_calls": 49264,
+            "branch_trials": 777547
+          }
+        },
+        "profile_selective": {
+          "ls_seconds": 8.156088012,
+          "ejection_seconds": 2.589079027,
+          "snapshot_seconds": 0.070833461,
+          "restore_seconds": 0.054670812,
+          "copy_restore_ls_percent": 1.5387802683755543,
+          "undo": {
+            "selective": 1,
+            "checkpoints": 791544,
+            "full_snapshots": 0,
+            "saved_routes": 777067,
+            "restored_routes": 776124,
+            "rollbacks": 790601,
+            "commits": 943,
+            "peak_undo_routes": 6,
+            "place_calls": 49264,
+            "branch_trials": 777547
+          }
+        }
+      },
+      "full_total_seconds": 22.001977906000036,
+      "selective_total_seconds": 20.55748189100001,
+      "reduction_percent": 6.565300725104839,
+      "full_saved_routes": 15943420,
+      "selective_saved_routes": 1710776,
+      "saved_routes_reduction_percent": 89.26970499428604
+    }
+  },
+  "limitations": [
+    "Two seeds, 200 configured iterations, charging repair off, reconstruction cache on.",
+    "Timing comparisons exclude profiling runs; wall time subject to system noise.",
+    "Counters and timers cover Stage B checkpoints only; other ejection route copies unchanged.",
+    "New full reference restores vector by move, while legacy copied it back.",
+    "No claim of universal runtime gains or global optimization."
+  ]
+}

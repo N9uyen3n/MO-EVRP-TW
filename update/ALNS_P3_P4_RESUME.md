@@ -1,5 +1,7 @@
 # Trạng thái ALNS sau P3–P4 — 2026-10-20
 
+Mốc mới hơn: undo snapshot Stage B ejection đã được kiểm chứng; xem `update/ALNS_EJECTION_UNDO_RESUME.md`. Người dùng yêu cầu nghỉ sau mốc này và tiếp tục sáng hôm sau; không tự mở bước mới. Phần P3–P4/P5 cache bên dưới giữ để truy vết.
+
 P3–P4 đã hoàn tất triển khai và kiểm chứng. Không có run ALNS cần tiếp tục hoặc tiến trình tạm giữ cần phục hồi.
 
 ## Phạm vi

@@ -9,6 +9,7 @@
 #include "ChargingRepair.h"
 #include "LocalSearchProfile.h"
 #include "ReconstructionCache.h"
+#include "EjectionUndo.h"
 
 enum class MoveType {
   NONE,
@@ -88,6 +89,8 @@ public:
   void configureReconstructionCache(alns::ReconstructionCacheMode mode, std::size_t capacity = alns::ReconstructionCache::MaxEntries) { reconstructionCache_.configure(mode, capacity); }
   void resetReconstructionCache() { reconstructionCache_.reset(); }
   const alns::ReconstructionCacheStatistics& getReconstructionCacheStatistics() const { return reconstructionCache_.stats; }
+  void configureSelectiveEjection(bool enabled) { selectiveEjection_ = enabled; ejectionUndoStats_ = {}; }
+  const alns::EjectionUndoStatistics& getEjectionUndoStatistics() const { return ejectionUndoStats_; }
   void configureChargingRepair(bool enabled, const alns::ChargingRepairBudget& budget = {}, int trialsPerRun = 8);
   void setChargingRepairDeadline(std::chrono::steady_clock::time_point deadline) { repairDeadline_ = deadline; }
   const alns::ChargingRepairStatistics& getChargingRepairStatistics() const { return repairStats_; }
@@ -183,6 +186,8 @@ private:
   SearchContext searchContext_;
   mutable alns::LocalSearchProfiler profiler_;
   mutable alns::ReconstructionCache reconstructionCache_;
+  bool selectiveEjection_ = true;
+  alns::EjectionUndoStatistics ejectionUndoStats_;
   bool reconstructRouteUncached(Route& route, const std::vector<int>& newCustomers, int maxStations) const;
   void updateSearchContext(const Solution &solution);
 

@@ -59,6 +59,7 @@ def run(before, after, root, iterations=200):
                 if mode != "before":
                     args.append(str(int(mode == "on")))
                     args.append("0")  # Reproduce profiling-only audit without reconstruction cache.
+                    args.append("0")  # Keep the historical full ejection snapshots.
                 start = time.monotonic()
                 with (target/f"{out.name}.log").open("x") as log:
                     subprocess.run(args, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=3700)

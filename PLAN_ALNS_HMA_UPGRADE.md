@@ -217,4 +217,6 @@ P0–P2 đã có evaluator nhất quán và các sửa lỗi điều khiển. P3
 
 Cache helper P5 đã được đo và giữ lại vì giảm thời gian trong sáu cặp kiểm tra, đồng thời giữ nguyên kết quả. Nếu tiếp tục tối ưu, đo riêng copy/snapshot/evaluator trong ejection trước khi đổi cách tính; không giảm độ sâu chỉ để tạo lợi thế thời gian. Ngân sách wall time vẫn mềm; các phép đo đã dùng đồng hồ monotonic. Không mở rộng mô hình ra khỏi EVRPTW-PR Euclidean đối xứng đã chốt.
 
+Mốc tiếp theo đã thử giảm snapshot Stage B của ejection: 54 regression đạt; 24 run chính và 6 run đo lặp, tổng 273 nghiệm / 3.321 tuyến hợp lệ. Selective undo giữ nguyên lịch/mục tiêu và số nhánh thử, giảm 89,27–94,46% số tuyến lưu trong checkpoint; mặc định bật, có full mode đối chứng. Wall time dao động lớn: chưa chốt một mức tăng tốc ổn định so với executable cũ; r104 seed 2 sau đo lặp gần ngang nhau. Xem [báo cáo undo ejection](update/alns_ejection_undo_report.md). Stage A, Route trial, evaluator và cache cặp tuyến vẫn chưa tối ưu thêm. Người dùng yêu cầu tạm nghỉ sau mốc này; không mở bước tiếp theo đến khi được yêu cầu tiếp tục.
+
 Kế hoạch này không cam kết trước tỷ lệ tăng tốc hoặc mức giảm xe. Các quyết định bật tính năng dựa trên tính đúng và thí nghiệm ghép cặp đã mô tả.

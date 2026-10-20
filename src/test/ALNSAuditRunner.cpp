@@ -9,7 +9,7 @@
 
 int main(int argc,char** argv) {
   try {
-    if(argc<5) throw std::runtime_error("Usage: ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1] [reconstructionCache=0|1|2]");
+    if(argc<5) throw std::runtime_error("Usage: ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1] [reconstructionCache=0|1|2] [selectiveEjection=0|1]");
     const std::filesystem::path output=argv[2];
     if(std::filesystem::exists(output)) throw std::runtime_error("Refusing to overwrite output directory");
     std::filesystem::create_directories(output);
@@ -26,6 +26,9 @@ int main(int argc,char** argv) {
     const int cacheMode=argc>8?std::stoi(argv[8]):static_cast<int>(cfg.reconstructionCacheMode);
     audit::require(cacheMode>=0 && cacheMode<=2,"reconstructionCache must be 0 (off), 1 (observe), or 2 (enabled)");
     cfg.reconstructionCacheMode=static_cast<alns::ReconstructionCacheMode>(cacheMode);
+    const int selectiveEjection=argc>9?std::stoi(argv[9]):static_cast<int>(cfg.useSelectiveEjectionUndo);
+    audit::require(selectiveEjection==0 || selectiveEjection==1,"selectiveEjection must be 0 or 1");
+    cfg.useSelectiveEjectionUndo=selectiveEjection==1;
     cfg.decayParameter=.85; cfg.scoreDominating=40; cfg.scoreNonDominated=25;
     cfg.scoreDominated=10; cfg.scoreIdentical=15; cfg.minRemoval=.15; cfg.maxRemoval=.55;
     cfg.localSearchIntensity=25; cfg.startTemperature=200; cfg.coolingRate=.9993;
@@ -38,6 +41,7 @@ int main(int argc,char** argv) {
                  <<",\"charging_repair\":"<<cfg.useChargingRepairLS
                  <<",\"profile_local_search\":"<<cfg.profileLocalSearch
                  <<",\"reconstruction_cache_mode\":"<<cacheMode
+                 <<",\"selective_ejection\":"<<selectiveEjection
                  <<",\"repair_max_evaluations\":"<<cfg.chargingRepairBudget.maxEvaluations
                  <<",\"repair_max_stations\":"<<cfg.chargingRepairBudget.maxStations
                  <<",\"repair_station_candidates\":"<<cfg.chargingRepairBudget.stationCandidates
@@ -50,6 +54,13 @@ int main(int argc,char** argv) {
     auto front=solver.solve();
     const auto elapsed=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-start).count();
     const auto& stats=solver.getRunStatistics();
+    const auto& undo=stats.ejectionUndo;
+    std::ofstream undoReport(output/"ejection_undo.json");
+    undoReport<<"{\"selective\":"<<selectiveEjection<<",\"checkpoints\":"<<undo.checkpoints
+      <<",\"full_snapshots\":"<<undo.fullSnapshots<<",\"saved_routes\":"<<undo.savedRoutes
+      <<",\"restored_routes\":"<<undo.restoredRoutes<<",\"rollbacks\":"<<undo.rollbacks
+      <<",\"commits\":"<<undo.commits<<",\"peak_undo_routes\":"<<undo.peakUndoRoutes
+      <<",\"place_calls\":"<<undo.placeCalls<<",\"branch_trials\":"<<undo.branchTrials<<"}\n";
     const auto& cache=stats.reconstructionCache;
     std::ofstream cacheReport(output/"reconstruction_cache.json");
     cacheReport<<"{\"mode\":"<<cacheMode<<",\"capacity\":"<<alns::ReconstructionCache::MaxEntries

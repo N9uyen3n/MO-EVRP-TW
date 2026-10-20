@@ -52,7 +52,7 @@ def audit(before, after, root, iterations=200):
                 out=target/f"{case}_s{seed}_{mode}"
                 binary=executables["before" if mode=="before" else "after"]
                 args=[str(binary),str(data),str(out),"3600",str(seed),str(iterations),"0",str(int(mode=="observe"))]
-                if mode!="before": args.append(str({"off":0,"observe":1,"on":2}[mode]))
+                if mode!="before": args.extend([str({"off":0,"observe":1,"on":2}[mode]),"0"])
                 start=time.monotonic()
                 with (target/f"{out.name}.log").open("x") as log:
                     subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=3700)

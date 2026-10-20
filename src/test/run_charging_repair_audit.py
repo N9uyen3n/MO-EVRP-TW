@@ -36,7 +36,7 @@ def run_one(executable,instance,directory,seconds,seed,iterations,enabled,legacy
     output=directory/'output'
     command=[str(executable),str(instance),str(output),str(seconds),str(seed),str(iterations)]
     # Reproduce the P3-P4 comparison without later profiling/cache features.
-    if not legacy: command.extend([str(int(enabled)), '0', '0'])
+    if not legacy: command.extend([str(int(enabled)), '0', '0', '0'])
     started=time.monotonic()
     with (directory/'console.txt').open('w') as console:
         process=subprocess.run(command,cwd=ROOT,stdout=console,stderr=subprocess.STDOUT)

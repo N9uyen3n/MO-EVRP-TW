@@ -3219,7 +3219,9 @@ bool LocalSearch::ejectionChain(Solution &solution,int maxDepth) {
     int searchAttempts=0;
     constexpr int MAX_CHAIN_ATTEMPTS=2000;
     std::vector<bool> protectedCustomer(nodeTypeById_.size(),false);
-    auto directInto = [&](int customer,Route& target) {
+    alns::EjectionUndo undo(workRoutes,selectiveEjection_,ejectionUndoStats_,profiler_);
+    auto directInto = [&](int customer,int routeIdx) {
+      auto& target=workRoutes[routeIdx];
       size_t bestPos=0; double bestCost=1e18;
       for(size_t pos=1;pos<target.size();++pos) {
         auto result=target.checkInsertionCost(customer,pos);
@@ -3228,15 +3230,17 @@ bool LocalSearch::ejectionChain(Solution &solution,int maxDepth) {
         }
       }
       if(bestPos==0) return false;
+      undo.touch(routeIdx);
       target.addNode(customer,bestPos); target.evaluate();
       return true;
     };
     std::function<bool(int,int,int)> place;
     place = [&](int incoming,int depthLeft,int excludedRoute) -> bool {
+      ++ejectionUndoStats_.placeCalls;
       if(searchAttempts>=MAX_CHAIN_ATTEMPTS) return false;
       for(int r=0;r<WR;++r) {
         if(r==excludedRoute) continue;
-        if(directInto(incoming,workRoutes[r])) return true;
+        if(directInto(incoming,r)) return true;
       }
       if(depthLeft==0) return false;
       for(int r=0;r<WR;++r) {
@@ -3245,18 +3249,20 @@ bool LocalSearch::ejectionChain(Solution &solution,int maxDepth) {
         const std::vector<Cand3> candidates(tl_cands.begin(),tl_cands.begin()+count);
         for(const auto& candidate:candidates) {
           if(protectedCustomer[candidate.id]) continue;
+          ++ejectionUndoStats_.branchTrials;
           if(++searchAttempts>MAX_CHAIN_ATTEMPTS) return false;
-          const auto snapshot=workRoutes;
+          alns::EjectionUndo::Checkpoint branch(undo);
+          undo.touch(r);
           workRoutes[r].removeNode(candidate.pos);
-          if(directInto(incoming,workRoutes[r])) {
+          if(directInto(incoming,r)) {
             protectedCustomer[incoming]=true;
             if(place(candidate.id,depthLeft-1,r)) {
               protectedCustomer[incoming]=false;
+              branch.commit();
               return true;
             }
             protectedCustomer[incoming]=false;
           }
-          workRoutes=snapshot;
         }
       }
       return false;
@@ -3265,10 +3271,11 @@ bool LocalSearch::ejectionChain(Solution &solution,int maxDepth) {
     for(int incoming:unplaced) {
       bool placed=false;
       for(int depth=1;depth<=maxDepth && !placed;++depth) {
-        const auto snapshot=workRoutes;
+        alns::EjectionUndo::Checkpoint attempt(undo);
         placed=place(incoming,depth,-1);
-        if(!placed) workRoutes=snapshot;
+        if(placed) attempt.commit();
       }
+      undo.clearHistory();
       if(!placed) remaining.push_back(incoming);
     }
     unplaced=std::move(remaining);

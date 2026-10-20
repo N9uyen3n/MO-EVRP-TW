@@ -6,7 +6,7 @@ Phạm vi thí nghiệm hiện tại: chỉ giao hàng, sạc một phần, dữ
 
 ```powershell
 wsl -d Ubuntu-22.04 --exec cmake -S . -B build-audit-wsl-p34-after -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-wsl -d Ubuntu-22.04 --exec cmake --build build-audit-wsl-p34-after --target ALNSAuditRunner RouteRegressionTests LocalSearchRegressionTests ChargingRepairTests ReconstructionCacheTests -j 6
+wsl -d Ubuntu-22.04 --exec cmake --build build-audit-wsl-p34-after --target ALNSAuditRunner RouteRegressionTests LocalSearchRegressionTests ChargingRepairTests ReconstructionCacheTests EjectionUndoTests -j 6
 wsl -d Ubuntu-22.04 --exec ctest --test-dir build-audit-wsl-p34-after --output-on-failure
 ```
 
@@ -17,7 +17,7 @@ Các kiểm tra dùng exception thay vì assert nên vẫn hoạt động trong 
 CLI của ALNSAuditRunner:
 
 ```text
-ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1] [reconstructionCache=0|1|2]
+ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1] [reconstructionCache=0|1|2] [selectiveEjection=0|1]
 ```
 
 Runner ghi `results.csv`, `schedules.csv`, `validation.txt`, `run_statistics.json` và `audit_parameters.json`; từ chối ghi đè thư mục output. Charging repair và profiling mặc định tắt. Cache tái dựng dùng mode 0=tắt, 1=chỉ quan sát, 2=bật; `ALNSConfig` mặc định bật mode 2 sau kiểm chứng P5. Ngân sách thời gian là giới hạn mềm của vòng ALNS, khởi tạo và một LS đang chạy có thể khiến wall time lớn hơn ngân sách.
@@ -80,3 +80,20 @@ python3 src/test/summarize_reconstruction_cache_audit.py artifacts/alns_p5/new_c
 ```
 
 Đợt chuẩn có 21 run: ba run quan sát có profiling trên seed 1, rồi sáu bộ bản trước sửa/bản mới tắt cache/bản mới bật cache trên r104/r101/c109, seed 1/2. Các run so tốc độ tắt profiling; mọi run cùng ngân sách 200 vòng và được replay độc lập. Các bộ phải cho cùng mục tiêu và cùng lịch từng byte; số đầu vào thất bại lặp ở mode quan sát phải khớp số hit ở mode bật. Nguồn và executable được đóng băng, hash được kiểm tra cuối đợt. Không build trong lúc đo.
+
+## Ejection: undo các tuyến đã sửa
+
+Tham số cuối `selectiveEjection=0|1` chọn full snapshot hoặc undo từng tuyến trong Stage B. `ALNSConfig::useSelectiveEjectionUndo` cấu hình mode cho solver. Journal lưu cả Route, giữ checkpoint lồng nhau để commit con vẫn có thể rollback từ cha; giữ nhiều nhất sáu Route với độ sâu tối đa 5. Thứ tự tìm kiếm, giới hạn 2.000 attempts/victim và các bản sao ở Stage A/thử trạm giữ nguyên.
+
+`ejection_undo.json` ghi số checkpoint, bản sao tuyến đã lưu/khôi phục, commit/rollback, peak số tuyến undo, số lời gọi `place` và số nhánh thử. Khi profiling bật, `ejection_snapshot` và `ejection_restore` đo riêng thao tác Stage B; đã nằm trong inclusive của ejection. Mode full mới vẫn sao chép cả vector khi lưu, nhưng khôi phục bằng move; vì vậy script còn chạy executable cũ có bước restore bằng copy để so tác động tổng thể.
+
+```text
+mkdir -p artifacts/alns_p5/new_ejection
+cp path/to/preserved/ALNSAuditRunner artifacts/alns_p5/new_ejection/ALNSAuditRunner_before
+python3 src/test/run_ejection_undo_audit.py artifacts/alns_p5/new_ejection/ALNSAuditRunner_before build-audit-wsl-ejection-undo/ALNSAuditRunner artifacts/alns_p5/new_ejection 200
+python3 src/test/summarize_ejection_undo_audit.py artifacts/alns_p5/new_ejection/experiment update/new_ejection_results.json
+```
+
+Đợt chuẩn có 24 run: r104/r101/c109, seed 1/2, reconstruction cache bật mode 2, charging repair tắt. Hai run profiling mỗi instance ở seed 1 đo full/selective; sáu bộ trước sửa/full/selective tắt profiling đo tốc độ. Mọi run phải đủ vòng, giữ nguyên mục tiêu và lịch từng byte; các mode mới còn phải giữ nguyên số checkpoint, commit/rollback, `place` và nhánh thử. Khi thời gian có nhiễu lớn, cần đo lặp bằng cùng executable đóng băng trước khi chốt lợi ích.
+
+`repeat_ejection_undo_audit.py initial_experiment new_output` đo lại r104 seed 2 hai lần/mode với thứ tự đảo, ghi wall time và CPU time Linux `getrusage`. Dùng executable/input đã đóng băng của đợt đầu; đối chiếu lịch, mục tiêu và thống kê nhánh với đợt gốc. Thư mục mới phải chưa tồn tại. CPU time trong WSL cũng cần diễn giải theo môi trường, không tự động chứng minh wall time đã cải thiện ổn định.

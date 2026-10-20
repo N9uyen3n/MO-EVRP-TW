@@ -2,6 +2,7 @@
 #include "../../include/core/Customer.h"
 #include "core/Station.h"
 #include <cmath>
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -116,6 +117,22 @@ Instance::Instance(const std::vector<std::shared_ptr<Node>> &nodes,
 
 // Destructor must be defined here where DistanceMatrix is a complete type
 Instance::~Instance() = default;
+
+void Instance::setTravelMatrices(std::vector<double> distances,
+                                 std::vector<double> times) {
+  const size_t expected = nodes.size() * nodes.size();
+  if (nodes.empty() || distances.size() != expected || times.size() != expected)
+    throw std::invalid_argument("Travel matrix dimensions do not match nodes");
+  for (size_t i = 0; i < expected; ++i)
+    if (!std::isfinite(distances[i]) || !std::isfinite(times[i]) ||
+        distances[i] < 0 || times[i] < 0)
+      throw std::invalid_argument("Invalid travel matrix entry");
+  distanceMatrix->distances = std::move(distances);
+  distanceMatrix->times = std::move(times);
+  distanceMatrix->maxDistance = *std::max_element(distanceMatrix->distances.begin(), distanceMatrix->distances.end());
+  distanceMatrix->maxTimeWindow = *std::max_element(distanceMatrix->times.begin(), distanceMatrix->times.end());
+  nearestStationCache.clear();
+}
 
 const std::vector<std::shared_ptr<Node>> &Instance::getNodes() const {
   return nodes;

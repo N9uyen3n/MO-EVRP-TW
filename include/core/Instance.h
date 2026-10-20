@@ -49,6 +49,7 @@ public:
              double vehicleEnergyRate, 
              double vehicleVelocity);
     ~Instance(); // Must be defined in .cpp to handle unique_ptr to incomplete type
+    void setTravelMatrices(std::vector<double> distances, std::vector<double> times);
 
 
     const std::vector<std::shared_ptr<Customer>>&  getCustomers() const;

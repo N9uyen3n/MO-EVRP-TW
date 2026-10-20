@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.17)
 # Đặt tên dự án
 project(untitled LANGUAGES CXX)
 
+add_executable(RunJD src/test/RunJD.cpp)
+target_link_libraries(RunJD PRIVATE alns_lib)
+
 
 # Yêu cầu tiêu chuẩn C++17
 set(CMAKE_CXX_STANDARD 17)
@@ -97,4 +100,13 @@ endif()
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/ParetoDemo.cpp")
     add_executable(ParetoDemo src/test/ParetoDemo.cpp)
     target_link_libraries(ParetoDemo PRIVATE alns_lib)
+endif()
+
+# -------------------------------------------------------------
+# 8. Tạo file thực thi Benchmark EVRPTWMF
+#    Chạy bộ dữ liệu data/instances_EVRPTWMF
+# -------------------------------------------------------------
+if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/BenchmarkEVRPTWMF.cpp")
+    add_executable(BenchmarkEVRPTWMF src/test/BenchmarkEVRPTWMF.cpp)
+    target_link_libraries(BenchmarkEVRPTWMF PRIVATE alns_lib)
 endif()

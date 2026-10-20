@@ -4,11 +4,13 @@ Ngày lập: 2026-10-20. Cập nhật: P0-P2 đã triển khai và kiểm chứn
 
 ## 1. Mục tiêu và phạm vi
 
+Mô hình đích là EVRPTW-PR: chỉ giao hàng, có cửa sổ thời gian và sạc một phần. Mỗi khách có một demand giao; tổng demand trên tuyến không vượt tải trọng xe. Không bổ sung pickup hoặc simultaneous pickup-delivery.
+
 Nâng cấp local search để đánh giá nghiệm nhất quán, giảm việc bỏ sót move khả thi do năng lượng, sau đó tăng tốc các bước tìm kiếm lặp lại. Giữ thứ tự mục tiêu hiện tại: ít xe hơn được ưu tiên tuyệt đối; khi bằng số xe, xét Pareto trên Distance, Gini của active time và MaxTime.
 
 Nguồn tham khảo là `../EVRP_SPD/EVRP-TW-SPD-HMA/src`. Học cơ chế tính sạc có xét slack trung gian, phục hồi trạm sau move, thuộc tính đoạn và cập nhật lân cận bị ảnh hưởng. Mọi cơ chế được chuyển sang phải phù hợp với mô hình, ma trận và hàm mục tiêu của ALNS.
 
-Phạm vi đợt đầu là evaluator, bộ lọc chèn, local search và công cụ kiểm chứng. Hỗ trợ simultaneous pickup-delivery, thay ALNS bằng HMA, genetic station insertion và phân rã bài toán thành quần thể để sau một vòng đánh giá riêng.
+Phạm vi đợt đầu là evaluator, bộ lọc chèn, local search và công cụ kiểm chứng cho mô hình chỉ giao hàng. HMA-SPD chỉ cung cấp ý tưởng tìm kiếm, tính sạc và cache. Thay ALNS bằng HMA, genetic station insertion và phân rã bài toán thành quần thể cần đánh giá riêng; mở rộng sang pickup-delivery nằm ngoài kế hoạch này.
 
 ## 2. Căn cứ đã xác nhận
 
@@ -49,7 +51,7 @@ Không lấy kết quả của evaluator cũ làm chuẩn tính đúng. Lưu k�
 - Thêm bộ kiểm chứng lịch độc lập: nhận node sequence, thời gian đến/rời và lượng sạc; kiểm tra từng cạnh, pin, tải, cửa sổ thời gian và customer coverage.
 - Kiểm chứng cả lịch xuất ra và chỉ số Distance/Gini/MaxTime. Validator JD hiện chỉ dựng lại lịch sạc tối thiểu nên chưa phát hiện hết lỗi trạng thái do absorption.
 - Đo thời gian tổng gồm khởi tạo, local search và Scatter Search nếu bật; ghi riêng thời gian vòng ALNS. Ghi số vòng thực chạy và lý do dừng.
-- Chốt quy ước dữ liệu: JD `delivery`, `sum`, `mean` là ba phép chiếu nhu cầu; directed và symmetric là hai chế độ ma trận riêng.
+- Nếu thử dữ liệu JD, chỉ dùng demand giao hàng (`delivery`); không cộng hoặc lấy trung bình delivery/pickup. Directed và symmetric là hai chế độ ma trận riêng.
 
 **File dự kiến:** `CMakeLists.txt`, `src/test/RouteRegressionTests.cpp`, công cụ validator/benchmark trong `src/test/`, logger và runner nếu cần thêm trường đo.
 
@@ -178,7 +180,7 @@ ChargingRepairResult repairChargingForCustomerSequence(
 
 - Bộ nhỏ: chọn đại diện C/R/RC có 5, 10, 15 khách; dùng cho regression và đối chiếu move.
 - Bộ vừa: chọn đại diện C/R/RC trong `data/test-100` và các instance đã dùng trước đó; chốt manifest đường dẫn thực tế trước khi chạy.
-- Bộ lớn: JD200, kiểm tra riêng directed/symmetric; dùng `delivery` cho phép so đầu tiên, giữ sum/mean thành thí nghiệm riêng.
+- Bộ lớn: nếu dùng JD200, chỉ xét demand giao hàng với chế độ `delivery`; kiểm tra riêng directed/symmetric.
 - Smoke test ban đầu: ba instance, hai seed, 10 giây mỗi run. Đánh giá chất lượng: năm seed ghép cặp, 60 giây; xác nhận trên tập chọn trước ở 180 giây khi cần.
 - Chạy tuần tự trên cùng máy/build; ghi wall time tổng, thời gian riêng ALNS, mức vượt deadline và lý do dừng. Kiểm tra deadline bên trong các tìm kiếm tốn thời gian; đặt giới hạn vòng đủ lớn và ghi rõ run nào dừng do vòng/HV thay vì thời gian.
 - Dùng thư mục kết quả mới cho mỗi biến thể. Lưu baseline cũ để truy vết, baseline P1-P2 để đánh giá nâng cấp.
@@ -194,7 +196,7 @@ ChargingRepairResult repairChargingForCustomerSequence(
 | Đa mục tiêu | HV 3D với cùng reference box cho các biến thể trên cùng instance và cùng mức xe; ghi riêng HV 2D nếu giữ điều kiện dừng cũ |
 | Chi phí | Wall time, số move đánh giá, số lần full evaluate/repair, thời gian từng toán tử, cache hit, bộ nhớ nếu dùng bảng đoạn |
 
-Để so với HMA: thống nhất nhu cầu delivery/pickup, ma trận sau tiền xử lý, mô hình sạc và tiêu chí chấm. Nếu dùng hyperarc, kiểm chứng đường mở rộng tương ứng. Chưa thống nhất thì chỉ đối chiếu cơ chế, không kết luận thuật toán nào tốt hơn từ tổng cost khác định nghĩa.
+Để so với HMA: cả hai phải giải phiên bản chỉ giao hàng trên cùng demand, pickup phía HMA phải bằng 0; thống nhất ma trận sau tiền xử lý, mô hình sạc và tiêu chí chấm. Nếu dùng hyperarc, kiểm chứng đường mở rộng tương ứng. Chưa thống nhất thì chỉ đối chiếu cơ chế, không kết luận thuật toán nào tốt hơn từ tổng cost khác định nghĩa.
 
 **Điều kiện bật mặc định**
 

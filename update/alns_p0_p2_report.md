@@ -1,5 +1,7 @@
 # ALNS P0-P2: evaluator, local search và kiểm chứng trước/sau
 
+Mô hình đích: EVRPTW-PR, chỉ giao hàng và sạc một phần. Các sửa đổi không thêm pickup, biến tải nhận hàng hoặc ràng buộc simultaneous pickup-delivery. HMA-SPD chỉ là nguồn tham khảo kỹ thuật tìm kiếm và bố trí trạm.
+
 ## Mốc và môi trường
 
 - Commit gốc trước đợt làm việc: `7cc90ac`, branch ban đầu `test01`.

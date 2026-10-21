@@ -75,9 +75,8 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/r102_21.txt";
     // instancePath = "../data/solomon/r107_21.txt";
     // instancePath = "../data/solomon/r103_21.txt";
-
     // instancePath = "../data/solomon/r104_21.txt";
-    instancePath = "../data/solomon/r105_21.txt";
+    // instancePath = "../data/solomon/r105_21.txt";
     // instancePath = "../data/solomon/r210_21.txt";
     // instancePath = "../data/solomon/r211_21.txt";
     // instancePath = "../data/solomon/rc101_21.txt";
@@ -92,7 +91,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/c102_21.txt";
     // instancePath = "../data/solomon/c103_21.txt";
     // instancePath = "../data/solomon/c107_21.txt";
-    // instancePath = "../data/solomon/c108_21.txt";
+    // instancePath = "../data/solomon/c107_21.txt";
     // instancePath = "../data/solomon/c201_21.txt";
     // instancePath = "../data/solomon/c202_21.txt";
     // instancePath = "../data/solomon/c203_21.txt";
@@ -109,7 +108,7 @@ int main(int argc, char *argv[]) {
     // instancePath = "../data/solomon/rc103_21.txt";
     // instancePath = "../data/solomon/rc203_21.txt";
     // instancePath = "../data/solomon/rc204_21.txt";
-    // instancePath = "../data/solomon/rc205_21.txt";
+    instancePath = "../data/solomon/rc205_21.txt";
     // instancePath = "../data/solomon/rc206_21.txt";
     // instancePath = "../data/solomon/rc207_21.txt";
     // instancePath = "../data/solomon/rc208_21.txt";
@@ -148,7 +147,7 @@ int main(int argc, char *argv[]) {
     // --- Adaptive Weights ---
     config.decayParameter = 0.85;
     config.scoreDominating = 40.0;
-    config.scoreNonDominated = 25.0; // Increased from 25.0
+    config.scoreNonDominated = 20.0; // Increased from 25.0
     config.scoreDominated = 10.0;    // Increased from 10.0
     config.scoreIdentical = 15.0; // Increased from 0.0 to encourage vehicle reduction operators
 
@@ -169,7 +168,7 @@ int main(int argc, char *argv[]) {
     // --- Local Search & Scatter Search ---
     config.useLocalSearch = true;
     config.useScatterSearch = false;
-    config.localSearchIntensity = 25; // Do not reduce this value lower than 20
+    config.localSearchIntensity = 15; // Do not reduce this value lower than 20
     // --- Scatter Search Params ---
     // config.scatterSearchConfig.maxScatterIters = 5;
     // config.scatterSearchConfig.alnsItersPerCombination = 50;

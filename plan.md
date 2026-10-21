@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-21. Git nền: `0581344`, nhánh `feat/alns-charging-repair-p3-p4`.
 
-**Trạng thái 2026-10-21: S0–S4 đã hoàn tất trong phạm vi thử nghiệm.87ca/9target Release đạt; S2,Observe và Enabled đều qua10cặp tương đương. Cache giữ mặc định Off vì thử thời gian một lượt chưa thuyết phục. TestALNS/untitled Release đã build. Tiếp theo S5:30cặp tốc độ lặp và50run chất lượng.**
+**Trạng thái 2026-10-21: S0–S4 đạt;87ca/9target Release và apps build đạt. Cache mặc định Off. S5speed30cặp giữ output, nhưng thời gian hỗn hợp(median+1,48%,tổngchậm1,18%,rc205median−5,94%). Đang chạy50run chất lượng; sau đó lặp riêngrc2056cặp để xử lý case bất định trước chốt.**
 
 ## 1. Mục tiêu và phạm vi
 

@@ -29,10 +29,21 @@ Giữ nguyên user `src/test/TestALNS.cpp`:c108_21,scoreNonDominated20,LS15; SHA
 
 ## S5 còn lại — chạy tuần tự, không build cạnh tranh
 
+**Cập nhật lúc chạy:** đợt tốc độ `S5_speed` đã completed:60run/30cặp,534nghiệm/6.012tuyến hợp lệ;warmup6/72;30/30cặp giữ output. Medianpaired+1,47924%, nhưng tổng524,346792→530,528081s(tăng1,18%). rc205median−5,94179%,4/6chậm hơn. Chưa tuyên bố tăng tốc. Pipeline hiện đang chạy `S5_quality`, tool session **66467**. Không launch benchmark khác trước khi quality kết thúc.
+
+**Việc bổ sung bắt buộc trước chốt:** lặp riêngrc205 theo điều khoản case bất định,12run/6cặp,2seed×3rep,B1/B3Off,200vòng,warmup. Outputmới`S5_rc205_repeat`; chạy SAU quality để không tranh CPU. Reporttách khỏi30cặp chính. Nếu chậm đáng kể còn lặp lại, điều tra/giảm overhead hoặc điều chỉnh lựa chọn tối ưu trước khi chốt default; không bỏ qua regression.
+
 1. Tốc độ thuần: B1 so B3Off,5case r104/r101/c109/rc106/rc205 ×seed1,2 ×3rep ×2bản=60run/30cặp;200vòng cấu hình,safety3600s;warmup riêng,AB/BA cân bằng. Bắt buộc lịch/objective byte-identical, đúng iteration_limit200. Output dự kiến `S5_speed`.
 2. Chất lượng S1: B0 so B1,5case ×seed1–5 ×2bản=50run;search60s,maxIter25000. Output `S5_quality`; phải stop=time_limit, lưu overshoot. Fleet ưu tiên tuyệt đối, rồi distance/Gini/MaxTime/HV3D, báo mọi đánh đổi. Không yêu cầu byte-identical.
 3. Chạy `summarize_smd_audit.py` sau mỗi experiment completed; script từ chối incomplete/invalid/modifiedCSV. Ghi JSON/CSV trong update và report tổng hợp. Các report có phần timing của scope/equivalence không được dùng thay benchmark lặp.
 4. Kiểm tra source/binary/input/tool/CSV hashes cuối; source production hiện tại phải bằng B3 và userfile được giữ. `plan.md` đóng checklist, báo cáo giới hạn mẫu; commit docs/tools/results riêng. Không cộng phần trăm mới vào speedup P5/P6 cũ.
+
+Lệnh bổ sung sau quality:
+
+```text
+python3 src/test/run_smd_audit.py --before artifacts/alns_smd/20261021/B1 --after artifacts/alns_smd/20261021/B3 --output artifacts/alns_smd/20261021/S5_rc205_repeat --kind speed --cases rc205_21 --repetitions 3 --warmup
+python3 src/test/summarize_smd_audit.py artifacts/alns_smd/20261021/S5_rc205_repeat update/alns_smd_rc205_repeat_results.json
+```
 
 Lệnh WSL từ workspace root (phải output mới, runner không overwrite/resume thư mục có sẵn):
 

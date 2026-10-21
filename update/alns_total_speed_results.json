@@ -1,0 +1,380 @@
+{
+  "source_manifest": "artifacts\\alns_p5\\total_speed_20261021_200iter_3reps\\manifest.json",
+  "baseline": "226f943",
+  "current": "edc8e92",
+  "iterations": 200,
+  "repetitions": 3,
+  "measured_runs": 36,
+  "warmup_runs": 2,
+  "pairs": 18,
+  "solutions": 306,
+  "routes": 3798,
+  "invalid": 0,
+  "warmup_solutions": 8,
+  "warmup_routes": 96,
+  "median_paired_reduction_percent": 26.790742701980882,
+  "min_paired_reduction_percent": 3.6895261410296976,
+  "max_paired_reduction_percent": 38.40571434827987,
+  "faster_pairs": 18,
+  "slower_pairs": 0,
+  "baseline_total_seconds": 319.768373621,
+  "current_total_seconds": 234.4989123870002,
+  "total_time_reduction_percent": 26.66600835736932,
+  "median_cpu_reduction_percent": 26.984434507171997,
+  "cases": {
+    "r104_21": {
+      "seeds": {
+        "1": {
+          "baseline_median_seconds": 22.364942291000034,
+          "current_median_seconds": 17.126775457999997,
+          "reduction_of_medians_percent": 23.421329529242506,
+          "median_paired_reduction_percent": 29.39286002402404
+        },
+        "2": {
+          "baseline_median_seconds": 23.40486586999998,
+          "current_median_seconds": 16.47685745900003,
+          "reduction_of_medians_percent": 29.60071828431272,
+          "median_paired_reduction_percent": 28.84811335966707
+        }
+      },
+      "median_paired_reduction_percent": 29.120486691845556,
+      "faster_pairs": 6,
+      "pairs": 6
+    },
+    "r101_21": {
+      "seeds": {
+        "1": {
+          "baseline_median_seconds": 10.967097404000015,
+          "current_median_seconds": 8.659535956000013,
+          "reduction_of_medians_percent": 21.040767333372713,
+          "median_paired_reduction_percent": 17.564682421775977
+        },
+        "2": {
+          "baseline_median_seconds": 23.00353243500001,
+          "current_median_seconds": 14.726112206000039,
+          "reduction_of_medians_percent": 35.983257147088544,
+          "median_paired_reduction_percent": 32.138780741418046
+        }
+      },
+      "median_paired_reduction_percent": 29.952400882306268,
+      "faster_pairs": 6,
+      "pairs": 6
+    },
+    "c109_21": {
+      "seeds": {
+        "1": {
+          "baseline_median_seconds": 11.765117903999993,
+          "current_median_seconds": 9.25495651,
+          "reduction_of_medians_percent": 21.33562463616765,
+          "median_paired_reduction_percent": 23.280482829815174
+        },
+        "2": {
+          "baseline_median_seconds": 14.225050701000043,
+          "current_median_seconds": 11.456608456000026,
+          "reduction_of_medians_percent": 19.46173903482391,
+          "median_paired_reduction_percent": 19.46173903482391
+        }
+      },
+      "median_paired_reduction_percent": 21.371110932319542,
+      "faster_pairs": 6,
+      "pairs": 6
+    }
+  },
+  "samples": [
+    {
+      "case": "r104_21",
+      "seed": 1,
+      "repetition": 1,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 24.840358498,
+      "current_seconds": 17.479268537000003,
+      "baseline_cpu_seconds": 24.730305,
+      "current_cpu_seconds": 17.313482,
+      "reduction_percent": 29.633589875897602,
+      "cpu_reduction_percent": 29.990827043985103,
+      "speedup": 1.4211326089199952
+    },
+    {
+      "case": "r104_21",
+      "seed": 2,
+      "repetition": 1,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 25.61099773800001,
+      "current_seconds": 18.222708077999997,
+      "baseline_cpu_seconds": 25.464776,
+      "current_cpu_seconds": 18.005954,
+      "reduction_percent": 28.84811335966707,
+      "cpu_reduction_percent": 29.29074263209699,
+      "speedup": 1.4054441100837138
+    },
+    {
+      "case": "r101_21",
+      "seed": 1,
+      "repetition": 1,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 11.025247866,
+      "current_seconds": 9.126268690000003,
+      "baseline_cpu_seconds": 11.824010000000005,
+      "current_cpu_seconds": 8.906936999999997,
+      "reduction_percent": 17.22391368502587,
+      "cpu_reduction_percent": 24.670758904973912,
+      "speedup": 1.2080783768815377
+    },
+    {
+      "case": "r101_21",
+      "seed": 2,
+      "repetition": 1,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 23.560040853000004,
+      "current_seconds": 16.030063608000006,
+      "baseline_cpu_seconds": 25.463801999999987,
+      "current_cpu_seconds": 16.935077,
+      "reduction_percent": 31.960798760844135,
+      "cpu_reduction_percent": 33.4935254366178,
+      "speedup": 1.469740946083462
+    },
+    {
+      "case": "c109_21",
+      "seed": 1,
+      "repetition": 1,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 11.765117903999993,
+      "current_seconds": 8.748837871999996,
+      "baseline_cpu_seconds": 12.373606999999993,
+      "current_cpu_seconds": 9.35658200000001,
+      "reduction_percent": 25.637482400193367,
+      "cpu_reduction_percent": 24.38274465966136,
+      "speedup": 1.3447635075800612
+    },
+    {
+      "case": "c109_21",
+      "seed": 2,
+      "repetition": 1,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 13.461164523999997,
+      "current_seconds": 12.964511340000001,
+      "baseline_cpu_seconds": 14.544925000000013,
+      "current_cpu_seconds": 13.451728999999998,
+      "reduction_percent": 3.6895261410296976,
+      "cpu_reduction_percent": 7.51599612923417,
+      "speedup": 1.038308669796728
+    },
+    {
+      "case": "r101_21",
+      "seed": 1,
+      "repetition": 2,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 10.504643168000001,
+      "current_seconds": 8.659535956000013,
+      "baseline_cpu_seconds": 11.330651,
+      "current_cpu_seconds": 9.262050999999987,
+      "reduction_percent": 17.564682421775977,
+      "cpu_reduction_percent": 18.256673866311946,
+      "speedup": 1.2130722964111664
+    },
+    {
+      "case": "r101_21",
+      "seed": 2,
+      "repetition": 2,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 23.00353243500001,
+      "current_seconds": 14.168861477999997,
+      "baseline_cpu_seconds": 24.551626,
+      "current_cpu_seconds": 15.077875999999996,
+      "reduction_percent": 38.40571434827987,
+      "cpu_reduction_percent": 38.58705732972636,
+      "speedup": 1.623527230520082
+    },
+    {
+      "case": "c109_21",
+      "seed": 1,
+      "repetition": 2,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 11.431121901999973,
+      "current_seconds": 9.25495651,
+      "baseline_cpu_seconds": 12.306588999999985,
+      "current_cpu_seconds": 9.90006900000004,
+      "reduction_percent": 19.037198716420257,
+      "cpu_reduction_percent": 19.55472795914407,
+      "speedup": 1.2351351289061836
+    },
+    {
+      "case": "c109_21",
+      "seed": 2,
+      "repetition": 2,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 14.225050701000043,
+      "current_seconds": 11.456608456000026,
+      "baseline_cpu_seconds": 15.410957999999987,
+      "current_cpu_seconds": 12.373182000000023,
+      "reduction_percent": 19.46173903482391,
+      "cpu_reduction_percent": 19.71179208975825,
+      "speedup": 1.241645881120266
+    },
+    {
+      "case": "r104_21",
+      "seed": 1,
+      "repetition": 2,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 22.364942291000034,
+      "current_seconds": 17.126775457999997,
+      "baseline_cpu_seconds": 24.04653299999999,
+      "current_cpu_seconds": 17.81806499999999,
+      "reduction_percent": 23.421329529242506,
+      "cpu_reduction_percent": 25.901729783665704,
+      "speedup": 1.3058466461387082
+    },
+    {
+      "case": "r104_21",
+      "seed": 2,
+      "repetition": 2,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 23.40486586999998,
+      "current_seconds": 16.28665029800004,
+      "baseline_cpu_seconds": 25.341459999999994,
+      "current_cpu_seconds": 17.61195300000001,
+      "reduction_percent": 30.413400408006463,
+      "cpu_reduction_percent": 30.501427305293326,
+      "speedup": 1.4370582926357816
+    },
+    {
+      "case": "c109_21",
+      "seed": 1,
+      "repetition": 3,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 12.066769489000023,
+      "current_seconds": 9.257567289999997,
+      "baseline_cpu_seconds": 13.028713999999992,
+      "current_cpu_seconds": 9.952143999999985,
+      "reduction_percent": 23.280482829815174,
+      "cpu_reduction_percent": 23.61376571778312,
+      "speedup": 1.303449287593569
+    },
+    {
+      "case": "c109_21",
+      "seed": 2,
+      "repetition": 3,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 14.627249001999985,
+      "current_seconds": 10.966160274999993,
+      "baseline_cpu_seconds": 15.787798999999996,
+      "current_cpu_seconds": 11.759038000000041,
+      "reduction_percent": 25.02923636904938,
+      "cpu_reduction_percent": 25.518192877930336,
+      "speedup": 1.3338532936953627
+    },
+    {
+      "case": "r104_21",
+      "seed": 1,
+      "repetition": 3,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 22.157415673999992,
+      "current_seconds": 15.644717500000013,
+      "baseline_cpu_seconds": 23.963290999999973,
+      "current_cpu_seconds": 16.921522999999993,
+      "reduction_percent": 29.39286002402404,
+      "cpu_reduction_percent": 29.38564657083198,
+      "speedup": 1.4162873617884102
+    },
+    {
+      "case": "r104_21",
+      "seed": 2,
+      "repetition": 3,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 23.052422871999966,
+      "current_seconds": 16.47685745900003,
+      "baseline_cpu_seconds": 24.971760999999994,
+      "current_cpu_seconds": 17.84145799999999,
+      "reduction_percent": 28.524400448105514,
+      "cpu_reduction_percent": 28.55346485175798,
+      "speedup": 1.399078855258787
+    },
+    {
+      "case": "r101_21",
+      "seed": 1,
+      "repetition": 3,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_seconds": 10.967097404000015,
+      "current_seconds": 7.9024513760000445,
+      "baseline_cpu_seconds": 11.735553000000053,
+      "current_cpu_seconds": 8.441718999999994,
+      "reduction_percent": 27.9440030037684,
+      "cpu_reduction_percent": 28.067139230678293,
+      "speedup": 1.3878095393674148
+    },
+    {
+      "case": "r101_21",
+      "seed": 2,
+      "repetition": 3,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_seconds": 21.700335429999996,
+      "current_seconds": 14.726112206000039,
+      "baseline_cpu_seconds": 23.49797499999996,
+      "current_cpu_seconds": 15.875573000000028,
+      "reduction_percent": 32.138780741418046,
+      "cpu_reduction_percent": 32.438548428109,
+      "speedup": 1.473595686793583
+    }
+  ],
+  "limitations": [
+    "Baseline is the validated pre-speed-optimization revision 226f943, not the older faulty evaluator.",
+    "Two seeds per instance, repeated timing samples do not add independent algorithm seeds.",
+    "200 configured iterations include adaptive thresholds; not the prefix of a 25000-iteration run.",
+    "All measured pairs included; wall and CPU time remain affected by system and WSL conditions.",
+    "Charging repair/profiling/scatter disabled; current reconstruction cache and selective undo enabled."
+  ]
+}

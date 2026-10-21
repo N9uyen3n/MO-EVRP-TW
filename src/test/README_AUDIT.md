@@ -97,3 +97,14 @@ python3 src/test/summarize_ejection_undo_audit.py artifacts/alns_p5/new_ejection
 Đợt chuẩn có 24 run: r104/r101/c109, seed 1/2, reconstruction cache bật mode 2, charging repair tắt. Hai run profiling mỗi instance ở seed 1 đo full/selective; sáu bộ trước sửa/full/selective tắt profiling đo tốc độ. Mọi run phải đủ vòng, giữ nguyên mục tiêu và lịch từng byte; các mode mới còn phải giữ nguyên số checkpoint, commit/rollback, `place` và nhánh thử. Khi thời gian có nhiễu lớn, cần đo lặp bằng cùng executable đóng băng trước khi chốt lợi ích.
 
 `repeat_ejection_undo_audit.py initial_experiment new_output` đo lại r104 seed 2 hai lần/mode với thứ tự đảo, ghi wall time và CPU time Linux `getrusage`. Dùng executable/input đã đóng băng của đợt đầu; đối chiếu lịch, mục tiêu và thống kê nhánh với đợt gốc. Thư mục mới phải chưa tồn tại. CPU time trong WSL cũng cần diễn giải theo môi trường, không tự động chứng minh wall time đã cải thiện ổn định.
+
+## A/B tổng: trước cache + undo so với bản cuối
+
+`run_total_speed_audit.py` so trực tiếp revision 226f943 với edc8e92, dùng hai executable đã đóng băng và hồ sơ source/hash từ các đợt trước. Nó đối chiếu source production/runner với Git, lưu ZIP nguồn cùng executable và input; không mở thêm cây source. Công cụ yêu cầu các thư mục hồ sơ `profiling_20261020/experiment` và `ejection_undo_20261020/experiment` còn tồn tại để xác nhận provenance.
+
+```text
+python3 src/test/run_total_speed_audit.py artifacts/alns_p5/cache_20261020/ALNSAuditRunner_before artifacts/alns_p5/ejection_undo_20261020/experiment/ALNSAuditRunner_after artifacts/alns_p5/new_total_speed 200 3
+python3 src/test/summarize_total_speed_audit.py artifacts/alns_p5/new_total_speed update/new_total_speed_results.json
+```
+
+Chuẩn là 36 run đo = 3 instance × 2 seed × 3 lần đo lặp × 2 phiên bản, cộng hai warmup bị loại khỏi bảng thời gian. Các cặp chạy liền nhau, đảo AB/BA, thứ tự instance luân phiên. Ghi wall/CPU time, kiểm chứng từng lịch và so mục tiêu/lịch từng byte qua cả hai phiên bản và mọi lần lặp. Thư mục output phải mới; chỉ tổng hợp khi manifest completed, không loại các cặp chậm hơn. Báo riêng trung vị giảm thời gian theo cặp và tỷ lệ giảm tổng thời gian; không cộng phần trăm của cache và undo từ các thí nghiệm khác.

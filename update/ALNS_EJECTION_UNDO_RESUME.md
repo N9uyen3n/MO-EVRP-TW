@@ -1,5 +1,7 @@
 # Bàn giao sau bước undo ejection — tạm nghỉ theo yêu cầu
 
+Cập nhật 2026-10-21: người dùng đã yêu cầu tiếp tục và A/B tổng tốc độ đã hoàn tất; đọc `update/ALNS_TOTAL_SPEED_RESUME.md` cho trạng thái mới nhất. Nội dung tạm nghỉ bên dưới là hồ sơ mốc trước.
+
 Người dùng yêu cầu hoàn tất bước này rồi nghỉ, tiếp tục sáng hôm sau. Không tự mở benchmark hoặc hướng tối ưu tiếp theo.
 
 ## Mốc đã hoàn tất

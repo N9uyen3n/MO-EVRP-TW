@@ -4,6 +4,8 @@
 
 Đợt này sửa cập nhật láng giềng bị thiếu, giảm copy KNN/trial route và thử cache khối Or-opt có phiên bản tuyến. Bài toán chỉ giao hàng, Euclidean đối xứng, sạc một phần; evaluator sạc và thứ tự mục tiêu giữ nguyên.
 
+**Bổ sung sau checkpoint:** các số liệu B0–B3 dưới đây được giữ nguyên. Điều tra tiếp đã có trace và hai phép tách rc205; đồng thời cô lập lỗi commit xóa trạm bằng pin của lịch cũ. Đã sửa ở **B4 `128f1cd`**, đạt 90 ca / 9 target; A/B B3/B4 đang chạy. Chi tiết và hồ sơ riêng ở `alns_smd_followup_report.md`. Chưa lấy kết quả S1 hoặc timing SMD cũ để tuyên bố chất lượng/tốc độ của B4.
+
 ## Những thay đổi đã kiểm chứng
 
 - S1: dirty route mới tiến lại gần có thể lọt vào top-8 của tuyến clean. Patch và full rebuild dùng chung cách dựng/thứ tự, có tie-break theo index và phép tính FMA tường minh.

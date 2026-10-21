@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-21. Git nền: `0581344`, nhánh `feat/alns-charging-repair-p3-p4`.
 
-**Trạng thái 2026-10-21: người dùng đã đổi yêu cầu nghỉ thành tiếp tục ngay. S0–S4 đạt; 87 ca / 9 target Release và apps build đạt. Cache mặc định Off. S5 đã chạy đủ 30 cặp tốc độ, 25 cặp chất lượng và 6 cặp lặp rc205; chưa đóng toàn plan vì hiệu năng chưa ổn định và chất lượng có cả giảm. Tiếp tục điều tra hai điểm này sau checkpoint audit.**
+**Trạng thái 2026-10-21: người dùng đã đổi yêu cầu nghỉ thành tiếp tục ngay. S0–S4 và S5 gốc đã đủ dữ liệu; SMD chưa chứng minh tăng tốc ổn định. Điều tra bổ sung đã tách S2/S3 và trace S1; tìm thấy lỗi xóa trạm chỉ xét pin cũ, đã sửa ở B4 `128f1cd`, 90 ca / 9 target Release và apps đạt. Cache mặc định Off. Đang audit B3/B4 phạm vi và chất lượng, xem mục8 và điểm bàn giao.**
 
 ## 1. Mục tiêu và phạm vi
 
@@ -195,6 +195,22 @@ Thay đổi S1 có thể đổi lượng công việc tìm kiếm, nên thời g
 - [x] S5 chất lượng: 50 run, 734 nghiệm / 8.255 tuyến hợp lệ; cùng fleet mọi cặp; distance 7 thắng / 6 hòa / 12 thua, HV 11 thắng / 5 hòa / 9 thua.
 - [x] Lặp riêng rc205: 12 run / 6 cặp giữ lịch/objective; 3/6 nhanh hơn, median giảm 1,126%, khoảng −4,732% đến +20,006%. Trái chiều đợt đầu, không gộp để đổi trọng số case.
 - [x] Kiểm tra toàn vẹn cuối đạt: 202 run + 4 warmup, 2.091 nghiệm / 22.665 tuyến hợp lệ; source/binary/flags/raw/report/user-file khớp. Đã lưu checkpoint audit; các benchmark trên đã kết thúc.
-- [ ] S5 kết luận toàn plan: điều tra hiệu năng rc205 và các lần giảm chất lượng r101/rc106; chưa kết luận nguyên nhân hoặc ưu thế chung.
+- [ ] S5 kết luận toàn plan: đã điều tra bổ sung nhưng chưa chứng minh ưu thế chung; chờ audit guard B4 ở mục8 trước khi chốt.
 
 **Điểm tiếp tục hiện tại: đọc `update/ALNS_SMD_RESUME.md`, kiểm tra Git và hồ sơ toàn vẹn. Không chạy lại các batch đã completed. Ưu tiên phân biệt B1/B2/B3Off trên rc205, rồi điều tra quỹ đạo S1 ở các seed r101/rc106 giảm chất lượng. Giữ cache Off; chưa mở thêm toán tử/cache.**
+
+## 8. Bổ sung sau điều tra S5 — guard xóa trạm
+
+Phép tách rc205 đã completed, 4/4 cặp mỗi bước giữ kết quả: S2 median −1,205% (2/4 nhanh hơn), S3Off median +0,835% (3/4 nhanh hơn, nhưng một cặp −14,698%). Chưa chứng minh tăng tốc ổn định. Không quy nguyên nhân cho một bước chỉ từ các mẫu trái chiều.
+
+Trace B0/B1 độc lập trên r101/rc106 seed1, giữ maxIterations25000 và dừng chẩn đoán sau 8 vòng, đã xác định khác biệt đầu tiên là tie-order ngay đầu VND vòng0, sau đó Relocate chọn move khác. B1 có 1.037 snapshot context khớp full-sort oracle; B0 còn bỏ sót láng giềng gần hơn ở các patch sau. Sáu nghiệm / 112 tuyến cuối của trace hợp lệ; không coi các run có instrumentation này là benchmark.
+
+Phát hiện thêm một lỗi cần sửa trong phạm vi tính đúng của LS: `removeRedundantStations(Route&)` commit chỉ bằng pin/minBatteryReq của lịch cũ. Tuyến r101 D0–S7–C19–S8–C36–C49–D0 hợp lệ, nhưng xóa S7 làm phải sạc lâu hơn tại S8 và trễ C36. ALNS đã chặn ứng viên ở bước kiểm tra sau LS; chưa có bằng chứng lỗi này lọt vào front audit đã kiểm chứng. Không suy từ phát hiện này rằng mọi lịch đã xuất trước đó sai.
+
+- [x] Tái hiện trước sửa: thêm 3 regression; bản chưa sửa có 12 pass / 2 fail, gồm ca xóa trạm an toàn vẫn pass.
+- [x] Sửa nhỏ: giữ energy screen làm bộ lọc; dựng candidate, đánh giá canonical toàn tuyến và chỉ commit khi feasible. Không đổi evaluator hoặc mục tiêu.
+- [x] Build Release riêng `build-audit-smd-s4`, 90 ca / 9 target và apps đạt; giữ source người dùng (hiện đã đổi sang rc205_21, score20/LS15).
+- [x] Commit riêng guard + regression `128f1cd`, đóng băng B4, audit binary SHA `e8d09486bbde49bc42747750671955189e271d60d83613029125b40404fe7029`.
+- [ ] Audit B3/B4 cacheOff trên 5 case × seed1,2 × 200 vòng. Cho phép đổi kết quả vì đây là sửa tính đúng, không dùng wall time để gọi speedup thuần.
+- [ ] Đánh giá chất lượng B3/B4 theo cùng protocol 60s / maxIter25000, 5 case × seed1–5; báo đầy đủ mọi thắng/thua. Đây là experiment riêng, không thay kết quả B0/B1 của S1.
+- [ ] Lưu hồ sơ/hash/source/default cuối và kết luận theo dữ liệu; cache vẫn Off, không mở thêm tối ưu khác để làm đẹp số.

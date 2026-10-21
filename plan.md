@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-21. Git nền: `0581344`, nhánh `feat/alns-charging-repair-p3-p4`.
 
-**Trạng thái: đã kiểm tra và lập kế hoạch; chưa sửa thuật toán. Tạm dừng theo yêu cầu người dùng, tiếp tục khi người dùng quay lại sau 14h và nhắn bắt đầu. Không có benchmark đang chạy.**
+**Trạng thái 2026-10-21: người dùng đã yêu cầu tiếp tục. S0 đã lưu baseline B0; S1 đã qua regression Release. Đang chuyển sang S2. Audit chất lượng và tốc độ tổng hợp ở S5 còn chờ.**
 
 ## 1. Mục tiêu và phạm vi
 
@@ -185,12 +185,12 @@ Thay đổi S1 có thể đổi lượng công việc tìm kiếm, nên thời g
 - [x] Kiểm tra Git và đọc kỹ các đường evaluate/apply/context.
 - [x] Chạy lại 60 ca / 6 target Release và probe SMD.
 - [x] Ghi plan và tạm dừng; chưa sửa production.
-- [ ] S0: kiểm tra thay đổi mới sau giờ nghỉ, đóng băng baseline cho triển khai.
-- [ ] S1: regression + sửa patch và tie-break.
+- [x] S0: kiểm tra thay đổi mới sau giờ nghỉ, đóng băng baseline cho triển khai.
+- [x] S1: regression + sửa patch và tie-break; 69 ca / 7 target Release đạt. Quality audit B0/B1 thuộc S5 còn chờ.
 - [ ] S2a: KNN output/fallback.
 - [ ] S2b: bỏ copy tuyến thứ hai của intra move.
 - [ ] S3: quan sát khối Or-opt lặp và đo overhead.
 - [ ] S4: thử cache có generation hoặc ghi kết luận không tiếp tục sau S3.
 - [ ] S5: hoàn tất audit, chọn default và bàn giao.
 
-**Hành động đầu tiên khi được yêu cầu tiếp tục: đọc lại plan này và Git diff, rồi bắt đầu S0/S1.**
+**Điểm tiếp tục: đóng băng B1, chạy audit phạm vi S1 rồi triển khai S2. Báo cáo S1: `update/alns_smd_s1_report.md`.**

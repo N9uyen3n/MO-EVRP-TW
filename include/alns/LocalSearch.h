@@ -157,6 +157,11 @@ private:
 
   // ========== SEARCH CONTEXT CACHE ==========
   struct RouteCentroid { double x, y; };
+  struct RouteNeighbor { int idx; double dist2; };
+  static constexpr int MAX_ROUTE_NEIGHBORS = 8;
+  static bool routeNeighborLess(const RouteNeighbor& first, const RouteNeighbor& second);
+  double centroidDistanceSquared(int first, int second) const;
+  void rebuildRouteNeighbors(int route, std::vector<RouteNeighbor>& ranked);
 
   struct SearchContext {
     std::vector<RouteCentroid> centroids;

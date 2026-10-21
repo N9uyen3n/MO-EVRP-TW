@@ -824,7 +824,7 @@ void LocalSearch::applyMove(Solution &solution, const MoveDescriptor &move) {
 bool LocalSearch::runDistanceOptimization(Solution &solution) {
   alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Distance);
   // [CHANGE-3] Removed dead `bestMove` param — all operators use first-
-  // improvement and apply moves immediately via activeMove scratch buffer.
+  // improvement and apply moves immediately via a local MoveDescriptor.
   // outBestMove was never populated; passing it was misleading.
   LocalSearchWeights weights;
   weights.dist = 1.0;
@@ -916,9 +916,9 @@ bool LocalSearch::runDistanceOptimization(Solution &solution) {
   return anyImproved;
 }
 
-// [SMD] Partial context update: chỉ rebuild centroids + neighborLists
-// cho các routes bị markDirty, thay vì invalidate() toàn bộ.
-// Phức tạp O(dirty_routes × R) thay vì O(R²).
+// Update affected centroids and ordered top-K neighbors. A dirty route can
+// enter a clean route's top-K even when it was absent from the old list.
+// Screening costs O(R*(D+K)); rebuilding affected lists adds O(A*R*log(K)).
 void LocalSearch::patchSearchContext(const Solution &solution) {
   alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::ContextPatch);
   if (!searchContext_.isValid) {
@@ -930,25 +930,27 @@ void LocalSearch::patchSearchContext(const Solution &solution) {
   int numRoutes = (int)routes.size();
 
   // Nếu số routes thay đổi → phải full rebuild
-  if (numRoutes != (int)searchContext_.centroids.size()) {
+  if (numRoutes != (int)searchContext_.centroids.size() ||
+      numRoutes != (int)searchContext_.neighborLists.size() ||
+      numRoutes != (int)searchContext_.centroidDirty.size()) {
     searchContext_.invalidate();
     updateSearchContext(solution);
     return;
   }
 
-  static constexpr int MAX_ROUTE_NEIGHBORS = 8;
-
-  // Pass 1: recompute centroid cho routes bị dirty
+  std::vector<int> dirtyRoutes;
+  dirtyRoutes.reserve(2);
+  // All new centroids must be available before screening any neighbor list.
   for (int r = 0; r < numRoutes; ++r) {
     if (!searchContext_.centroidDirty[r])
       continue;
     searchContext_.centroids[r] = computeCentroid(routes[r]);
-    // KHÔNG reset centroidDirty[r] ở đây — cần dùng ở Pass 2
+    dirtyRoutes.push_back(r);
   }
+  if (dirtyRoutes.empty()) return;
 
-  // Pass 2: rebuild neighborList cho:
-  //   (a) routes bị dirty (centroid của chính nó thay đổi)
-  //   (b) routes clean mà có dirty route trong neighborList cũ
+  std::vector<RouteNeighbor> ranked;
+  ranked.reserve(numRoutes - 1);
   for (int r = 0; r < numRoutes; ++r) {
     bool needRebuild = searchContext_.centroidDirty[r];
 
@@ -962,33 +964,23 @@ void LocalSearch::patchSearchContext(const Solution &solution) {
       }
     }
 
+    if (!needRebuild && searchContext_.neighborLists[r].size() > 1) {
+      const int last = searchContext_.neighborLists[r].back();
+      const RouteNeighbor cutoff{last, centroidDistanceSquared(r, last)};
+      // Existing neighbors are clean here, so their distances/order did not
+      // change. Only dirty routes outside the old list can displace cutoff.
+      for (int dirty : dirtyRoutes) {
+        if (routeNeighborLess({dirty, centroidDistanceSquared(r, dirty)}, cutoff)) {
+          needRebuild = true;
+          break;
+        }
+      }
+    }
+
     if (!needRebuild)
       continue;
 
-    searchContext_.neighborLists[r].clear();
-    searchContext_.neighborLists[r].push_back(r);
-
-    struct RN {
-      int idx;
-      double dist2;
-    };
-    std::vector<RN> ranked;
-    ranked.reserve(numRoutes - 1);
-    for (int r2 = 0; r2 < numRoutes; ++r2) {
-      if (r2 == r)
-        continue;
-      double dx =
-          searchContext_.centroids[r].x - searchContext_.centroids[r2].x;
-      double dy =
-          searchContext_.centroids[r].y - searchContext_.centroids[r2].y;
-      ranked.push_back({r2, dx * dx + dy * dy});
-    }
-    int keep = std::min(MAX_ROUTE_NEIGHBORS, (int)ranked.size());
-    std::partial_sort(
-        ranked.begin(), ranked.begin() + keep, ranked.end(),
-        [](const RN &a, const RN &b) { return a.dist2 < b.dist2; });
-    for (int i = 0; i < keep; ++i)
-      searchContext_.neighborLists[r].push_back(ranked[i].idx);
+    rebuildRouteNeighbors(r, ranked);
   }
 
   // Pass 3: reset centroidDirty sau khi đã patch xong
@@ -4047,6 +4039,32 @@ bool LocalSearch::areRoutesClose(const RouteCentroid &c1,
   return (dx * dx + dy * dy) < (threshold * threshold);
 }
 
+bool LocalSearch::routeNeighborLess(const RouteNeighbor& first, const RouteNeighbor& second) {
+  return first.dist2 < second.dist2 ||
+         (first.dist2 == second.dist2 && first.idx < second.idx);
+}
+
+double LocalSearch::centroidDistanceSquared(int first, int second) const {
+  const double dx=searchContext_.centroids[first].x-searchContext_.centroids[second].x;
+  const double dy=searchContext_.centroids[first].y-searchContext_.centroids[second].y;
+  // Explicit rounding is shared by screening and rebuild, even when the
+  // compiler contracts multiply/add differently at different inline sites.
+  return std::fma(dx,dx,dy*dy);
+}
+
+void LocalSearch::rebuildRouteNeighbors(int route, std::vector<RouteNeighbor>& ranked) {
+  ranked.clear();
+  for (int other=0; other<(int)searchContext_.centroids.size(); ++other)
+    if (other!=route) ranked.push_back({other, centroidDistanceSquared(route,other)});
+  const int keep=std::min(MAX_ROUTE_NEIGHBORS, (int)ranked.size());
+  std::partial_sort(ranked.begin(),ranked.begin()+keep,ranked.end(),routeNeighborLess);
+  auto& neighbors=searchContext_.neighborLists[route];
+  neighbors.clear();
+  neighbors.reserve(keep+1);
+  neighbors.push_back(route);
+  for (int i=0;i<keep;++i) neighbors.push_back(ranked[i].idx);
+}
+
 void LocalSearch::updateSearchContext(const Solution &solution) {
   if (searchContext_.isValid)
     return;
@@ -4062,35 +4080,9 @@ void LocalSearch::updateSearchContext(const Solution &solution) {
 
   // [SPEED-4] Cap neighbor list: rank by distance, keep top-8 closest routes.
   // Prevents O(R²) neighbor explosion when R is large (e.g. 20+ routes).
-  static constexpr int MAX_ROUTE_NEIGHBORS = 8;
-
-  for (int r1 = 0; r1 < numRoutes; ++r1) {
-    // Always include self
-    searchContext_.neighborLists[r1].push_back(r1);
-
-    // Rank other routes by centroid distance
-    struct RN {
-      int idx;
-      double dist2;
-    };
-    std::vector<RN> ranked;
-    ranked.reserve(numRoutes - 1);
-    for (int r2 = 0; r2 < numRoutes; ++r2) {
-      if (r2 == r1)
-        continue;
-      double dx =
-          searchContext_.centroids[r1].x - searchContext_.centroids[r2].x;
-      double dy =
-          searchContext_.centroids[r1].y - searchContext_.centroids[r2].y;
-      ranked.push_back({r2, dx * dx + dy * dy});
-    }
-    int keep = std::min(MAX_ROUTE_NEIGHBORS, (int)ranked.size());
-    std::partial_sort(
-        ranked.begin(), ranked.begin() + keep, ranked.end(),
-        [](const RN &a, const RN &b) { return a.dist2 < b.dist2; });
-    for (int k = 0; k < keep; ++k)
-      searchContext_.neighborLists[r1].push_back(ranked[k].idx);
-  }
+  std::vector<RouteNeighbor> ranked;
+  if (numRoutes>0) ranked.reserve(numRoutes-1);
+  for (int r1 = 0; r1 < numRoutes; ++r1) rebuildRouteNeighbors(r1,ranked);
 
   searchContext_.removalRankings.assign(numRoutes, {});
   searchContext_.rankingDirty.assign(numRoutes, true);

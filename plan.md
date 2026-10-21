@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-21. Git nền: `0581344`, nhánh `feat/alns-charging-repair-p3-p4`.
 
-**Trạng thái 2026-10-21: S1 đã qua regression và 20 run phạm vi. S2 đã qua 77 ca / 8 target và audit20run,10/10cặp giữ nguyên lịch/objective. Prototype S3 mặc định Off đã qua87ca/9target; chuẩn bị audit Observe trên instance thật. S5 còn chờ.**
+**Trạng thái 2026-10-21: S0–S4 đã hoàn tất trong phạm vi thử nghiệm.87ca/9target Release đạt; S2,Observe và Enabled đều qua10cặp tương đương. Cache giữ mặc định Off vì thử thời gian một lượt chưa thuyết phục. TestALNS/untitled Release đã build. Tiếp theo S5:30cặp tốc độ lặp và50run chất lượng.**
 
 ## 1. Mục tiêu và phạm vi
 
@@ -189,8 +189,8 @@ Thay đổi S1 có thể đổi lượng công việc tìm kiếm, nên thời g
 - [x] S1: regression + sửa patch và tie-break; 69 ca / 7 target Release đạt. Quality audit B0/B1 thuộc S5 còn chờ.
 - [x] S2a: KNN output/fallback;128lời gọi probe0allocation,384lời gọi qua3đường trong regression0allocation.
 - [x] S2b: bỏ copy tuyến thứ hai của intra move; B1/B2 giữ nguyên lịch/objective10/10cặp.
-- [ ] S3: quan sát khối Or-opt lặp và đo overhead.
-- [ ] S4: thử cache có generation hoặc ghi kết luận không tiếp tục sau S3.
+- [x] S3: Observe20run,178nghiệm/2.004tuyến hợp lệ,0mismatch; tỷ lệ block lặp theo run11,09–22,78%.
+- [x] S4: Enabled20run,10/10cặp giữ kết quả; so Observe xác nhận3.959.545block skip đúng. Mặc định Off, chưa có bằng chứng đủ mạnh để bật.
 - [ ] S5: hoàn tất audit, chọn default và bàn giao.
 
-**Điểm tiếp tục: đóng băng prototype B3, audit Observe khối Or-opt trước khi quyết định S4. Báo cáo: `update/alns_smd_s1_report.md`, `update/alns_smd_s2_report.md`, `update/alns_smd_s3_report.md`.**
+**Điểm tiếp tục: S5 dùng B1/B3(cacheOff) để đo tốc độ thuần; B0/B1 để đo chất lượng S1. Xem `update/ALNS_SMD_RESUME.md` trước khi tiếp tục đợt chạy dài.**

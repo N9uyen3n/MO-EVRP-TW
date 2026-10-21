@@ -1,6 +1,6 @@
 # SMD S3: prototype quan sát khối Or-opt
 
-Ngày 2026-10-21. S2 đã đạt cổng tương đương B1/B2. Prototype này **mặc định Off**; chưa có số liệu instance thật để quyết định bật cache hay kết luận tăng tốc.
+Ngày 2026-10-21. S2 đã đạt cổng tương đương B1/B2. Prototype **mặc định Off**. Observe và thử Enabled trên instance thật đã hoàn tất; xem kết quả và quyết định dưới đây.
 
 ## Phạm vi và hợp đồng
 
@@ -22,6 +22,16 @@ Các ca SearchContext thực Inter-2-opt, Or-opt đảo đoạn và reverse nay 
 
 ALNSConfig/ALNSRunStatistics và ALNSAuditRunner có mode/counters riêng. CLI thêm tham số cuối `[orOptCache=0|1|2]`; các tham số cũ giữ nguyên ý nghĩa. Bản audit cũ bỏ qua tham số0 bổ sung, runner mới ghi rõ nó trong audit_parameters.json và or_opt_cache.json.
 
-## Việc kế tiếp
+## Kết quả Observe và thử Enabled
 
-Đóng băng B3 prototype. So B2/Observe trên5case ×2seed ×200vòng, profiling bật để đo riêng cache và tổng Or-opt; yêu cầu lịch/objective giữ nguyên. Kiểm tra hit tiềm năng, evictions, memory, mismatch và overhead. Chỉ sau đó thử Enabled so Off trên cùng binary nếu có triển vọng. Quyết định default và có giữ prototype hay không sau A/B lặp ở S5.
+B3 từ `6e7549c`, binarySHA256`7caae16f1b328051e76f889ff0f5332e2f486b3fda09a72ca7f07fb70da8e46b`.
+
+- Observe:20run/10cặp B2-vs-B3Observe,5case ×2seed ×200vòng, profileON. **178nghiệm/2.004tuyến hợp lệ;10/10cặp objective/schedule giống nhau;0mismatch**.
+- Có27.079.390lookup;3.959.545block lặp;11.062.650candidate position và113.477evaluation thuộc block lặp. Tỷ lệ hit theo run11,09–22,78%.7.953.390eviction; peak4096entry. Bảng294.912byte(288KiB), chỉ cấp phát khi Observe/Enabled.
+- Enabled:20run/10cặp Off-vs-Enabled trên cùng B3, profileOFF; **178nghiệm/2.004tuyến hợp lệ,10/10cặp giữ nguyên lịch/objective**.
+- `verify_smd_cache_skips.py` đối chiếu Observe/Enabled trên từng case/seed: số lookup, hit, insert, eviction, session, generation, topology và thành công giống nhau; **skip đúng3.959.545block, bớt11.062.650candidate và113.477evaluation**, không bỏ nhầm block, output vẫn byte-identical.
+- Một lượt timing/case/seed Enabled so Off:7cặp nhanh hơn/3chậm hơn, trung vị giảm wall0,572887%, khoảng−7,018689% đến+12,464622%. Độ dao động lớn so với trung vị; chưa đủ cơ sở khẳng định tăng tốc hoặc bật mặc định. Không gọi giảm lượt tính là giảm thời gian tương ứng.
+
+**Quyết định: giữ cache như tùy chọn thử nghiệm, mặc định Off.** S5 so B1 với B3Off để đo thay đổi mặc định gồm S2 và chi phí đường cache tắt; không quảng bá lợi ích cacheEnabled từ phép đo này. Chưa mở cache sang toán tử khác hoặc tăng dung lượng để đuổi theo một vài run.
+
+Raw `artifacts/alns_smd/20261021/S3_observe` và `S4_enabled`, manifest completed. Kết quả `update/alns_smd_s3_results.*`, `alns_smd_s4_results.*`, `alns_smd_s4_skip_validation.json`. Hai ứng dụng `TestALNS` và `untitled` đã build Release tại `build-audit-smd-s3`; TestALNS giữ cấu hình người dùng c108/score20/LS15, khác cấu hình audit25/25.

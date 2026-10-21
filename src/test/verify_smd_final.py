@@ -77,7 +77,11 @@ def check(root, build, user_source_sha):
              "S5_rc205_repeat":"alns_smd_rc205_repeat_results"}
     for name, stem in reports.items():
         saved=json.loads((Path("update")/f"{stem}.json").read_text())
-        require(saved == summarize(root/name), f"Derived report differs: {stem}")
+        # JSON stores the HV scale tuple as an array. Compare both reports in
+        # their serialized representation, retaining every numeric value/key.
+        actual=json.loads(json.dumps(summarize(root/name)))
+        changed=[key for key in saved.keys() | actual.keys() if saved.get(key) != actual.get(key)]
+        require(saved == actual, f"Derived report differs: {stem}, fields={changed}")
     return dict(valid=True,solver_revision=baseline["revision"],
                 git_head=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),
                 checked_current_source_files=len(checked),default_or_opt_cache="Off",

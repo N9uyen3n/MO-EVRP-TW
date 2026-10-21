@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-21. Git nền: `0581344`, nhánh `feat/alns-charging-repair-p3-p4`.
 
-**Trạng thái 2026-10-21: S0–S4 đạt;87ca/9target Release và apps build đạt. Cache mặc định Off. S5speed30cặp giữ output, nhưng thời gian hỗn hợp(median+1,48%,tổngchậm1,18%,rc205median−5,94%). Đang chạy50run chất lượng; sau đó lặp riêngrc2056cặp để xử lý case bất định trước chốt.**
+**Trạng thái 2026-10-21: người dùng đã đổi yêu cầu nghỉ thành tiếp tục ngay. S0–S4 đạt; 87 ca / 9 target Release và apps build đạt. Cache mặc định Off. S5 đã chạy đủ 30 cặp tốc độ, 25 cặp chất lượng và 6 cặp lặp rc205; chưa đóng toàn plan vì hiệu năng chưa ổn định và chất lượng có cả giảm. Tiếp tục điều tra hai điểm này sau checkpoint audit.**
 
 ## 1. Mục tiêu và phạm vi
 
@@ -186,11 +186,15 @@ Thay đổi S1 có thể đổi lượng công việc tìm kiếm, nên thời g
 - [x] Chạy lại 60 ca / 6 target Release và probe SMD.
 - [x] Ghi plan và tạm dừng; chưa sửa production.
 - [x] S0: kiểm tra thay đổi mới sau giờ nghỉ, đóng băng baseline cho triển khai.
-- [x] S1: regression + sửa patch và tie-break; 69 ca / 7 target Release đạt. Quality audit B0/B1 thuộc S5 còn chờ.
+- [x] S1: regression + sửa patch và tie-break; 69 ca / 7 target Release đạt. Quality audit B0/B1 đủ 25 cặp trong S5, kết quả có cả giảm.
 - [x] S2a: KNN output/fallback;128lời gọi probe0allocation,384lời gọi qua3đường trong regression0allocation.
 - [x] S2b: bỏ copy tuyến thứ hai của intra move; B1/B2 giữ nguyên lịch/objective10/10cặp.
 - [x] S3: Observe20run,178nghiệm/2.004tuyến hợp lệ,0mismatch; tỷ lệ block lặp theo run11,09–22,78%.
 - [x] S4: Enabled20run,10/10cặp giữ kết quả; so Observe xác nhận3.959.545block skip đúng. Mặc định Off, chưa có bằng chứng đủ mạnh để bật.
-- [ ] S5: hoàn tất audit, chọn default và bàn giao.
+- [x] S5 tốc độ: 60 run / 30 cặp giữ lịch/objective; median giảm 1,479%, tổng thời gian tăng 1,18%. Chưa chứng minh tăng tốc ổn định.
+- [x] S5 chất lượng: 50 run, 734 nghiệm / 8.255 tuyến hợp lệ; cùng fleet mọi cặp; distance 7 thắng / 6 hòa / 12 thua, HV 11 thắng / 5 hòa / 9 thua.
+- [x] Lặp riêng rc205: 12 run / 6 cặp giữ lịch/objective; 3/6 nhanh hơn, median giảm 1,126%, khoảng −4,732% đến +20,006%. Trái chiều đợt đầu, không gộp để đổi trọng số case.
+- [x] Kiểm tra toàn vẹn cuối đạt: 202 run + 4 warmup, 2.091 nghiệm / 22.665 tuyến hợp lệ; source/binary/flags/raw/report/user-file khớp. Đã lưu checkpoint audit; các benchmark trên đã kết thúc.
+- [ ] S5 kết luận toàn plan: điều tra hiệu năng rc205 và các lần giảm chất lượng r101/rc106; chưa kết luận nguyên nhân hoặc ưu thế chung.
 
-**Điểm tiếp tục: S5 dùng B1/B3(cacheOff) để đo tốc độ thuần; B0/B1 để đo chất lượng S1. Xem `update/ALNS_SMD_RESUME.md` trước khi tiếp tục đợt chạy dài.**
+**Điểm tiếp tục hiện tại: đọc `update/ALNS_SMD_RESUME.md`, kiểm tra Git và hồ sơ toàn vẹn. Không chạy lại các batch đã completed. Ưu tiên phân biệt B1/B2/B3Off trên rc205, rồi điều tra quỹ đạo S1 ở các seed r101/rc106 giảm chất lượng. Giữ cache Off; chưa mở thêm toán tử/cache.**

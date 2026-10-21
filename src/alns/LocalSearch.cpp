@@ -4627,7 +4627,15 @@ int LocalSearch::removeRedundantStations(Route &route) {
       double minBatteryAtNext = minBatteryReq[i + 1];
 
       if (batteryAfterSkip >= minBatteryAtNext - EPSILON) {
-        route.removeNode(i);
+        // The old schedule is only an energy screen. Removing an upstream
+        // station can increase charging time at a later one and miss a TW.
+        // Commit only the canonical evaluation of the complete new sequence.
+        Route candidate = route;
+        candidate.removeNode(i);
+        candidate.evaluate();
+        if (!candidate.isFeasible())
+          continue;
+        route = std::move(candidate);
         removalCount++;
         stationRemoved = true;
         break;

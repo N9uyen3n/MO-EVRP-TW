@@ -16,6 +16,7 @@ struct LocalSearchTestAccess {
   }
   static bool eject(LocalSearch& search,Solution& solution,int depth) { return search.ejectionChain(solution,depth); }
   static void apply(LocalSearch& search,Solution& solution,const MoveDescriptor& move) { search.applyMove(solution,move); }
+  static int removeStations(LocalSearch& search,Route& route) { return search.removeRedundantStations(route); }
 };
 static std::shared_ptr<Instance> instance(int customers,double capacity=100,double battery=1000) {
   std::vector<std::shared_ptr<Node>> nodes{std::make_shared<Depot>(0,"D",0,0,0,1000)};
@@ -33,6 +34,51 @@ int main() {
     try { run(); ++passed; std::cout<<"PASS "<<name<<'\n'; }
     catch(const std::exception& e) { ++failed; std::cout<<"FAIL "<<name<<": "<<e.what()<<'\n'; }
   };
+  auto stationRemovalFixture=[](bool finalDepotStation) {
+    // Extracted from r101_21: D0,S7,C19,S8,C36,C49. Deleting S7 passes
+    // the old battery bound but requires longer charging at S8, missing C36.
+    std::vector<std::shared_ptr<Node>> nodes{
+      std::make_shared<Depot>(0,"D0",35,35,0,230),
+      std::make_shared<Station>(1,"S7",22,58,0,230,.48),
+      std::make_shared<Customer>(2,"C19",15,60,17,48,58,10),
+      std::make_shared<Station>(3,"S8",7,61,0,230,.48),
+      std::make_shared<Customer>(4,"C36",2,60,5,78,88,10),
+      std::make_shared<Customer>(5,"C49",6,68,30,152,162,10)};
+    if(finalDepotStation) nodes.push_back(std::make_shared<Station>(6,"S0",35,35,0,230,.48));
+    return std::make_shared<Instance>(nodes,200,62.14,1,1);
+  };
+  test("station removal validates downstream charging and customer windows",[&] {
+    auto inst=stationRemovalFixture(false); Route route=makeRoute(inst,{1,2,3,4,5});
+    audit::validateRoute(route,*inst);
+    const auto original=route.getNodes();
+    const double skipEnergy=inst->getDistance(0,2);
+    audit::require(route.getStates()[0].remainingBattery-skipEnergy >= route.getMinBatteryReq()[2]-1e-9,
+                   "fixture must pass old energy-only screening");
+    Route unsafe=route; unsafe.removeNode(1); unsafe.evaluate();
+    audit::require(!unsafe.isFeasible(),"deleted upstream station must make downstream charging too late");
+    LocalSearch search(inst);
+    audit::require(LocalSearchTestAccess::removeStations(search,route)==0,"unsafe deletion must be rejected");
+    audit::require(route.getNodes()==original,"rejected deletion changed the original route");
+    audit::validateRoute(route,*inst);
+  });
+  test("safe station deletion still commits",[] {
+    std::vector<std::shared_ptr<Node>> nodes{
+      std::make_shared<Depot>(0,"D",0,0,0,1000),
+      std::make_shared<Station>(1,"S",0,0,0,1000,1),
+      std::make_shared<Customer>(2,"C",1,0,1,0,1000,0)};
+    auto inst=std::make_shared<Instance>(nodes,100,1000,1,1);
+    Route route=makeRoute(inst,{1,2}); LocalSearch search(inst);
+    audit::require(LocalSearchTestAccess::removeStations(search,route)==1,"safe deletion must remain available");
+    audit::require(route.getNodes()==std::vector<int>({0,2,0}),"wrong station removed");
+    audit::validateRoute(route,*inst);
+  });
+  test("safe deletion followed by unsafe deletion retains the feasible result",[&] {
+    auto inst=stationRemovalFixture(true); Route route=makeRoute(inst,{1,2,3,4,5,6});
+    audit::validateRoute(route,*inst); LocalSearch search(inst);
+    audit::require(LocalSearchTestAccess::removeStations(search,route)==1,"only final depot station may be deleted");
+    audit::require(route.getNodes()==std::vector<int>({0,1,2,3,4,5,0}),"unsafe upstream deletion was committed");
+    audit::validateRoute(route,*inst);
+  });
   test("intra-relocate delta agrees in both directions at full capacity",[] {
     auto inst=instance(4,4); const int n=5;
     std::vector<double> d(n*n),t(n*n);

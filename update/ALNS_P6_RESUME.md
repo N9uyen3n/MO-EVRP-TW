@@ -1,5 +1,7 @@
 # Bàn giao P6 — 2026-10-21
 
+> Mốc mới nhất: [ALNS_P7_RESUME.md](ALNS_P7_RESUME.md). Đã hoàn tất P7 trong phạm vi người dùng chốt thêm rc106/rc205; nội dung dưới giữ lịch sử mốc P6.
+
 Người dùng đã đồng ý thử P6 trong phạm vi nhỏ sau khi xác nhận mô hình EVRPTW-PR chỉ giao hàng, partial recharge, Euclidean đối xứng. Đợt thử đã xong; không mở rộng pickup/SPD/directed. Mốc Git trước sửa `aebc888` trên nhánh `feat/alns-charging-repair-p3-p4`.
 
 ## Thay đổi và quyết định

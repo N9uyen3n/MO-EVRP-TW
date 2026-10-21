@@ -121,3 +121,12 @@ python3 src/test/summarize_insertion_bounds_audit.py artifacts/alns_p6/insertion
 ```
 
 Baseline là P5 đã kiểm chứng, đối chiếu SHA/source với hồ sơ cũ. Thiết kế 18 cặp / 36 run chính cộng hai warmup; không build khi đo. Yêu cầu lịch/mục tiêu từng byte và counters reconstruction/ejection giống nhau, ngoài việc replay độc lập từng nghiệm. File `insertion_time_bounds.json` ghi enabled, requests, builds và rejections; counter tổng hợp tính cả lần lặp đo. Bản tắt không chứa cache tuyến hoặc nhánh lọc trong đường chạy chèn. Không cộng phần trăm P6 với mức tăng tốc cũ.
+
+## P7: thêm rc106/rc205 theo phạm vi người dùng chốt
+
+```text
+python3 src/test/run_p7_rc_audit.py artifacts/alns_p7/new_rc_audit --seconds 60 --preflight-iterations 200
+python3 src/test/summarize_p7_rc_audit.py artifacts/alns_p7/new_rc_audit update/new_p7_rc_results.json
+```
+
+Script dùng hai binary đóng băng đã chứng nhận: baseline 226f943 trước tối ưu tốc độ và current edd709b sau P6. Yêu cầu hồ sơ nguồn các đợt P5/P6 còn tồn tại và build Release có SHA khớp. Preflight tám run / bốn cặp 200 vòng kiểm tra lịch/mục tiêu byte-identical; sau đó 20 run / 10 cặp, năm seed trên hai instance, 60s pha tìm kiếm sau initialization. Deadline mềm: giữ số đo thực và overshoot. Lịch từng run được kiểm chứng độc lập; chất lượng so fleet trước, rồi nghiệm đại diện theo distance, kèm Gini/MaxTime và HV3D tại fleet chung. Không gộp các run RC 60s với các run R/C 200 vòng thành cùng một protocol. Summary từ chối manifest chưa hoàn tất và không loại seed thua. Đợt này không sửa solver hoặc cấu hình riêng của người dùng.

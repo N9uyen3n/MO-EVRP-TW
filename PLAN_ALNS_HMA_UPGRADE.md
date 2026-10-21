@@ -1,7 +1,7 @@
 
 # Kế hoạch nâng cấp ALNS từ việc đối chiếu HMA
 
-Ngày lập: 2026-10-20. Cập nhật 2026-10-21: P0–P4 đã triển khai và kiểm chứng; P3–P4 giữ tùy chọn, mặc định tắt. P5 đã có profiling, cache thất bại tái dựng và selective undo; hai tối ưu sau bật mặc định. P6 đã hoàn tất thử giới hạn prefix/suffix cho phép chèn, giữ và bật mặc định sau A/B; thuộc tính đoạn tổng quát cho Inter-2-opt chưa triển khai. Cache cặp tuyến/cập nhật lân cận tổng quát còn hoãn; P7 benchmark dài/thêm seed chưa bắt đầu. Xem [báo cáo P0-P2](update/alns_p0_p2_report.md), [P3–P4](update/alns_p3_p4_report.md), [profiling P5](update/alns_p5_profiling_report.md), [cache P5](update/alns_p5_cache_report.md), [undo](update/alns_ejection_undo_report.md), [A/B tổng P5](update/alns_total_speed_report.md), [P6](update/alns_p6_insertion_bounds_report.md) và [run r104](update/r104_unlimited_run.md).
+Ngày lập: 2026-10-20. Cập nhật 2026-10-21: P0–P4 đã triển khai và kiểm chứng; P3–P4 giữ tùy chọn, mặc định tắt. P5 có profiling, cache thất bại tái dựng và selective undo; hai tối ưu sau bật mặc định. P6 đã hoàn tất thử prefix/suffix cho phép chèn và bật mặc định sau A/B. **P7 hoàn tất theo phạm vi người dùng chốt: thêm rc106/rc205, năm seed ghép cặp, 60s tìm kiếm mỗi bản, cùng preflight 200 vòng.** Các ý tưởng cache cặp tuyến/topology/Inter-2-opt tổng quát còn hoãn, không bắt buộc để đóng kế hoạch thực nghiệm này. Xem [P0-P2](update/alns_p0_p2_report.md), [P3–P4](update/alns_p3_p4_report.md), [profiling P5](update/alns_p5_profiling_report.md), [cache P5](update/alns_p5_cache_report.md), [undo](update/alns_ejection_undo_report.md), [A/B tổng P5](update/alns_total_speed_report.md), [P6](update/alns_p6_insertion_bounds_report.md), [P7 RC](update/alns_p7_rc_report.md) và [run r104](update/r104_unlimited_run.md).
 
 ## 1. Mục tiêu và phạm vi
 
@@ -184,11 +184,13 @@ ChargingRepairResult repairChargingForCustomerSequence(
 
 ## P7. Benchmark tổng hợp và chọn cấu hình mặc định
 
+**Đã hoàn tất trong phạm vi chốt lại:** người dùng yêu cầu thêm rc106/rc205 là đủ. Hai case mới có 8 preflight / 4 cặp 200 vòng giữ nguyên lịch/mục tiêu từng byte, và 20 run / 10 cặp chất lượng, năm seed, 60s tìm kiếm. Tổng 316 nghiệm / 2.729 tuyến hợp lệ, 0 vi phạm; theo fleet rồi distance: 4 thắng / 6 hòa / 0 thua, HV3D 9 thắng / 1 hòa. Fleet giữ 13 ở rc106 và 4 ở rc205. Có đánh đổi MaxTime ở hai seed rc106; xem [báo cáo đầy đủ](update/alns_p7_rc_report.md). Giữ cache/undo/P6 ON, charging repair OFF. Không gộp RC60s với R/C200 vòng thành cùng protocol; không chạy thêm 180s/sweep mọi biến thể trong phạm vi chốt lại. Thiết kế ban đầu dưới đây giữ để truy vết, không phải công việc còn bắt buộc sau chốt phạm vi.
+
 **Thiết kế thí nghiệm**
 
 - Bộ nhỏ: chọn đại diện C/R/RC có 5, 10, 15 khách; dùng cho regression và đối chiếu move.
 - Bộ vừa: chọn đại diện C/R/RC trong `data/test-100` và các instance đã dùng trước đó; chốt manifest đường dẫn thực tế trước khi chạy.
-- Nếu mở rộng kích thước sau này, tiếp tục dùng dữ liệu Euclidean đối xứng của cùng mô hình EVRPTW-PR; đợt này chỉ benchmark ba instance 100 khách đã chọn.
+- Nếu mở rộng kích thước sau này, tiếp tục dùng dữ liệu Euclidean đối xứng cùng mô hình EVRPTW-PR. Bằng chứng hiện có gồm r104/r101/c109 và bổ sung rc106/rc205, mỗi đợt có protocol riêng như báo cáo.
 - Smoke test ban đầu: ba instance, hai seed, 10 giây mỗi run. Đánh giá chất lượng: năm seed ghép cặp, 60 giây; xác nhận trên tập chọn trước ở 180 giây khi cần.
 - Chạy tuần tự trên cùng máy/build; ghi wall time tổng, thời gian riêng ALNS, mức vượt deadline và lý do dừng. Kiểm tra deadline bên trong các tìm kiếm tốn thời gian; đặt giới hạn vòng đủ lớn và ghi rõ run nào dừng do vòng/HV thay vì thời gian.
 - Dùng thư mục kết quả mới cho mỗi biến thể. Lưu baseline cũ để truy vết, baseline P1-P2 để đánh giá nâng cấp.

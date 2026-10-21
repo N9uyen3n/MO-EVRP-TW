@@ -1,0 +1,427 @@
+{
+  "source_manifest": "artifacts/alns_p7/rc106_rc205_20261021_60s_5seeds/manifest.json",
+  "revisions": {
+    "baseline": "226f943",
+    "current": "edd709b"
+  },
+  "quality_runs": 20,
+  "preflight_runs": 8,
+  "search_seconds": 60,
+  "solutions": 258,
+  "routes": 2283,
+  "invalid": 0,
+  "preflight_solutions": 58,
+  "preflight_routes": 446,
+  "wins": 4,
+  "losses": 0,
+  "ties": 6,
+  "fleet_wins": 0,
+  "fleet_losses": 0,
+  "hv_wins": 9,
+  "hv_losses": 0,
+  "hv_ties": 1,
+  "hv_incomparable": 0,
+  "aggregate": {
+    "rc106_21": {
+      "baseline": {
+        "fleets": [
+          13,
+          13,
+          13,
+          13,
+          13
+        ],
+        "best_fleet": 13,
+        "median_fleet": 13,
+        "common_best_fleet_hits": 5,
+        "representative_distance_median": 1432.68170340924,
+        "median_iterations": 558,
+        "median_wall_seconds": 60.324629673000345,
+        "median_initialization_ms": 8,
+        "median_search_ms": 60135,
+        "maximum_search_overshoot_ms": 520,
+        "maximum_total_wall_excess_seconds": 0.6799276470001132,
+        "stop_reasons": {
+          "time_limit": 5
+        }
+      },
+      "current": {
+        "fleets": [
+          13,
+          13,
+          13,
+          13,
+          13
+        ],
+        "best_fleet": 13,
+        "median_fleet": 13,
+        "common_best_fleet_hits": 5,
+        "representative_distance_median": 1420.26342736577,
+        "median_iterations": 826,
+        "median_wall_seconds": 60.42404010199971,
+        "median_initialization_ms": 8,
+        "median_search_ms": 60232,
+        "maximum_search_overshoot_ms": 440,
+        "maximum_total_wall_excess_seconds": 0.7162361329992564,
+        "stop_reasons": {
+          "time_limit": 5
+        }
+      }
+    },
+    "rc205_21": {
+      "baseline": {
+        "fleets": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "best_fleet": 4,
+        "median_fleet": 4,
+        "common_best_fleet_hits": 5,
+        "representative_distance_median": 1218.76505668367,
+        "median_iterations": 371,
+        "median_wall_seconds": 60.44351895999989,
+        "median_initialization_ms": 5,
+        "median_search_ms": 60295,
+        "maximum_search_overshoot_ms": 385,
+        "maximum_total_wall_excess_seconds": 0.5372212870006479,
+        "stop_reasons": {
+          "time_limit": 5
+        }
+      },
+      "current": {
+        "fleets": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "best_fleet": 4,
+        "median_fleet": 4,
+        "common_best_fleet_hits": 5,
+        "representative_distance_median": 1211.60707558183,
+        "median_iterations": 442,
+        "median_wall_seconds": 60.425361861000056,
+        "median_initialization_ms": 4,
+        "median_search_ms": 60287,
+        "maximum_search_overshoot_ms": 456,
+        "maximum_total_wall_excess_seconds": 0.6287411170005726,
+        "stop_reasons": {
+          "time_limit": 5
+        }
+      }
+    }
+  },
+  "pairs": [
+    {
+      "case": "rc106_21",
+      "seed": 1,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_fleet": 13,
+      "current_fleet": 13,
+      "baseline_distance": 1429.39895719306,
+      "current_distance": 1429.39895719306,
+      "distance_reduction_percent": 0.0,
+      "baseline_gini": 0.0912543652445763,
+      "current_gini": 0.0912543652445763,
+      "baseline_max_time": 238.158803048015,
+      "current_max_time": 238.158803048015,
+      "baseline_hv3d": 0.07809847580450499,
+      "current_hv3d": 0.08203070089392583,
+      "hv_outcome": "win",
+      "outcome": "tie",
+      "baseline_iterations": 578,
+      "current_iterations": 783,
+      "baseline_wall_seconds": 60.523220545000186,
+      "current_wall_seconds": 60.716236132999256,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc106_21",
+      "seed": 2,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_fleet": 13,
+      "current_fleet": 13,
+      "baseline_distance": 1444.74819779971,
+      "current_distance": 1403.90518545295,
+      "distance_reduction_percent": 2.8269986706999983,
+      "baseline_gini": 0.0891174077556769,
+      "current_gini": 0.0888399050435231,
+      "baseline_max_time": 238.158803048015,
+      "current_max_time": 239.211790249036,
+      "baseline_hv3d": 0.07289589563315473,
+      "current_hv3d": 0.0743157652112541,
+      "hv_outcome": "win",
+      "outcome": "win",
+      "baseline_iterations": 558,
+      "current_iterations": 940,
+      "baseline_wall_seconds": 60.24632303499948,
+      "current_wall_seconds": 60.42404010199971,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc106_21",
+      "seed": 3,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_fleet": 13,
+      "current_fleet": 13,
+      "baseline_distance": 1432.68170340924,
+      "current_distance": 1420.26342736577,
+      "distance_reduction_percent": 0.8667854146471865,
+      "baseline_gini": 0.0813732028325318,
+      "current_gini": 0.0682963280047892,
+      "baseline_max_time": 238.158803048015,
+      "current_max_time": 239.211790249036,
+      "baseline_hv3d": 0.08810736505022031,
+      "current_hv3d": 0.08855262898719145,
+      "hv_outcome": "win",
+      "outcome": "win",
+      "baseline_iterations": 582,
+      "current_iterations": 826,
+      "baseline_wall_seconds": 60.324629673000345,
+      "current_wall_seconds": 60.56913365700075,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc106_21",
+      "seed": 4,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_fleet": 13,
+      "current_fleet": 13,
+      "baseline_distance": 1453.83171665967,
+      "current_distance": 1453.83171665967,
+      "distance_reduction_percent": 0.0,
+      "baseline_gini": 0.0591888497734512,
+      "current_gini": 0.0591888497734512,
+      "baseline_max_time": 238.158803048015,
+      "current_max_time": 238.158803048015,
+      "baseline_hv3d": 0.07516528324156428,
+      "current_hv3d": 0.07580580618657316,
+      "hv_outcome": "win",
+      "outcome": "tie",
+      "baseline_iterations": 448,
+      "current_iterations": 765,
+      "baseline_wall_seconds": 60.176685776999875,
+      "current_wall_seconds": 60.222943920000034,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc106_21",
+      "seed": 5,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_fleet": 13,
+      "current_fleet": 13,
+      "baseline_distance": 1405.48430996492,
+      "current_distance": 1405.48430996492,
+      "distance_reduction_percent": 0.0,
+      "baseline_gini": 0.0898885526987854,
+      "current_gini": 0.0898885526987854,
+      "baseline_max_time": 239.781494582568,
+      "current_max_time": 239.781494582568,
+      "baseline_hv3d": 0.0824722861954582,
+      "current_hv3d": 0.08352842938372095,
+      "hv_outcome": "win",
+      "outcome": "tie",
+      "baseline_iterations": 531,
+      "current_iterations": 909,
+      "baseline_wall_seconds": 60.67992764700011,
+      "current_wall_seconds": 60.27339330399991,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc205_21",
+      "seed": 1,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_fleet": 4,
+      "current_fleet": 4,
+      "baseline_distance": 1218.76505668367,
+      "current_distance": 1218.76505668367,
+      "distance_reduction_percent": 0.0,
+      "baseline_gini": 0.125080264824303,
+      "current_gini": 0.125080264824303,
+      "baseline_max_time": 922.289241191684,
+      "current_max_time": 922.289241191684,
+      "baseline_hv3d": 0.13478067338329577,
+      "current_hv3d": 0.13478067338329577,
+      "hv_outcome": "tie",
+      "outcome": "tie",
+      "baseline_iterations": 371,
+      "current_iterations": 370,
+      "baseline_wall_seconds": 60.52984625499994,
+      "current_wall_seconds": 60.48138752600062,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc205_21",
+      "seed": 2,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_fleet": 4,
+      "current_fleet": 4,
+      "baseline_distance": 1198.05402570635,
+      "current_distance": 1198.05402570635,
+      "distance_reduction_percent": 0.0,
+      "baseline_gini": 0.145743450729107,
+      "current_gini": 0.145743450729107,
+      "baseline_max_time": 922.289241191684,
+      "current_max_time": 922.289241191684,
+      "baseline_hv3d": 0.13347293579823175,
+      "current_hv3d": 0.135403798167138,
+      "hv_outcome": "win",
+      "outcome": "tie",
+      "baseline_iterations": 382,
+      "current_iterations": 447,
+      "baseline_wall_seconds": 60.23828515000059,
+      "current_wall_seconds": 60.37517642700004,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc205_21",
+      "seed": 3,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_fleet": 4,
+      "current_fleet": 4,
+      "baseline_distance": 1220.39383756494,
+      "current_distance": 1211.60707558183,
+      "distance_reduction_percent": 0.7199939652794529,
+      "baseline_gini": 0.137227642854451,
+      "current_gini": 0.0916989140749274,
+      "baseline_max_time": 922.289241191684,
+      "current_max_time": 901.76918953512,
+      "baseline_hv3d": 0.13575319091427587,
+      "current_hv3d": 0.13663160894110934,
+      "hv_outcome": "win",
+      "outcome": "win",
+      "baseline_iterations": 345,
+      "current_iterations": 426,
+      "baseline_wall_seconds": 60.44351895999989,
+      "current_wall_seconds": 60.62874111700057,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc205_21",
+      "seed": 4,
+      "order": [
+        "baseline",
+        "current"
+      ],
+      "baseline_fleet": 4,
+      "current_fleet": 4,
+      "baseline_distance": 1207.36751110308,
+      "current_distance": 1206.33851480526,
+      "distance_reduction_percent": 0.0852264358910726,
+      "baseline_gini": 0.151720666644592,
+      "current_gini": 0.148331152139251,
+      "baseline_max_time": 922.289241191684,
+      "current_max_time": 922.289241191684,
+      "baseline_hv3d": 0.13874944311021656,
+      "current_hv3d": 0.13880498982323966,
+      "hv_outcome": "win",
+      "outcome": "win",
+      "baseline_iterations": 386,
+      "current_iterations": 442,
+      "baseline_wall_seconds": 60.22195617299985,
+      "current_wall_seconds": 60.371892140000455,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    },
+    {
+      "case": "rc205_21",
+      "seed": 5,
+      "order": [
+        "current",
+        "baseline"
+      ],
+      "baseline_fleet": 4,
+      "current_fleet": 4,
+      "baseline_distance": 1224.74721557388,
+      "current_distance": 1224.74721557388,
+      "distance_reduction_percent": 0.0,
+      "baseline_gini": 0.125493777013149,
+      "current_gini": 0.125493777013149,
+      "baseline_max_time": 931.437093301779,
+      "current_max_time": 931.437093301779,
+      "baseline_hv3d": 0.1351151234967909,
+      "current_hv3d": 0.14552541555025733,
+      "hv_outcome": "win",
+      "outcome": "tie",
+      "baseline_iterations": 361,
+      "current_iterations": 449,
+      "baseline_wall_seconds": 60.53722128700065,
+      "current_wall_seconds": 60.425361861000056,
+      "baseline_stop": "time_limit",
+      "current_stop": "time_limit"
+    }
+  ],
+  "hv_reference_boxes": {
+    "rc106_21": {
+      "fleet": 13,
+      "normalization": [
+        3120.0,
+        1.0,
+        240.0
+      ],
+      "reference": [
+        1.1,
+        1.1,
+        1.1
+      ]
+    },
+    "rc205_21": {
+      "fleet": 4,
+      "normalization": [
+        3840.0,
+        1.0,
+        960.0
+      ],
+      "reference": [
+        1.1,
+        1.1,
+        1.1
+      ]
+    }
+  },
+  "limitations": [
+    "P7 is closed within the user-selected additional RC scope, not a comprehensive publication benchmark.",
+    "Five paired seeds on rc106/rc205 only; older R/C evidence has different protocols and is reported separately.",
+    "Time budget applies to search after initialization; deadline is soft and actual overshoot is retained.",
+    "Different iteration counts/fronts are expected under time limits; this is not a fixed-work speed comparison.",
+    "Fleet has absolute priority; representative selects fleet then distance, not simultaneous improvement of all objectives.",
+    "HV3D uses common physical normalization at the instance-wide best fleet; higher fleet runs have null HV.",
+    "Charging repair/profiling/Scatter Search disabled; no solver changes made for this audit."
+  ]
+}

@@ -189,12 +189,14 @@ int main() {
     auto inst=relocationInstance();
     for(bool twoOpt:{false,true}) {
       auto sol=relocationSolution(inst); LocalSearch search(inst); search.configureChargingRepair(true,budget());
+      search.configureOrOptCache(alns::OrOptCacheMode::Observe);
       bool moved=twoOpt?LocalSearchTestAccess::interTwoOpt(search,sol):LocalSearchTestAccess::searchRelocate(search,sol);
       require(moved,"operator filters blocked station repair");
       sol.evaluateRoutes(); audit::validateSolution(sol,*inst);
       near(sol.getTotalDistance(),22,"operator repaired cost");
       require(twoOpt?search.getChargingRepairStatistics().interTwoOptAccepted==1:
                      search.getChargingRepairStatistics().relocateAccepted==1,"operator acceptance statistics");
+      require(search.getOrOptCacheStatistics().generationChanges>=2,"repair commit must advance both route generations");
     }
   });
   test("real station detour cancels provisional improvement without commit",[] {

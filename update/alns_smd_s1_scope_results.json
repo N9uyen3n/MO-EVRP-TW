@@ -1,0 +1,519 @@
+{
+  "kind": "scope",
+  "source_manifest": "artifacts/alns_smd/20261021/S1_scope/manifest.json",
+  "manifest_sha256": "c18596d7d457e71dd689bda80cb16272fd12baddbee9c12c179fd0d9b77234a4",
+  "stages": {
+    "before": "05813440f6820d619dad27ac01f3804c438a52e4",
+    "after": "fc531b79a23137af3974f46ec24f4bce0fb1bb92"
+  },
+  "mode_settings": {
+    "before": 0,
+    "after": 0
+  },
+  "runs": 20,
+  "solutions": 169,
+  "routes": 1858,
+  "invalid": 0,
+  "warmup_solutions": 0,
+  "warmup_routes": 0,
+  "identical_pairs": 2,
+  "overall": {
+    "pairs": 10,
+    "faster": 5,
+    "median_wall_reduction_percent": -3.021256314323595,
+    "minimum_wall_reduction_percent": -75.62560610722309,
+    "maximum_wall_reduction_percent": 33.558574166884924,
+    "quality": {
+      "win": 5,
+      "tie": 3,
+      "loss": 2
+    },
+    "hv": {
+      "win": 3,
+      "tie": 2,
+      "loss": 3,
+      "incomparable": 2
+    }
+  },
+  "by_case": {
+    "r104_21": {
+      "pairs": 2,
+      "faster": 0,
+      "median_wall_reduction_percent": -19.78388872811212,
+      "minimum_wall_reduction_percent": -32.39895609850847,
+      "maximum_wall_reduction_percent": -7.168821357715771,
+      "quality": {
+        "win": 1,
+        "tie": 1,
+        "loss": 0
+      },
+      "hv": {
+        "win": 0,
+        "tie": 0,
+        "loss": 1,
+        "incomparable": 1
+      }
+    },
+    "r101_21": {
+      "pairs": 2,
+      "faster": 1,
+      "median_wall_reduction_percent": -30.28415505772313,
+      "minimum_wall_reduction_percent": -75.62560610722309,
+      "maximum_wall_reduction_percent": 15.057295991776831,
+      "quality": {
+        "win": 2,
+        "tie": 0,
+        "loss": 0
+      },
+      "hv": {
+        "win": 1,
+        "tie": 0,
+        "loss": 1,
+        "incomparable": 0
+      }
+    },
+    "c109_21": {
+      "pairs": 2,
+      "faster": 0,
+      "median_wall_reduction_percent": -17.420323767118262,
+      "minimum_wall_reduction_percent": -21.97333035136797,
+      "maximum_wall_reduction_percent": -12.867317182868554,
+      "quality": {
+        "win": 1,
+        "tie": 0,
+        "loss": 1
+      },
+      "hv": {
+        "win": 1,
+        "tie": 0,
+        "loss": 1,
+        "incomparable": 0
+      }
+    },
+    "rc106_21": {
+      "pairs": 2,
+      "faster": 2,
+      "median_wall_reduction_percent": 17.342441447976753,
+      "minimum_wall_reduction_percent": 1.1263087290685814,
+      "maximum_wall_reduction_percent": 33.558574166884924,
+      "quality": {
+        "win": 1,
+        "tie": 0,
+        "loss": 1
+      },
+      "hv": {
+        "win": 1,
+        "tie": 0,
+        "loss": 0,
+        "incomparable": 1
+      }
+    },
+    "rc205_21": {
+      "pairs": 2,
+      "faster": 2,
+      "median_wall_reduction_percent": 3.8692160658223727,
+      "minimum_wall_reduction_percent": 1.7090699978603796,
+      "maximum_wall_reduction_percent": 6.029362133784366,
+      "quality": {
+        "win": 0,
+        "tie": 2,
+        "loss": 0
+      },
+      "hv": {
+        "win": 0,
+        "tie": 2,
+        "loss": 0,
+        "incomparable": 0
+      }
+    }
+  },
+  "total_wall_seconds": {
+    "before": 187.62164169099998,
+    "after": 196.34965431199993
+  },
+  "maximum_search_overshoot_ms": 0,
+  "hv_boxes": {
+    "r104_21": {
+      "fleet": 11,
+      "scale": [
+        2530.0,
+        1.0,
+        230.0
+      ],
+      "reference": [
+        1.1,
+        1.1,
+        1.1
+      ]
+    },
+    "r101_21": {
+      "fleet": 18,
+      "scale": [
+        4140.0,
+        1.0,
+        230.0
+      ],
+      "reference": [
+        1.1,
+        1.1,
+        1.1
+      ]
+    },
+    "c109_21": {
+      "fleet": 10,
+      "scale": [
+        12360.0,
+        1.0,
+        1236.0
+      ],
+      "reference": [
+        1.1,
+        1.1,
+        1.1
+      ]
+    },
+    "rc106_21": {
+      "fleet": 13,
+      "scale": [
+        3120.0,
+        1.0,
+        240.0
+      ],
+      "reference": [
+        1.1,
+        1.1,
+        1.1
+      ]
+    },
+    "rc205_21": {
+      "fleet": 4,
+      "scale": [
+        3840.0,
+        1.0,
+        960.0
+      ],
+      "reference": [
+        1.1,
+        1.1,
+        1.1
+      ]
+    }
+  },
+  "or_opt_cache": {},
+  "pairs": [
+    {
+      "case": "r104_21",
+      "seed": 1,
+      "repetition": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "identical_objectives": false,
+      "byte_identical_schedules": false,
+      "reduction_percent": -32.39895609850847,
+      "before_vehicles": 11.0,
+      "before_distance": 1118.94197495021,
+      "before_gini": 0.0479395950678274,
+      "before_max_time": 228.490310993753,
+      "before_hv3d": 0.07583610079103478,
+      "before_wall_seconds": 19.975789832,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 11.0,
+      "after_distance": 1109.57065939711,
+      "after_gini": 0.0543584779792055,
+      "after_max_time": 228.664097830966,
+      "after_hv3d": 0.07523857190390458,
+      "after_wall_seconds": 26.44773721,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "win",
+      "distance_reduction_percent": 0.8375157749817119,
+      "hv_outcome": "loss"
+    },
+    {
+      "case": "r104_21",
+      "seed": 2,
+      "repetition": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "identical_objectives": false,
+      "byte_identical_schedules": false,
+      "reduction_percent": -7.168821357715771,
+      "before_vehicles": 12.0,
+      "before_distance": 1118.89605203666,
+      "before_gini": 0.0979952549836609,
+      "before_max_time": 223.471938297169,
+      "before_hv3d": null,
+      "before_wall_seconds": 19.666329047000005,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 12.0,
+      "after_distance": 1118.89605203666,
+      "after_gini": 0.0979952549836609,
+      "after_max_time": 223.471938297169,
+      "after_hv3d": null,
+      "after_wall_seconds": 21.076173044,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "tie",
+      "distance_reduction_percent": 0.0,
+      "hv_outcome": "incomparable"
+    },
+    {
+      "case": "r101_21",
+      "seed": 1,
+      "repetition": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "identical_objectives": false,
+      "byte_identical_schedules": false,
+      "reduction_percent": -75.62560610722309,
+      "before_vehicles": 18.0,
+      "before_distance": 1684.06043693548,
+      "before_gini": 0.0957658425954255,
+      "before_max_time": 229.219435484988,
+      "before_hv3d": 0.07251236482550447,
+      "before_wall_seconds": 8.507061214000004,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 18.0,
+      "after_distance": 1637.95045727973,
+      "after_gini": 0.0973155517838746,
+      "after_max_time": 227.508548996501,
+      "after_hv3d": 0.08998837144204959,
+      "after_wall_seconds": 14.940577818999998,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "win",
+      "distance_reduction_percent": 2.738024042632181,
+      "hv_outcome": "win"
+    },
+    {
+      "case": "r101_21",
+      "seed": 2,
+      "repetition": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "identical_objectives": false,
+      "byte_identical_schedules": false,
+      "reduction_percent": 15.057295991776831,
+      "before_vehicles": 18.0,
+      "before_distance": 1701.95630754006,
+      "before_gini": 0.0858920002629462,
+      "before_max_time": 229.219435484988,
+      "before_hv3d": 0.08781032537307232,
+      "before_wall_seconds": 15.980026727999984,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 18.0,
+      "after_distance": 1651.16018953918,
+      "after_gini": 0.122534943637221,
+      "after_max_time": 229.219435484988,
+      "after_hv3d": 0.08051007554232345,
+      "after_wall_seconds": 13.573866803999977,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "win",
+      "distance_reduction_percent": 2.9845723874250663,
+      "hv_outcome": "loss"
+    },
+    {
+      "case": "c109_21",
+      "seed": 1,
+      "repetition": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "identical_objectives": false,
+      "byte_identical_schedules": false,
+      "reduction_percent": -12.867317182868554,
+      "before_vehicles": 10.0,
+      "before_distance": 1031.95775622846,
+      "before_gini": 0.0634476856897841,
+      "before_max_time": 1230.66289689812,
+      "before_hv3d": 0.14125583967081295,
+      "before_wall_seconds": 10.119528021999997,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 10.0,
+      "after_distance": 972.391335873477,
+      "after_gini": 0.0617317293688586,
+      "after_max_time": 1211.48768392521,
+      "after_hv3d": 0.14291881800651493,
+      "after_wall_seconds": 11.42163979,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "win",
+      "distance_reduction_percent": 5.772176234488802,
+      "hv_outcome": "win"
+    },
+    {
+      "case": "c109_21",
+      "seed": 2,
+      "repetition": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "identical_objectives": false,
+      "byte_identical_schedules": false,
+      "reduction_percent": -21.97333035136797,
+      "before_vehicles": 10.0,
+      "before_distance": 987.064235525421,
+      "before_gini": 0.047529502984756,
+      "before_max_time": 1205.64202654839,
+      "before_hv3d": 0.15703486807905503,
+      "before_wall_seconds": 11.866786036999997,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 10.0,
+      "after_distance": 998.986773765087,
+      "after_gini": 0.0475315022529847,
+      "after_max_time": 1214.60275900269,
+      "after_hv3d": 0.13815804116495872,
+      "after_wall_seconds": 14.474314135000014,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "loss",
+      "distance_reduction_percent": -1.2078786577977452,
+      "hv_outcome": "loss"
+    },
+    {
+      "case": "rc106_21",
+      "seed": 1,
+      "repetition": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "identical_objectives": false,
+      "byte_identical_schedules": false,
+      "reduction_percent": 33.558574166884924,
+      "before_vehicles": 14.0,
+      "before_distance": 1447.64697441483,
+      "before_gini": 0.120690150741224,
+      "before_max_time": 236.691421708322,
+      "before_hv3d": null,
+      "before_wall_seconds": 12.570430305000002,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 13.0,
+      "after_distance": 1499.71332027987,
+      "after_gini": 0.0558627864299319,
+      "after_max_time": 236.440458974635,
+      "after_hv3d": 0.07535212353386858,
+      "after_wall_seconds": 8.351973127999997,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "win",
+      "distance_reduction_percent": null,
+      "hv_outcome": "incomparable"
+    },
+    {
+      "case": "rc106_21",
+      "seed": 2,
+      "repetition": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "identical_objectives": false,
+      "byte_identical_schedules": false,
+      "reduction_percent": 1.1263087290685814,
+      "before_vehicles": 13.0,
+      "before_distance": 1472.62545910464,
+      "before_gini": 0.0580671382413702,
+      "before_max_time": 239.014872221777,
+      "before_hv3d": 0.06864511399429761,
+      "before_wall_seconds": 22.60454184799997,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 13.0,
+      "after_distance": 1483.76081925478,
+      "after_gini": 0.0749473600572057,
+      "after_max_time": 238.860628042532,
+      "after_hv3d": 0.07017075664966381,
+      "after_wall_seconds": 22.349944919999984,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "loss",
+      "distance_reduction_percent": -0.756156976731237,
+      "hv_outcome": "win"
+    },
+    {
+      "case": "rc205_21",
+      "seed": 1,
+      "repetition": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "identical_objectives": true,
+      "byte_identical_schedules": true,
+      "reduction_percent": 1.7090699978603796,
+      "before_vehicles": 4.0,
+      "before_distance": 1195.3913551588,
+      "before_gini": 0.155900674358922,
+      "before_max_time": 922.289241191684,
+      "before_hv3d": 0.13586613429813096,
+      "before_wall_seconds": 31.979873596999994,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 4.0,
+      "after_distance": 1195.3913551588,
+      "after_gini": 0.155900674358922,
+      "after_max_time": 922.289241191684,
+      "after_hv3d": 0.13586613429813096,
+      "after_wall_seconds": 31.433315171999993,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "tie",
+      "distance_reduction_percent": 0.0,
+      "hv_outcome": "tie"
+    },
+    {
+      "case": "rc205_21",
+      "seed": 2,
+      "repetition": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "identical_objectives": true,
+      "byte_identical_schedules": true,
+      "reduction_percent": 6.029362133784366,
+      "before_vehicles": 4.0,
+      "before_distance": 1213.70378594326,
+      "before_gini": 0.127969920757004,
+      "before_max_time": 922.289241191684,
+      "before_hv3d": 0.12287931638379102,
+      "before_wall_seconds": 34.351275061000024,
+      "before_iterations": 200,
+      "before_search_overshoot_ms": 0,
+      "after_vehicles": 4.0,
+      "after_distance": 1213.70378594326,
+      "after_gini": 0.127969920757004,
+      "after_max_time": 922.289241191684,
+      "after_hv3d": 0.12287931638379102,
+      "after_wall_seconds": 32.28011228999998,
+      "after_iterations": 200,
+      "after_search_overshoot_ms": 0,
+      "outcome": "tie",
+      "distance_reduction_percent": 0.0,
+      "hv_outcome": "tie"
+    }
+  ],
+  "summary_tool_sha256": {
+    "summarize_smd_audit.py": "b3e789764ad3fe2ca1bfdaf2144cb28af80965642cd3c5bab8e3e05462fc741c",
+    "summarize_charging_repair_audit.py": "0d7a77f76b7e4e9bd67305b18888cfee026d40f26f4a7fbeedff1e1f2887736e"
+  }
+}

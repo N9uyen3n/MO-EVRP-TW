@@ -10,6 +10,7 @@
 #include "LocalSearchProfile.h"
 #include "ReconstructionCache.h"
 #include "EjectionUndo.h"
+#include "OrOptBlockCache.h"
 
 enum class MoveType {
   NONE,
@@ -91,6 +92,18 @@ public:
   const alns::ReconstructionCacheStatistics& getReconstructionCacheStatistics() const { return reconstructionCache_.stats; }
   void configureSelectiveEjection(bool enabled) { selectiveEjection_ = enabled; ejectionUndoStats_ = {}; }
   const alns::EjectionUndoStatistics& getEjectionUndoStatistics() const { return ejectionUndoStats_; }
+  void configureOrOptCache(alns::OrOptCacheMode mode, std::size_t capacity=alns::OrOptBlockCache::MaxEntries) {
+    orOptCache_.configure(mode,capacity);
+    searchContext_.trackGenerations=mode!=alns::OrOptCacheMode::Off && capacity>0;
+    searchContext_.generationChanges=searchContext_.topologyRebuilds=0;
+    searchContext_.invalidate();
+  }
+  alns::OrOptCacheStatistics getOrOptCacheStatistics() const {
+    auto stats=orOptCache_.stats;
+    stats.generationChanges=searchContext_.generationChanges;
+    stats.topologyRebuilds=searchContext_.topologyRebuilds;
+    return stats;
+  }
   void configureChargingRepair(bool enabled, const alns::ChargingRepairBudget& budget = {}, int trialsPerRun = 8);
   void setChargingRepairDeadline(std::chrono::steady_clock::time_point deadline) { repairDeadline_ = deadline; }
   const alns::ChargingRepairStatistics& getChargingRepairStatistics() const { return repairStats_; }
@@ -170,6 +183,9 @@ private:
     std::vector<std::vector<std::pair<int, double>>> removalRankings;
     std::vector<bool> rankingDirty;
     std::vector<bool> centroidDirty;  // [SMD] track routes cần recompute centroid+neighborList
+    bool trackGenerations=false;
+    std::uint64_t topologyEpoch=0, generationChanges=0, topologyRebuilds=0;
+    std::vector<std::uint64_t> generations;
 
     void invalidate() {
       isValid = false;
@@ -180,15 +196,18 @@ private:
       if (r1 >= 0 && r1 < (int)rankingDirty.size()) {
         rankingDirty[r1]  = true;
         centroidDirty[r1] = true;  // [SMD]
+        if (trackGenerations && r1<(int)generations.size()) { ++generations[r1]; ++generationChanges; }
       }
-      if (r2 >= 0 && r2 < (int)rankingDirty.size()) {
+      if (r2 != r1 && r2 >= 0 && r2 < (int)rankingDirty.size()) {
         rankingDirty[r2]  = true;
         centroidDirty[r2] = true;  // [SMD]
+        if (trackGenerations && r2<(int)generations.size()) { ++generations[r2]; ++generationChanges; }
       }
     }
   };
 
   SearchContext searchContext_;
+  alns::OrOptBlockCache orOptCache_;
   mutable alns::LocalSearchProfiler profiler_;
   mutable alns::ReconstructionCache reconstructionCache_;
   bool selectiveEjection_ = true;

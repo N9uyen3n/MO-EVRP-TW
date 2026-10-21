@@ -18,6 +18,8 @@ Trong evaluateMove, `std::optional<Route>` chỉ tạo trial route thứ hai khi
 
 Build `build-audit-smd-s2`, GCC11.4 Release với cùng flags và P6ON. Build/test log ở `build-audit-smd-review/`, CTest log của build chứa số allocation. Giữ nguyên TestALNS.cpp của người dùng.
 
-## Cổng kiểm chứng còn chờ
+## Cổng tương đương đã đạt; tốc độ còn chờ
 
-Đóng băng B2 rồi chạy5case ×2seed ×2bản,200vòng: objective/schedule phải byte-identical với B1 trước khi chốt S2. Chưa tuyên bố tăng tốc toàn solver. A/B30cặp lặp lại thuộc S5; chi phí applyMove quá nhỏ trong profile hiện có nên chưa refactor commit trial route.
+B2 từ commit`51ed53a`, binarySHA256`ceee55f69c23b5b1c94953d06501b2bc747eb808eb89c9374407b8707026d7af`, đã qua5case ×2seed ×2bản,200vòng: **10/10cặp giữ objective/schedule byte-identical với B1;178nghiệm/2.004tuyến hợp lệ**, manifest completed tại `artifacts/alns_smd/20261021/S2_equivalence`. Kết quả `update/alns_smd_s2_results.json` và `.csv`.
+
+Probe sau sửa:128lời gọi đã warmup,0allocation, checksum640; patch khớp full rebuild và các tuyến trước/sau swap hợp lệ. Chưa tuyên bố tăng tốc toàn solver từ một lượt/case/seed. A/B30cặp lặp lại thuộc S5; chi phí applyMove quá nhỏ trong profile hiện có nên chưa refactor commit trial route.

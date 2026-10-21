@@ -204,6 +204,7 @@ std::vector<Solution> ALNSSolver::solve() {
   localSearch.resetProfile();
   localSearch.configureReconstructionCache(config.reconstructionCacheMode);
   localSearch.configureSelectiveEjection(config.useSelectiveEjectionUndo);
+  localSearch.configureOrOptCache(config.orOptCacheMode);
   const auto totalStart=std::chrono::steady_clock::now();
 
   // ── Initial Solution
@@ -849,6 +850,7 @@ std::vector<Solution> ALNSSolver::solve() {
   runStatistics_.localSearchProfile=localSearch.getProfile();
   runStatistics_.reconstructionCache=localSearch.getReconstructionCacheStatistics();
   runStatistics_.ejectionUndo=localSearch.getEjectionUndoStatistics();
+  runStatistics_.orOptCache=localSearch.getOrOptCacheStatistics();
   runStatistics_.searchMs=total_ms;
   runStatistics_.totalMs=std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now()-totalStart).count();

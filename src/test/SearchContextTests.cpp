@@ -27,6 +27,9 @@ struct LocalSearchTestAccess {
   static bool rankingDirty(const LocalSearch& search, int route) {
     return search.searchContext_.rankingDirty.at(route);
   }
+  static std::uint64_t generation(const LocalSearch& search, int route) {
+    return search.searchContext_.generations.at(route);
+  }
   static void patch(LocalSearch& search, const Solution& solution) {
     search.patchSearchContext(solution);
   }
@@ -171,10 +174,13 @@ int main() {
   test("sequence changes invalidate ranking even when centroid does not change",[] {
     auto inst=instance({{1,0},{2,1},{3,0},{9,0}});
     Solution solution(inst); solution.addRoute(route(inst,{1,2,3})); solution.addRoute(route(inst,{4}));
-    LocalSearch search(inst); LocalSearchTestAccess::init(search,solution);
+    LocalSearch search(inst); search.configureOrOptCache(alns::OrOptCacheMode::Observe);
+    LocalSearchTestAccess::init(search,solution);
+    const auto generation=LocalSearchTestAccess::generation(search,0);
     solution.getRoutes()[0].reverseNodes(1,3); solution.markDirty();
     LocalSearchTestAccess::dirty(search,0); LocalSearchTestAccess::patch(search,solution);
     audit::require(LocalSearchTestAccess::rankingDirty(search,0),"reversal must invalidate removal ranking");
+    audit::require(LocalSearchTestAccess::generation(search,0)==generation+1,"unchanged centroid still advances generation");
     LocalSearchTestAccess::check(search,solution);
     solution.evaluateRoutes(); audit::validateSolution(solution,*inst);
   });
@@ -202,9 +208,12 @@ int main() {
   test("direct inter-two-opt commits dirty routes before patch",[] {
     auto inst=instance({{1,0},{100,0},{100,1},{1,1}});
     Solution solution(inst); solution.addRoute(route(inst,{1,2})); solution.addRoute(route(inst,{3,4}));
-    solution.evaluateRoutes(); LocalSearch search(inst); LocalSearchTestAccess::init(search,solution);
+    solution.evaluateRoutes(); LocalSearch search(inst); search.configureOrOptCache(alns::OrOptCacheMode::Observe);
+    LocalSearchTestAccess::init(search,solution);
     audit::require(LocalSearchTestAccess::interTwoOpt(search,solution),"fixture must improve");
     audit::require(LocalSearchTestAccess::anyDirty(search),"direct commit must mark context dirty");
+    audit::require(LocalSearchTestAccess::generation(search,0)==1 && LocalSearchTestAccess::generation(search,1)==1,
+                   "direct inter-two-opt must advance both route generations");
     LocalSearchTestAccess::patch(search,solution); LocalSearchTestAccess::check(search,solution);
     solution.evaluateRoutes(); audit::validateSolution(solution,*inst);
   });
@@ -216,10 +225,13 @@ int main() {
       for (int id=1;id<=12;++id) points.emplace_back(rng()%40,rng()%40);
       auto inst=instance(points); Solution solution(inst);
       solution.addRoute(route(inst,{1,2,3,4})); solution.addRoute(route(inst,{5,6,7,8})); solution.addRoute(route(inst,{9,10,11,12}));
-      solution.evaluateRoutes(); LocalSearch search(inst); LocalSearchTestAccess::init(search,solution);
+      solution.evaluateRoutes(); LocalSearch search(inst); search.configureOrOptCache(alns::OrOptCacheMode::Observe);
+      LocalSearchTestAccess::init(search,solution);
       if (LocalSearchTestAccess::reversed(search,solution)) {
         ++improvements;
         audit::require(LocalSearchTestAccess::anyDirty(search),"direct reversed commit dirty flag");
+        audit::require(LocalSearchTestAccess::generation(search,0)+LocalSearchTestAccess::generation(search,1)+
+                       LocalSearchTestAccess::generation(search,2)>0,"direct reversed commit generation");
         LocalSearchTestAccess::patch(search,solution); LocalSearchTestAccess::check(search,solution);
         solution.evaluateRoutes(); audit::validateSolution(solution,*inst);
       }

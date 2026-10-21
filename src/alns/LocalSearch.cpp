@@ -820,6 +820,7 @@ void LocalSearch::applyMove(Solution &solution, const MoveDescriptor &move) {
 // ============================================================================
 bool LocalSearch::runDistanceOptimization(Solution &solution) {
   alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Distance);
+  alns::OrOptBlockCache::Session blockCacheSession(orOptCache_);
   // [CHANGE-3] Removed dead `bestMove` param — all operators use first-
   // improvement and apply moves immediately via a local MoveDescriptor.
   // outBestMove was never populated; passing it was misleading.
@@ -1715,6 +1716,7 @@ bool LocalSearch::searchOrOpt(Solution &solution,
   std::vector<size_t> candidatePositions;
   candidatePositions.reserve(3);
   int numRoutes = routes.size();
+  const bool trackBlocks=orOptCache_.active();
 
   if (!searchContext_.isValid ||
       (int)searchContext_.neighborLists.size() != numRoutes) {
@@ -1752,6 +1754,16 @@ bool LocalSearch::searchOrOpt(Solution &solution,
                                 instance->getDistance(prev1, next1);
 
         for (int r2 : neighborLists[r1]) {
+          alns::OrOptBlockCache::Key blockKey;
+          alns::OrOptBlockCache::Probe blockProbe;
+          if (trackBlocks) {
+            alns::LocalSearchProfiler::Scope cacheScope(profiler_,alns::LSMetric::OrOptCache);
+            blockKey={searchContext_.topologyEpoch,searchContext_.generations[r1],searchContext_.generations[r2],
+                      alns::OrOptBlockCache::bits(distanceThreshold_),alns::OrOptBlockCache::bits(weights.dist),
+                      r1,r2,i,segLen,3};
+            blockProbe=orOptCache_.probe(blockKey);
+            if (orOptCache_.skip(blockProbe)) continue;
+          }
           const auto &nodes2 =
               routes[r2].getNodes(); // [OPT] Lấy tham chiếu trực tiếp
 
@@ -1759,6 +1771,10 @@ bool LocalSearch::searchOrOpt(Solution &solution,
 
               // Only try top-3 positions from KNN cache (O(1) instead of O(n))
             int maxCandidates = std::min(3, (int)candidatePositions.size());
+            if (trackBlocks) {
+              orOptCache_.stats.candidatePositions+=maxCandidates;
+              if (blockProbe.repeated) orOptCache_.stats.repeatedCandidatePositions+=maxCandidates;
+            }
             for (int k = 0; k < maxCandidates; ++k) {
                 int j = candidatePositions[k];
             // Intra overlap check
@@ -1798,12 +1814,21 @@ bool LocalSearch::searchOrOpt(Solution &solution,
             move.nodeIdx2 = j;
             move.segmentLength = segLen;
 
+            if (trackBlocks) {
+              ++orOptCache_.stats.evaluations;
+              if (blockProbe.repeated) ++orOptCache_.stats.repeatedEvaluations;
+            }
             evaluateMove(solution, move, weights);
 
             if (move.eval.isFeasible && move.eval.objectiveDelta < -1e-9) {
+              if (trackBlocks) orOptCache_.improved(blockProbe);
               applyMove(solution, move);
               return true;
             }
+          }
+          if (trackBlocks) {
+            alns::LocalSearchProfiler::Scope cacheScope(profiler_,alns::LSMetric::OrOptCache);
+            orOptCache_.exhausted(blockKey,blockProbe);
           }
         }
       }
@@ -1925,7 +1950,6 @@ bool LocalSearch::searchIntraOrOpt(Solution &solution,
 
             if (move.eval.isFeasible && move.eval.objectiveDelta < -EPSILON) {
               applyMove(solution, move);
-              ctx.markDirty(r);
 
               // [OPT-D] Invalidate posInRoute before returning —
               // route nodes changed, caller must not reuse stale cache
@@ -4084,6 +4108,11 @@ void LocalSearch::updateSearchContext(const Solution &solution) {
   searchContext_.removalRankings.assign(numRoutes, {});
   searchContext_.rankingDirty.assign(numRoutes, true);
   searchContext_.centroidDirty.assign(numRoutes, false);
+  if (searchContext_.trackGenerations) {
+    ++searchContext_.topologyEpoch;
+    ++searchContext_.topologyRebuilds;
+    searchContext_.generations.assign(numRoutes,0);
+  } else searchContext_.generations.clear();
 
   searchContext_.isValid = true;
 }

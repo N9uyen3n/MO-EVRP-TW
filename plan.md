@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-21. Git nền: `0581344`, nhánh `feat/alns-charging-repair-p3-p4`.
 
-**Trạng thái 2026-10-21: S1 đã qua regression và 20 run phạm vi. S2 đã qua 77 ca / 8 target Release, chuẩn bị audit tương đương B1/B2. Audit chất lượng và tốc độ tổng hợp ở S5 còn chờ.**
+**Trạng thái 2026-10-21: S1 đã qua regression và 20 run phạm vi. S2 đã qua 77 ca / 8 target và audit20run,10/10cặp giữ nguyên lịch/objective. Prototype S3 mặc định Off đã qua87ca/9target; chuẩn bị audit Observe trên instance thật. S5 còn chờ.**
 
 ## 1. Mục tiêu và phạm vi
 
@@ -187,10 +187,10 @@ Thay đổi S1 có thể đổi lượng công việc tìm kiếm, nên thời g
 - [x] Ghi plan và tạm dừng; chưa sửa production.
 - [x] S0: kiểm tra thay đổi mới sau giờ nghỉ, đóng băng baseline cho triển khai.
 - [x] S1: regression + sửa patch và tie-break; 69 ca / 7 target Release đạt. Quality audit B0/B1 thuộc S5 còn chờ.
-- [ ] S2a: KNN output/fallback.
-- [ ] S2b: bỏ copy tuyến thứ hai của intra move.
+- [x] S2a: KNN output/fallback;128lời gọi probe0allocation,384lời gọi qua3đường trong regression0allocation.
+- [x] S2b: bỏ copy tuyến thứ hai của intra move; B1/B2 giữ nguyên lịch/objective10/10cặp.
 - [ ] S3: quan sát khối Or-opt lặp và đo overhead.
 - [ ] S4: thử cache có generation hoặc ghi kết luận không tiếp tục sau S3.
 - [ ] S5: hoàn tất audit, chọn default và bàn giao.
 
-**Điểm tiếp tục: đóng băng B2, audit B1/B2; sau đó S3 observe khối Or-opt. Báo cáo: `update/alns_smd_s1_report.md`, `update/alns_smd_s2_report.md`.**
+**Điểm tiếp tục: đóng băng prototype B3, audit Observe khối Or-opt trước khi quyết định S4. Báo cáo: `update/alns_smd_s1_report.md`, `update/alns_smd_s2_report.md`, `update/alns_smd_s3_report.md`.**

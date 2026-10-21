@@ -9,7 +9,7 @@
 
 int main(int argc,char** argv) {
   try {
-    if(argc<5) throw std::runtime_error("Usage: ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1] [reconstructionCache=0|1|2] [selectiveEjection=0|1]");
+    if(argc<5) throw std::runtime_error("Usage: ALNSAuditRunner input output seconds seed [maxIterations=25000] [chargingRepair=0|1] [profileLS=0|1] [reconstructionCache=0|1|2] [selectiveEjection=0|1] [orOptCache=0|1|2]");
     const std::filesystem::path output=argv[2];
     if(std::filesystem::exists(output)) throw std::runtime_error("Refusing to overwrite output directory");
     std::filesystem::create_directories(output);
@@ -29,6 +29,9 @@ int main(int argc,char** argv) {
     const int selectiveEjection=argc>9?std::stoi(argv[9]):static_cast<int>(cfg.useSelectiveEjectionUndo);
     audit::require(selectiveEjection==0 || selectiveEjection==1,"selectiveEjection must be 0 or 1");
     cfg.useSelectiveEjectionUndo=selectiveEjection==1;
+    const int orOptCacheMode=argc>10?std::stoi(argv[10]):static_cast<int>(cfg.orOptCacheMode);
+    audit::require(orOptCacheMode>=0 && orOptCacheMode<=2,"orOptCache must be 0 (off), 1 (observe), or 2 (enabled)");
+    cfg.orOptCacheMode=static_cast<alns::OrOptCacheMode>(orOptCacheMode);
     cfg.decayParameter=.85; cfg.scoreDominating=40; cfg.scoreNonDominated=25;
     cfg.scoreDominated=10; cfg.scoreIdentical=15; cfg.minRemoval=.15; cfg.maxRemoval=.55;
     cfg.localSearchIntensity=25; cfg.startTemperature=200; cfg.coolingRate=.9993;
@@ -42,6 +45,7 @@ int main(int argc,char** argv) {
                  <<",\"profile_local_search\":"<<cfg.profileLocalSearch
                  <<",\"reconstruction_cache_mode\":"<<cacheMode
                  <<",\"selective_ejection\":"<<selectiveEjection
+                 <<",\"or_opt_cache_mode\":"<<orOptCacheMode
                  <<",\"repair_max_evaluations\":"<<cfg.chargingRepairBudget.maxEvaluations
                  <<",\"repair_max_stations\":"<<cfg.chargingRepairBudget.maxStations
                  <<",\"repair_station_candidates\":"<<cfg.chargingRepairBudget.stationCandidates
@@ -61,6 +65,18 @@ int main(int argc,char** argv) {
       <<",\"requests\":"<<insertionBounds.requests<<",\"builds\":"<<insertionBounds.builds
       <<",\"rejections\":"<<insertionBounds.rejections<<"}\n";
     const auto& undo=stats.ejectionUndo;
+    const auto& block=stats.orOptCache;
+    std::ofstream blockReport(output/"or_opt_cache.json");
+    blockReport<<"{\"mode\":"<<orOptCacheMode<<",\"capacity\":"<<block.capacity<<",\"bytes\":"<<block.bytes
+      <<",\"sessions\":"<<block.sessions<<",\"lookups\":"<<block.lookups
+      <<",\"repeated_blocks\":"<<block.repeatedBlocks<<",\"skips\":"<<block.skips
+      <<",\"inserts\":"<<block.inserts<<",\"evictions\":"<<block.evictions
+      <<",\"peak_entries\":"<<block.peakEntries<<",\"exhausted_blocks\":"<<block.exhaustedBlocks
+      <<",\"successful_blocks\":"<<block.successfulBlocks<<",\"candidate_positions\":"<<block.candidatePositions
+      <<",\"repeated_candidate_positions\":"<<block.repeatedCandidatePositions
+      <<",\"evaluations\":"<<block.evaluations<<",\"repeated_evaluations\":"<<block.repeatedEvaluations
+      <<",\"mismatches\":"<<block.mismatches<<",\"generation_changes\":"<<block.generationChanges
+      <<",\"topology_rebuilds\":"<<block.topologyRebuilds<<"}\n";
     std::ofstream undoReport(output/"ejection_undo.json");
     undoReport<<"{\"selective\":"<<selectiveEjection<<",\"checkpoints\":"<<undo.checkpoints
       <<",\"full_snapshots\":"<<undo.fullSnapshots<<",\"saved_routes\":"<<undo.savedRoutes

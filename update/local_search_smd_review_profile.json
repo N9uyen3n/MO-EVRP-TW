@@ -1,0 +1,132 @@
+[
+  {
+    "case": "r104_21",
+    "solutions": 5,
+    "routes": 55,
+    "invalid": 0,
+    "byte_identical_to_existing_control": true,
+    "total_ls_seconds": 13.647350331,
+    "metrics": {
+      "distance": {
+        "calls": 720,
+        "seconds": 2.653155877,
+        "percent_of_ls": 19.440813144316724
+      },
+      "vehicle_reduction": {
+        "calls": 58,
+        "seconds": 9.367473656,
+        "percent_of_ls": 68.63950458369749
+      },
+      "intensified_reduction": {
+        "calls": 41,
+        "seconds": 1.612096745,
+        "percent_of_ls": 11.812525551851023
+      },
+      "evaluate_move": {
+        "calls": 252799,
+        "seconds": 0.122058223,
+        "percent_of_ls": 0.894373047072327
+      },
+      "apply_move": {
+        "calls": 3820,
+        "seconds": 0.002841022,
+        "percent_of_ls": 0.020817388951660524
+      },
+      "context_rebuild": {
+        "calls": 323,
+        "seconds": 0.00362602,
+        "percent_of_ls": 0.026569406603151997
+      },
+      "context_patch": {
+        "calls": 4062,
+        "seconds": 0.016102078,
+        "percent_of_ls": 0.11798684440175965
+      },
+      "removal_ranking": {
+        "calls": 9969,
+        "seconds": 0.00254046,
+        "percent_of_ls": 0.01861504202928928
+      },
+      "reconstruction": {
+        "calls": 159251,
+        "seconds": 7.134261064,
+        "percent_of_ls": 52.27579633384587
+      },
+      "segment_exchange": {
+        "calls": 42,
+        "seconds": 7.232670748,
+        "percent_of_ls": 52.99688637413348
+      },
+      "ejection": {
+        "calls": 92,
+        "seconds": 3.220040697,
+        "percent_of_ls": 23.594621804979003
+      }
+    }
+  },
+  {
+    "case": "rc205_21",
+    "solutions": 7,
+    "routes": 28,
+    "invalid": 0,
+    "byte_identical_to_existing_control": true,
+    "total_ls_seconds": 23.344953721,
+    "metrics": {
+      "distance": {
+        "calls": 583,
+        "seconds": 1.544127403,
+        "percent_of_ls": 6.614394791500388
+      },
+      "vehicle_reduction": {
+        "calls": 61,
+        "seconds": 11.752475097,
+        "percent_of_ls": 50.34267892520188
+      },
+      "intensified_reduction": {
+        "calls": 59,
+        "seconds": 10.041131172,
+        "percent_of_ls": 43.011998618645706
+      },
+      "evaluate_move": {
+        "calls": 166150,
+        "seconds": 0.14904831,
+        "percent_of_ls": 0.638460507488277
+      },
+      "apply_move": {
+        "calls": 2781,
+        "seconds": 0.005556877,
+        "percent_of_ls": 0.023803332687703297
+      },
+      "context_rebuild": {
+        "calls": 237,
+        "seconds": 0.001117002,
+        "percent_of_ls": 0.004784768534345813
+      },
+      "context_patch": {
+        "calls": 2864,
+        "seconds": 0.003188993,
+        "percent_of_ls": 0.013660309795908205
+      },
+      "removal_ranking": {
+        "calls": 5209,
+        "seconds": 0.00389922,
+        "percent_of_ls": 0.016702624672553748
+      },
+      "reconstruction": {
+        "calls": 2738,
+        "seconds": 2.699119527,
+        "percent_of_ls": 11.561897098866389
+      },
+      "segment_exchange": {
+        "calls": 49,
+        "seconds": 2.705036126,
+        "percent_of_ls": 11.587241329875413
+      },
+      "ejection": {
+        "calls": 116,
+        "seconds": 18.095767524,
+        "percent_of_ls": 77.51468578719826
+      }
+    }
+  }
+]

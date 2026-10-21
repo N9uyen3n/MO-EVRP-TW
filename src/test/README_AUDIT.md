@@ -108,3 +108,16 @@ python3 src/test/summarize_total_speed_audit.py artifacts/alns_p5/new_total_spee
 ```
 
 Chuẩn là 36 run đo = 3 instance × 2 seed × 3 lần đo lặp × 2 phiên bản, cộng hai warmup bị loại khỏi bảng thời gian. Các cặp chạy liền nhau, đảo AB/BA, thứ tự instance luân phiên. Ghi wall/CPU time, kiểm chứng từng lịch và so mục tiêu/lịch từng byte qua cả hai phiên bản và mọi lần lặp. Thư mục output phải mới; chỉ tổng hợp khi manifest completed, không loại các cặp chậm hơn. Báo riêng trung vị giảm thời gian theo cặp và tỷ lệ giảm tổng thời gian; không cộng phần trăm của cache và undo từ các thí nghiệm khác.
+
+## P6: giới hạn thời gian trước/sau vị trí chèn
+
+Cờ CMake `ALNS_INSERTION_TIME_BOUNDS=ON|OFF` bật/tắt bộ lọc trong `Route::checkInsertionCost`, mặc định ON sau A/B. Build đã cache OFF phải cấu hình lại với ON; đổi default không ghi đè giá trị trong CMakeCache. Bảng O(n) xây lười theo phiên bản tuyến, chia sẻ bất biến khi copy; mọi thêm/xóa/đảo/clear làm mất hiệu lực. Tra cứu mỗi phép chèn O(1). Thuộc tính bỏ toàn bộ thời gian sạc để tạo lower bound của prefix và upper bound của suffix; ứng viên không bị loại vẫn qua evaluator đầy đủ. Đây không phải chứng nhận khả thi năng lượng. Dữ liệu instance phải bất biến trong lúc dùng Route, cùng hợp đồng với cache evaluator hiện tại.
+
+```text
+cmake -S . -B build-audit-wsl-p6-bounds -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DALNS_INSERTION_TIME_BOUNDS=ON
+cmake --build build-audit-wsl-p6-bounds --target ALNSAuditRunner InsertionTimeBoundsTests -j 4
+python3 src/test/run_insertion_bounds_audit.py artifacts/alns_p6/insertion_bounds_20261021/ALNSAuditRunner_before build-audit-wsl-p6-bounds/ALNSAuditRunner artifacts/alns_p6/insertion_bounds_20261021/experiment 200 3
+python3 src/test/summarize_insertion_bounds_audit.py artifacts/alns_p6/insertion_bounds_20261021/experiment update/alns_p6_insertion_bounds_results.json
+```
+
+Baseline là P5 đã kiểm chứng, đối chiếu SHA/source với hồ sơ cũ. Thiết kế 18 cặp / 36 run chính cộng hai warmup; không build khi đo. Yêu cầu lịch/mục tiêu từng byte và counters reconstruction/ejection giống nhau, ngoài việc replay độc lập từng nghiệm. File `insertion_time_bounds.json` ghi enabled, requests, builds và rejections; counter tổng hợp tính cả lần lặp đo. Bản tắt không chứa cache tuyến hoặc nhánh lọc trong đường chạy chèn. Không cộng phần trăm P6 với mức tăng tốc cũ.

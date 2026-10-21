@@ -1,5 +1,7 @@
 # Bàn giao sau A/B tổng tốc độ — 2026-10-21
 
+> Mốc mới hơn: P6 đã thử và kiểm chứng giới hạn thời gian chèn; xem [ALNS_P6_RESUME.md](ALNS_P6_RESUME.md). Nội dung dưới giữ nguyên lịch sử đợt A/B tổng P5.
+
 Người dùng đã yêu cầu tiếp tục sau khi tạm nghỉ. Công việc ưu tiên là trả lời tổng phần trăm nhanh hơn so với mốc trước tối ưu tốc độ; phép đo này đã hoàn tất. Không có process benchmark đang chạy hoặc run cần resume.
 
 ## Kết quả đã chốt

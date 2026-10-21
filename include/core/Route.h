@@ -42,6 +42,10 @@ struct InsertionResult {
   double deltaEnergyConsumption = 0.0;
 };
 
+struct InsertionTimeBoundsStats {
+  unsigned long long requests = 0, builds = 0, rejections = 0;
+};
+
 class Route {
 public:
   Route(int id, std::shared_ptr<Vehicle> vehicle,
@@ -82,6 +86,9 @@ public:
   long long getHash() const;
 
   InsertionResult checkInsertionCost(int nodeId, size_t position) const;
+  static bool insertionTimeBoundsEnabled();
+  static InsertionTimeBoundsStats getInsertionTimeBoundsStats();
+  static void resetInsertionTimeBoundsStats();
   bool canPossiblyInsert(int nodeIdToInsert, size_t position,
                          int nodeIdToRemove = -1) const;
   InsertionResult fastForwardCheck(int nodeId, size_t position) const;
@@ -96,6 +103,14 @@ public:
   void pruneRedundantStations();
 
 private:
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+  struct InsertionTimeBounds {
+    std::vector<double> earliestDeparture, latestStart;
+  };
+  // Immutable after construction; copied routes share it until either mutates.
+  mutable std::shared_ptr<const InsertionTimeBounds> insertionTimeBounds_;
+  bool violatesInsertionTimeBounds(int nodeId, size_t position) const;
+#endif
   // ── Identity / ownership ──────────────────────────────────────────────────
   int id;
   std::shared_ptr<Vehicle>  vehicle;

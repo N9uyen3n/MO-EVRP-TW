@@ -1,7 +1,7 @@
 
 # Kế hoạch nâng cấp ALNS từ việc đối chiếu HMA
 
-Ngày lập: 2026-10-20. Cập nhật: P0–P4 đã triển khai và kiểm chứng; P3–P4 giữ dạng tùy chọn, mặc định tắt vì lợi ích phụ thuộc seed/mục tiêu. P5 đã có profiling và cache thất bại của helper tái dựng, bật mặc định trên solver sau kiểm chứng. Cache cặp tuyến/cập nhật lân cận tổng quát chưa triển khai; P6–P7 chưa bắt đầu. Xem [báo cáo P0-P2](update/alns_p0_p2_report.md), [báo cáo P3–P4](update/alns_p3_p4_report.md), [profiling P5](update/alns_p5_profiling_report.md), [cache P5](update/alns_p5_cache_report.md) và [run r104 đã kiểm chứng](update/r104_unlimited_run.md).
+Ngày lập: 2026-10-20. Cập nhật 2026-10-21: P0–P4 đã triển khai và kiểm chứng; P3–P4 giữ tùy chọn, mặc định tắt. P5 đã có profiling, cache thất bại tái dựng và selective undo; hai tối ưu sau bật mặc định. P6 đã hoàn tất thử giới hạn prefix/suffix cho phép chèn, giữ và bật mặc định sau A/B; thuộc tính đoạn tổng quát cho Inter-2-opt chưa triển khai. Cache cặp tuyến/cập nhật lân cận tổng quát còn hoãn; P7 benchmark dài/thêm seed chưa bắt đầu. Xem [báo cáo P0-P2](update/alns_p0_p2_report.md), [P3–P4](update/alns_p3_p4_report.md), [profiling P5](update/alns_p5_profiling_report.md), [cache P5](update/alns_p5_cache_report.md), [undo](update/alns_ejection_undo_report.md), [A/B tổng P5](update/alns_total_speed_report.md), [P6](update/alns_p6_insertion_bounds_report.md) và [run r104](update/r104_unlimited_run.md).
 
 ## 1. Mục tiêu và phạm vi
 
@@ -169,6 +169,8 @@ ChargingRepairResult repairChargingForCustomerSequence(
 **Hoàn thành khi:** bật/tắt cache trong cùng cấu hình tìm kiếm xác định cho kết quả move nhất quán; cache không dùng lại kết quả khi mở rộng phạm vi; có số đo cache hit và thời gian giảm. Tối ưu cache không được dựa vào thay đổi lân cận để tạo lợi thế hiệu năng.
 
 ## P6. Thử thuộc tính đoạn để giảm copy/evaluate
+
+**Mốc đã thực hiện:** thử prefix/suffix thời gian tại `Route::checkInsertionCost`, bao phủ inter-relocate và các nhánh chèn của ejection/giảm xe. Chưa thay Inter-2-opt. Cả bật/tắt đạt 60 ca; 17.346 phép chèn ngẫu nhiên khớp evaluator chuẩn. A/B 18 cặp / 36 run chính, 306 nghiệm / 3.798 tuyến đều hợp lệ và lịch/mục tiêu từng byte giống nhau; trung vị giảm thêm 2,72% so với P5, 14 cặp nhanh/4 cặp chậm. Giữ cờ CMake `ALNS_INSERTION_TIME_BOUNDS`, mặc định ON. Đây là lợi ích nhỏ trên cấu hình 200 vòng/hai seed, chưa thay P7. Chi tiết và giới hạn trong [báo cáo P6](update/alns_p6_insertion_bounds_report.md).
 
 **Công việc**
 

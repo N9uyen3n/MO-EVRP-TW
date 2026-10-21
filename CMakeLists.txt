@@ -62,6 +62,12 @@ target_include_directories(alns_lib PUBLIC
         "${CMAKE_SOURCE_DIR}/include"
 )
 
+# P6: conservative O(1) insertion time-window rejection; OFF keeps the reference path.
+option(ALNS_INSERTION_TIME_BOUNDS "Use cached relaxed prefix/suffix time bounds" ON)
+if(ALNS_INSERTION_TIME_BOUNDS)
+    target_compile_definitions(alns_lib PUBLIC ALNS_INSERTION_TIME_BOUNDS=1)
+endif()
+
 # -------------------------------------------------------------
 # 3. Tạo file thực thi chính (Executable)
 # -------------------------------------------------------------
@@ -95,6 +101,9 @@ if(BUILD_TESTING)
     add_executable(EjectionUndoTests src/test/EjectionUndoTests.cpp)
     target_link_libraries(EjectionUndoTests PRIVATE alns_lib)
     add_test(NAME EjectionUndoTests COMMAND EjectionUndoTests)
+    add_executable(InsertionTimeBoundsTests src/test/InsertionTimeBoundsTests.cpp)
+    target_link_libraries(InsertionTimeBoundsTests PRIVATE alns_lib)
+    add_test(NAME InsertionTimeBoundsTests COMMAND InsertionTimeBoundsTests)
     add_executable(ALNSAuditRunner src/test/ALNSAuditRunner.cpp)
     target_link_libraries(ALNSAuditRunner PRIVATE alns_lib)
 endif()

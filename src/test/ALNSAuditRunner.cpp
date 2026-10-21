@@ -49,11 +49,17 @@ int main(int argc,char** argv) {
                  <<",\"repair_max_duration_ms\":"<<cfg.chargingRepairBudget.maxDuration.count()
                  <<",\"repair_trials_per_ls\":"<<cfg.chargingRepairTrialsPerLS<<"}\n";
     configuration.close();
+    Route::resetInsertionTimeBoundsStats();
     alns::ALNSSolver solver(inst,cfg,output.string(),"audit");
     const auto start=std::chrono::steady_clock::now();
     auto front=solver.solve();
     const auto elapsed=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-start).count();
     const auto& stats=solver.getRunStatistics();
+    const auto insertionBounds=Route::getInsertionTimeBoundsStats();
+    std::ofstream boundsReport(output/"insertion_time_bounds.json");
+    boundsReport<<"{\"enabled\":"<<(Route::insertionTimeBoundsEnabled()?"true":"false")
+      <<",\"requests\":"<<insertionBounds.requests<<",\"builds\":"<<insertionBounds.builds
+      <<",\"rejections\":"<<insertionBounds.rejections<<"}\n";
     const auto& undo=stats.ejectionUndo;
     std::ofstream undoReport(output/"ejection_undo.json");
     undoReport<<"{\"selective\":"<<selectiveEjection<<",\"checkpoints\":"<<undo.checkpoints

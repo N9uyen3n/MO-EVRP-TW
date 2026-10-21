@@ -33,6 +33,9 @@ void Route::addNode(int nodeId, size_t position) {
   if (position < 1 || position > nodeSequence.size() - 1)
     throw std::out_of_range("Vi tri them node khong hop le. Phai nam giua 2 depot.");
   nodeSequence.insert(nodeSequence.begin() + position, nodeId);
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+  insertionTimeBounds_.reset();
+#endif
   isDirty          = true;
   cachedDemandDirty_    = true;
   cachedCustomersDirty_ = true;
@@ -40,6 +43,9 @@ void Route::addNode(int nodeId, size_t position) {
 
 void Route::addNode(int nodeId) {
   nodeSequence.insert(nodeSequence.end() - 1, nodeId);
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+  insertionTimeBounds_.reset();
+#endif
   isDirty          = true;
   cachedDemandDirty_    = true;
   cachedCustomersDirty_ = true;
@@ -56,12 +62,18 @@ void Route::removeNode(size_t position) {
     throw std::out_of_range("Vi tri xoa node khong hop le. Khong the xoa depot.");
   }
   nodeSequence.erase(nodeSequence.begin() + position);
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+  insertionTimeBounds_.reset();
+#endif
   isDirty          = true;
   cachedDemandDirty_    = true;
   cachedCustomersDirty_ = true;
 }
 
 void Route::clear() {
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+  insertionTimeBounds_.reset();
+#endif
   nodeSequence.clear();
   nodeSequence.push_back(0);
   nodeSequence.push_back(0);
@@ -75,6 +87,9 @@ void Route::reverseNodes(size_t i, size_t j) {
   if (i < 1 || j >= nodeSequence.size() - 1 || i >= j)
     throw std::out_of_range("Chi so 2-Opt khong hop le.");
   std::reverse(nodeSequence.begin() + i, nodeSequence.begin() + j + 1);
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+  insertionTimeBounds_.reset();
+#endif
   isDirty          = true;
   // demand + customers unchanged by reversal — no cache invalidation needed
 }
@@ -185,6 +200,9 @@ void Route::evaluate() const {
 InsertionResult Route::checkInsertionCost(int nodeId,size_t position) const {
   evaluate();
   if(position<1 || position>=nodeSequence.size()) return {};
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+  if(violatesInsertionTimeBounds(nodeId,position)) return {};
+#endif
   static thread_local std::vector<NodeState> scratchStates;
   static thread_local std::vector<double> scratchRequired;
   const auto result=evaluateSequence(*instance,*vehicle,static_cast<int>(nodeSequence.size()+1),
@@ -203,6 +221,70 @@ InsertionResult Route::checkInsertionCost(int nodeId,size_t position) const {
   delta.deltaEnergyConsumption=result.totalEnergyConsumption-evalResult.totalEnergyConsumption;
   return delta;
 }
+
+namespace {
+thread_local InsertionTimeBoundsStats insertionBoundsStats;
+}
+
+bool Route::insertionTimeBoundsEnabled() {
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+  return true;
+#else
+  return false;
+#endif
+}
+InsertionTimeBoundsStats Route::getInsertionTimeBoundsStats() { return insertionBoundsStats; }
+void Route::resetInsertionTimeBoundsStats() { insertionBoundsStats = {}; }
+
+#ifdef ALNS_INSERTION_TIME_BOUNDS
+bool Route::violatesInsertionTimeBounds(int nodeId,size_t position) const {
+  ++insertionBoundsStats.requests;
+  if(!insertionTimeBounds_) {
+    auto bounds=std::make_shared<InsertionTimeBounds>();
+    const size_t n=nodeSequence.size();
+    bounds->earliestDeparture.resize(n);
+    bounds->latestStart.resize(n);
+    bounds->earliestDeparture[0]=instance->getNodeRaw(0)->getReadyTime();
+    // Relax every charging visit to zero charging time. The resulting prefix
+    // departure is a lower bound even when the original route is infeasible.
+    for(size_t i=1;i<n;++i) {
+      const Node* node=instance->getNodeRaw(nodeSequence[i]);
+      double clock=bounds->earliestDeparture[i-1]+instance->getTime(nodeSequence[i-1],nodeSequence[i]);
+      if(node->getType()!=NodeType::DEPOT) clock=std::max(clock,node->getReadyTime());
+      if(node->getType()==NodeType::CUSTOMER) clock+=node->getServiceTime();
+      bounds->earliestDeparture[i]=clock;
+    }
+    bounds->latestStart[n-1]=instance->getNodeRaw(0)->getDueDate();
+    // Upper bound on start-of-service in the unchanged suffix. Customer due
+    // dates constrain service start; station due dates constrain departure,
+    // which equals start in this zero-charge relaxation.
+    for(size_t i=n-1;i-->0;) {
+      const Node* node=instance->getNodeRaw(nodeSequence[i]);
+      const double service=node->getType()==NodeType::CUSTOMER?node->getServiceTime():0.0;
+      bounds->latestStart[i]=std::min(node->getDueDate(),bounds->latestStart[i+1]
+          -instance->getTime(nodeSequence[i],nodeSequence[i+1])-service);
+    }
+    insertionTimeBounds_=std::move(bounds);
+    ++insertionBoundsStats.builds;
+  }
+  const Node* node=instance->getNodeRaw(nodeId);
+  const auto& bounds=*insertionTimeBounds_;
+  const double start=std::max(node->getReadyTime(),bounds.earliestDeparture[position-1]
+      +instance->getTime(nodeSequence[position-1],nodeId));
+  const double service=node->getType()==NodeType::CUSTOMER?node->getServiceTime():0.0;
+  const double arrivalNext=start+service+instance->getTime(nodeId,nodeSequence[position]);
+  const double latest=bounds.latestStart[position];
+  // Larger than the evaluator's feasibility epsilon; ambiguous comparisons
+  // fall through to the canonical evaluator, including non-finite bounds.
+  const double tolerance=1e-7*std::max({1.0,std::abs(start),std::abs(arrivalNext),
+                                     std::abs(latest),std::abs(node->getDueDate())});
+  const bool reject=std::isfinite(start) && std::isfinite(arrivalNext) &&
+      std::isfinite(latest) && std::isfinite(tolerance) &&
+      (start>node->getDueDate()+tolerance || arrivalNext>latest+tolerance);
+  if(reject) ++insertionBoundsStats.rejections;
+  return reject;
+}
+#endif
 
 // =============================================================================
 // Getters

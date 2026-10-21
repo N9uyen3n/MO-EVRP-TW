@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-21. Git nền: `0581344`, nhánh `feat/alns-charging-repair-p3-p4`.
 
-**Trạng thái 2026-10-21: người dùng đã đổi yêu cầu nghỉ thành tiếp tục ngay. S0–S4 và S5 gốc đã đủ dữ liệu; SMD chưa chứng minh tăng tốc ổn định. Điều tra bổ sung đã tách S2/S3 và trace S1; tìm thấy lỗi xóa trạm chỉ xét pin cũ, đã sửa ở B4 `128f1cd`, 90 ca / 9 target Release và apps đạt. Cache mặc định Off. Đang audit B3/B4 phạm vi và chất lượng, xem mục8 và điểm bàn giao.**
+**Trạng thái 2026-10-21: hoàn tất triển khai, các experiment và bàn giao S0–S5 cùng guard bổ sung B4 `128f1cd`. 90 ca /9 target Release và apps đạt; kiểm tra toàn vẹn cuối đạt 288run+8warmup,3.156nghiệm/33.358tuyến hợp lệ. Chất lượng B3/B4 có cả thắng/thua; SMD chưa chứng minh tăng tốc ổn định. Cache mặc định Off. Không còn job đang chạy hoặc bước triển khai bắt buộc của đợt này; không hiểu “hoàn tất” là mọi giả thuyết hiệu năng đều đã được xác nhận.**
 
 ## 1. Mục tiêu và phạm vi
 
@@ -195,9 +195,9 @@ Thay đổi S1 có thể đổi lượng công việc tìm kiếm, nên thời g
 - [x] S5 chất lượng: 50 run, 734 nghiệm / 8.255 tuyến hợp lệ; cùng fleet mọi cặp; distance 7 thắng / 6 hòa / 12 thua, HV 11 thắng / 5 hòa / 9 thua.
 - [x] Lặp riêng rc205: 12 run / 6 cặp giữ lịch/objective; 3/6 nhanh hơn, median giảm 1,126%, khoảng −4,732% đến +20,006%. Trái chiều đợt đầu, không gộp để đổi trọng số case.
 - [x] Kiểm tra toàn vẹn cuối đạt: 202 run + 4 warmup, 2.091 nghiệm / 22.665 tuyến hợp lệ; source/binary/flags/raw/report/user-file khớp. Đã lưu checkpoint audit; các benchmark trên đã kết thúc.
-- [ ] S5 kết luận toàn plan: đã điều tra bổ sung nhưng chưa chứng minh ưu thế chung; chờ audit guard B4 ở mục8 trước khi chốt.
+- [x] S5 kết luận và bàn giao: audit guard B4 ở mục8 và toàn vẹn cuối đạt. Kết luận hiệu năng là chưa chứng minh speedup; chất lượng đa mục tiêu có thắng/thua, không tuyên bố ưu thế chung.
 
-**Điểm tiếp tục hiện tại: đọc `update/ALNS_SMD_RESUME.md`, kiểm tra Git và hồ sơ toàn vẹn. Không chạy lại các batch đã completed. Ưu tiên phân biệt B1/B2/B3Off trên rc205, rồi điều tra quỹ đạo S1 ở các seed r101/rc106 giảm chất lượng. Giữ cache Off; chưa mở thêm toán tử/cache.**
+**Đã chốt đợt này. Khi có yêu cầu mới, đọc `update/ALNS_SMD_RESUME.md` và kiểm tra Git. Không chạy lại các batch đã completed. Giữ cache Off; các hướng tối ưu ngoài scope ở mục4 cần experiment riêng và không được dùng kết quả hiện tại để hứa speedup.**
 
 ## 8. Bổ sung sau điều tra S5 — guard xóa trạm
 
@@ -211,6 +211,8 @@ Phát hiện thêm một lỗi cần sửa trong phạm vi tính đúng của LS
 - [x] Sửa nhỏ: giữ energy screen làm bộ lọc; dựng candidate, đánh giá canonical toàn tuyến và chỉ commit khi feasible. Không đổi evaluator hoặc mục tiêu.
 - [x] Build Release riêng `build-audit-smd-s4`, 90 ca / 9 target và apps đạt; giữ source người dùng (hiện đã đổi sang rc205_21, score20/LS15).
 - [x] Commit riêng guard + regression `128f1cd`, đóng băng B4, audit binary SHA `e8d09486bbde49bc42747750671955189e271d60d83613029125b40404fe7029`.
-- [ ] Audit B3/B4 cacheOff trên 5 case × seed1,2 × 200 vòng. Cho phép đổi kết quả vì đây là sửa tính đúng, không dùng wall time để gọi speedup thuần.
-- [ ] Đánh giá chất lượng B3/B4 theo cùng protocol 60s / maxIter25000, 5 case × seed1–5; báo đầy đủ mọi thắng/thua. Đây là experiment riêng, không thay kết quả B0/B1 của S1.
-- [ ] Lưu hồ sơ/hash/source/default cuối và kết luận theo dữ liệu; cache vẫn Off, không mở thêm tối ưu khác để làm đẹp số.
+- [x] Audit B3/B4 cacheOff trên 5 case × seed1,2 × 200 vòng: 20 run,175 nghiệm/1.910 tuyến hợp lệ. Best fleet-distance 3 thắng/7 thua; HV2 thắng/4 thua/4 không so được tại fleet chung tốt nhất. Đây là scope gate, không kết luận chất lượng theo thời gian hoặc speedup thuần.
+- [x] Chất lượng B3/B4:50run60s/maxIter25000,734nghiệm/8.159tuyến hợp lệ. Fleet rồi best-distance12thắng/13thua; HV15thắng/4thua/6không so được tại fleet tham chiếu. r101 bớt1xe ở2seed; r104 thêm1xe ở1seed; rc106 thua best-distance5/5 nhưng thắngHV5/5. Đây là experiment riêng, không thay kết quả B0/B1 của S1.
+- [x] Hồ sơ cuối `alns_smd_b4_final_integrity.json` valid=true, current source87file khớp B4, flags/binary/raw/report/userfile khớp. Đã bàn giao báo cáo và kết luận; cache Off, không mở thêm tối ưu để làm đẹp số.
+
+Mục tiêu chứng minh SMD speedup toàn solver **chưa được xác nhận**. Giữ S2 với phần cấp phát/copy đã đo; giữ prototype cache mặc định Off. Kết thúc việc triển khai/kiểm chứng với kết luận thực nghiệm này, không đánh dấu một lợi ích chưa chứng minh là “đạt”. Guard xóa trạm được giữ vì tính đúng. Không tự mở tuning để thắng các seed đang thua.

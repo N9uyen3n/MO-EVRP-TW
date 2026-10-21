@@ -1,10 +1,10 @@
 # Nâng cấp SMD / LocalSearch — EVRPTW-PR
 
-**Trạng thái: các đợt S0–S5 đã chạy đủ, gồm phép lặp rc205. Chưa đóng cổng kết luận S5 vì hiệu năng chưa ổn định và chất lượng có cả giảm. Người dùng đã yêu cầu tiếp tục điều tra ngay sau checkpoint. Cache mặc định Off.**
+**Trạng thái: hoàn tất triển khai và các experiment S0–S5, gồm điều tra bổ sung và guard B4 `128f1cd`. Tính hợp lệ/kiểm thử đạt; lợi ích runtime SMD chưa chứng minh ổn định, chất lượng có cả thắng/thua. Cache mặc định Off.**
 
 Đợt này sửa cập nhật láng giềng bị thiếu, giảm copy KNN/trial route và thử cache khối Or-opt có phiên bản tuyến. Bài toán chỉ giao hàng, Euclidean đối xứng, sạc một phần; evaluator sạc và thứ tự mục tiêu giữ nguyên.
 
-**Bổ sung sau checkpoint:** các số liệu B0–B3 dưới đây được giữ nguyên. Điều tra tiếp đã có trace và hai phép tách rc205; đồng thời cô lập lỗi commit xóa trạm bằng pin của lịch cũ. Đã sửa ở **B4 `128f1cd`**, đạt 90 ca / 9 target; A/B B3/B4 đang chạy. Chi tiết và hồ sơ riêng ở `alns_smd_followup_report.md`. Chưa lấy kết quả S1 hoặc timing SMD cũ để tuyên bố chất lượng/tốc độ của B4.
+**Bổ sung sau checkpoint:** các số liệu B0–B3 dưới đây được giữ nguyên. Điều tra tiếp đã có trace, hai phép tách rc205 và guard xóa trạm ở **B4 `128f1cd`**. 90 ca /9 target đạt; audit B3/B4 completed,70run/909nghiệm/10.069tuyến hợp lệ. Chất lượng60s: fleet rồi distance12thắng/13thua; HV15thắng/4thua/6không so được. Toàn vẹn B4 đạt288run+8warmup,3.156nghiệm/33.358tuyến hợp lệ, có lặp. Chi tiết `alns_smd_followup_report.md`; không dùng timing SMD cũ hoặc tỷ số thời gian khác quỹ đạo để tuyên bố B4 nhanh hơn.
 
 ## Những thay đổi đã kiểm chứng
 
@@ -66,9 +66,9 @@ Chi tiết mọi cặp và MaxTime: `alns_smd_quality_results.json` / `.csv`; ma
 
 ## Điểm dừng và phần còn mở
 
-S1/S2 và prototype hiện ở source `6e7549c`, cache Off. S5 đã đủ dữ liệu theo protocol nhưng chưa đánh dấu hoàn tất toàn plan: còn điều tra hiệu năng rc205 và các lần giảm chất lượng r101/rc106 trước khi tuyên bố đạt mục tiêu nâng cấp. Không rollback hay bật tính năng chỉ để có số đẹp.
+Phần gốc của báo cáo này đo source B3 `6e7549c`, cache Off. Phần bổ sung đã chốt B4 `128f1cd`, giữ cache Off. Đã hoàn tất công việc triển khai/kiểm chứng, với kết luận thực nghiệm chưa chứng minh lợi ích wall time SMD ổn định. Không rollback guard tính đúng hoặc bật cache chỉ để có số đẹp.
 
-Người dùng ban đầu yêu cầu nghỉ sau audit, sau đó nhắn **tiếp tục ngay**. Bước đang tiếp tục: đọc `ALNS_SMD_RESUME.md`, kiểm tra Git; ưu tiên phân biệt chi phí B1/B2/B3Off trên rc205 bằng số liệu cùng công việc, rồi xem quỹ đạo tìm kiếm của S1 ở các seed chất lượng giảm. Chưa có kết luận nguyên nhân, chưa cần mở rộng cache sang toán tử khác.
+Người dùng ban đầu yêu cầu nghỉ sau audit, sau đó nhắn **tiếp tục ngay**. Các phép tách hiệu năng, trace tìm điểm khác đầu tiên và guard xóa trạm đã hoàn tất. Không còn job đang chạy. Điểm bàn giao `ALNS_SMD_RESUME.md`; tối ưu/tuning tiếp ngoài scope chỉ thực hiện theo yêu cầu mới.
 
 ## Hồ sơ
 

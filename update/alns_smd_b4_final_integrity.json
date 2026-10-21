@@ -1,0 +1,133 @@
+{
+  "valid": true,
+  "current_stage": "B4",
+  "solver_revision": "128f1cdc34605e506cc92e64cdf1c300ac232a56",
+  "final_verifier_sha256": "502a2cf5856e128569c5be135bc19d332862eba88949a2cb3a4cc9a76591b9d8",
+  "git_head": "c10fb656946ab16d616594dd6221586b2d60de4e",
+  "checked_current_source_files": 87,
+  "default_or_opt_cache": "Off",
+  "experiments": {
+    "S1_scope": {
+      "runs": 20,
+      "solutions": 169,
+      "routes": 1858,
+      "invalid": 0,
+      "identical_pairs": 2,
+      "manifest_sha256": "c18596d7d457e71dd689bda80cb16272fd12baddbee9c12c179fd0d9b77234a4",
+      "warmup_solutions": 0,
+      "warmup_routes": 0
+    },
+    "S2_equivalence": {
+      "runs": 20,
+      "solutions": 178,
+      "routes": 2004,
+      "invalid": 0,
+      "identical_pairs": 10,
+      "manifest_sha256": "89c1614fb1a505b27ca574f1e50950bc07cf5337954c9afe6293c0ce9ee18a63",
+      "warmup_solutions": 0,
+      "warmup_routes": 0
+    },
+    "S3_observe": {
+      "runs": 20,
+      "solutions": 178,
+      "routes": 2004,
+      "invalid": 0,
+      "identical_pairs": 10,
+      "manifest_sha256": "017d77f7dd228217b58d6f5d52110592c92b05e58c17c1b515f15d5701722d7e",
+      "warmup_solutions": 0,
+      "warmup_routes": 0
+    },
+    "S4_enabled": {
+      "runs": 20,
+      "solutions": 178,
+      "routes": 2004,
+      "invalid": 0,
+      "identical_pairs": 10,
+      "manifest_sha256": "0e167710e33112150f5a04e5fc08cdfe1efb2ce8e9f10ea1cce5fdd94fa34f7d",
+      "warmup_solutions": 0,
+      "warmup_routes": 0
+    },
+    "S5_speed": {
+      "runs": 60,
+      "solutions": 534,
+      "routes": 6012,
+      "invalid": 0,
+      "identical_pairs": 30,
+      "manifest_sha256": "e9121b948fa0165d879f41401757f542c927f9f804ae737fd3340a5154d014c1",
+      "warmup_solutions": 6,
+      "warmup_routes": 72
+    },
+    "S5_quality": {
+      "runs": 50,
+      "solutions": 734,
+      "routes": 8255,
+      "invalid": 0,
+      "identical_pairs": 5,
+      "manifest_sha256": "76cc761eddd8b95a2d77da4121562de2e0e7e7ce9555897f3fb72bd6ef8435a4",
+      "warmup_solutions": 0,
+      "warmup_routes": 0
+    },
+    "S5_rc205_repeat": {
+      "runs": 12,
+      "solutions": 108,
+      "routes": 432,
+      "invalid": 0,
+      "identical_pairs": 6,
+      "manifest_sha256": "2cf31e3b8c075e17d5ec01a3ead6fa1fe3ebdd4a6cdb056a56519c6a9a767b46",
+      "warmup_solutions": 6,
+      "warmup_routes": 24
+    },
+    "S5_rc205_S2_split": {
+      "runs": 8,
+      "solutions": 72,
+      "routes": 288,
+      "invalid": 0,
+      "identical_pairs": 4,
+      "manifest_sha256": "97d1e8ce9358a69f4a50053176e111318c25fed555bf04630e06c9889afc4812",
+      "warmup_solutions": 6,
+      "warmup_routes": 24
+    },
+    "S5_rc205_S3_split": {
+      "runs": 8,
+      "solutions": 72,
+      "routes": 288,
+      "invalid": 0,
+      "identical_pairs": 4,
+      "manifest_sha256": "d4b33317bbce497c29c8547cc107fab1ba5cd3ff4821e35cc69838aa5899f59b",
+      "warmup_solutions": 6,
+      "warmup_routes": 24
+    },
+    "S5_station_guard_scope": {
+      "runs": 20,
+      "solutions": 175,
+      "routes": 1910,
+      "invalid": 0,
+      "identical_pairs": 0,
+      "manifest_sha256": "85083664440badece9331ff4788465bceebcdd5d791830d48135e9c2fced19e7",
+      "warmup_solutions": 0,
+      "warmup_routes": 0
+    },
+    "S5_station_guard_quality": {
+      "runs": 50,
+      "solutions": 734,
+      "routes": 8159,
+      "invalid": 0,
+      "identical_pairs": 0,
+      "manifest_sha256": "ae494506f81ccab079789fcc93100333fad55f065eded038160c88d9f449d15c",
+      "warmup_solutions": 0,
+      "warmup_routes": 0
+    }
+  },
+  "apps_sha256": {
+    "ALNSAuditRunner": "e8d09486bbde49bc42747750671955189e271d60d83613029125b40404fe7029",
+    "TestALNS": "1cf25c2085c102d26d1aa40906b8e43c6af0f91af0f41b1973485ce50a872439",
+    "untitled": "60c9655d9c6ca80b4410fccac17266b07336f3024bd6f9bbd9d7f6769a420764"
+  },
+  "user_test_source_sha256": "36d74ad7e6190f6f18d8c883f7a19e1b7a7150ce8dbfce43a4cd68849c35408f",
+  "exact_cache_skip_validation": true,
+  "experiment_runs": 288,
+  "warmup_runs": 8,
+  "exported_solutions": 3156,
+  "exported_routes": 33358,
+  "note": "Export counts include repeats across versions/seeds/repetitions; timing protocols are not pooled."
+}

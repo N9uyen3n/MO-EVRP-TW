@@ -40,6 +40,7 @@ public:
   void setVehicleReductionMode(bool active);
 
 private:
+  friend struct SearchPolicyTestAccess;
   std::shared_ptr<Instance> instance;
   WeightHint weightHint_;
 
@@ -52,6 +53,8 @@ private:
     DISTANCE_FOCUSED,
     VEHICLE_PACKING
   };
+
+  Mode selectMode(double draw) const;
 
   double calculateCost(const InsertionResult &result, Mode mode,
                        const Route &route, double meanRouteDuration,

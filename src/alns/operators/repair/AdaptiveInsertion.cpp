@@ -1,3 +1,4 @@
+#include "alns/SearchObjectives.h"
 #include "../../../../include/alns/operators/repair/AdaptiveInsertion.h"
 #include <algorithm>
 #include <iostream>
@@ -8,24 +9,20 @@
 namespace alns {
 
 AdaptiveInsertion::AdaptiveInsertion(std::shared_ptr<Instance> instance)
-    : instance(instance) {}
+    : instance(instance) { setWeightHint(0.33, 0.33, 0.34); }
 
 std::string AdaptiveInsertion::getName() const { return "Adaptive Insertion"; }
 
 void AdaptiveInsertion::setWeightHint(double dist, double gini, double time) {
-  weightHint_ = {dist, gini, time};
+  const auto active = alns::search::project({dist, gini, time});
+  weightHint_ = {active.dist, active.gini, active.time};
 }
 
 void AdaptiveInsertion::setVehicleReductionMode(bool active) {
   vehicleReductionMode_ = active;
 }
 
-void AdaptiveInsertion::execute(Solution &solution,
-                                const std::vector<int> &unservedCustomers,
-                                std::mt19937 &rng) {
-  std::uniform_real_distribution<> randDist(0.0, 1.0);
-  double r = randDist(rng);
-
+AdaptiveInsertion::Mode AdaptiveInsertion::selectMode(double r) const {
   Mode mode;
   double distShare = weightHint_.dist;
 
@@ -58,6 +55,14 @@ void AdaptiveInsertion::execute(Solution &solution,
     }
   }
 
+  return mode;
+}
+
+void AdaptiveInsertion::execute(Solution &solution,
+                                const std::vector<int> &unservedCustomers,
+                                std::mt19937 &rng) {
+  std::uniform_real_distribution<> randDist(0.0, 1.0);
+  const Mode mode = selectMode(randDist(rng));
   std::vector<int> customers = unservedCustomers;
   // Sort by difficulty (Tighter Time Window first)
   std::sort(customers.begin(), customers.end(), [&](int a, int b) {

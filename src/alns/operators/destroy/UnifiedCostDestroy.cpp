@@ -1,3 +1,4 @@
+#include "alns/SearchObjectives.h"
 #include "../../../../include/alns/operators/destroy/UnifiedCostDestroy.h"
 #include "../../../../include/core/Customer.h"
 #include "../../../../include/core/Station.h"
@@ -23,7 +24,7 @@ std::vector<int> UnifiedCostDestroy::execute(Solution &solution, int nodesToRemo
     }
 
     // 1. Select a random metric for this execution
-    std::uniform_int_distribution<> dist(0, 3);
+    std::uniform_int_distribution<> dist(0, alns::search::equityEnabled ? 3 : 2);
     CostMetric metric = static_cast<CostMetric>(dist(rng));
 
     // For WORKLOAD metric, calculate average route duration

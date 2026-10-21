@@ -62,6 +62,14 @@ target_include_directories(alns_lib PUBLIC
         "${CMAKE_SOURCE_DIR}/include"
 )
 
+# first-noEq: inherit calibrated parameters, disable equity in search only.
+option(ALNS_NO_EQUITY "Build FP-PALNS-NoEQ (Gini remains reported)" ON)
+if(ALNS_NO_EQUITY)
+    target_compile_definitions(alns_lib PUBLIC ALNS_NO_EQUITY=1)
+else()
+    target_compile_definitions(alns_lib PUBLIC ALNS_NO_EQUITY=0)
+endif()
+
 # P6: conservative O(1) insertion time-window rejection; OFF keeps the reference path.
 option(ALNS_INSERTION_TIME_BOUNDS "Use cached relaxed prefix/suffix time bounds" ON)
 if(ALNS_INSERTION_TIME_BOUNDS)
@@ -86,6 +94,9 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(SearchObjectivesTests src/test/SearchObjectivesTests.cpp)
+    target_link_libraries(SearchObjectivesTests PRIVATE alns_lib)
+    add_test(NAME SearchObjectivesTests COMMAND SearchObjectivesTests)
     add_executable(RouteRegressionTests src/test/RouteRegressionTests.cpp)
     target_link_libraries(RouteRegressionTests PRIVATE alns_lib)
     add_test(NAME RouteRegressionTests COMMAND RouteRegressionTests)

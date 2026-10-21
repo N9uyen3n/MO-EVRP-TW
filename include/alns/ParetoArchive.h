@@ -62,7 +62,8 @@ public:
    * @return Giá trị Hypervolume đã chuẩn hóa. Max lý thuyết = 1.1^3 = 1.331.
    */
   double computeHypervolume() const;
-  double computeHypervolume2D() const;
+  double computeHypervolume2D() const; // Legacy D x G, reporting/reference only in NoEQ
+  double computeSearchHypervolume() const; // NoEQ: D x MaxTime; FP-PALNS: legacy D x G
 
   /**
    * @brief Initializes the fixed reference box using the initial solution.
@@ -78,8 +79,7 @@ public:
 
 private:
   // Sorts by number of vehicles (ascending).
-  // For each vehicle count, stores a 2D Pareto Front of (Distance,
-  // WorkloadGini)
+  // At each fleet level: D/G/T for FP-PALNS; D/T for NoEQ.
   std::map<int, std::vector<Solution>> archiveByVehicles_;
   int maxSize; // maxSize PER VEHICLE LEVEL
 

@@ -1,3 +1,4 @@
+#include "alns/SearchObjectives.h"
 #include "ScheduleValidator.h"
 #include "alns/ALNSSolver.h"
 #include "io/Parser.h"
@@ -39,7 +40,8 @@ int main(int argc,char** argv) {
     cfg.useScatterSearch=false; cfg.enableLogging=true;
     audit::require(cfg.maxTime>0 && cfg.maxIterations>0,"positive budget required");
     std::ofstream configuration(output/"audit_parameters.json");
-    configuration<<"{\"seed\":"<<cfg.randomSeed<<",\"max_time_ms\":"<<cfg.maxTime
+    configuration<<"{\"variant\":\""<<alns::search::variant<<"\",\"equity_search\":"<<alns::search::equityEnabled
+                 <<",\"search_archive_objectives\":\""<<alns::search::archiveObjectives<<"\",\"seed\":"<<cfg.randomSeed<<",\"max_time_ms\":"<<cfg.maxTime
                  <<",\"max_iterations\":"<<cfg.maxIterations<<",\"hv_stagnation_limit\":"<<cfg.hvStagnationLimit
                  <<",\"charging_repair\":"<<cfg.useChargingRepairLS
                  <<",\"profile_local_search\":"<<cfg.profileLocalSearch

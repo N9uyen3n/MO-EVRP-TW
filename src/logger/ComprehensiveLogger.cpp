@@ -1,3 +1,4 @@
+#include "alns/SearchObjectives.h"
 // src/logger/ComprehensiveLogger.cpp
 #include "../../include/logger/ComprehensiveLogger.h"
 #include "../../include/alns/ALNSSolver.h"
@@ -126,12 +127,36 @@ void ComprehensiveLogger::initSummaryFile() {
 void ComprehensiveLogger::logConfig(const alns::ALNSConfig &config) {
   if (!configFile.is_open())
     return;
+  configFile << "variant: " << alns::search::variant << "\n"
+             << "searchArchiveObjectives: " << alns::search::archiveObjectives << "\n"
+             << "reportedObjectives: Z1,Z2,Z3,Z4\n"
+             << "equitySearchEnabled: " << alns::search::equityEnabled << "\n"
+             << "independentRecalibration: false\n";
   configFile << "maxIterations: " << config.maxIterations << "\n"
              << "segmentIterations: " << config.segmentIterations << "\n"
              << "decayParameter: " << config.decayParameter << "\n"
              << "scoreDominating: " << config.scoreDominating
              << "\n"
-             // ... (Ghi TẤT CẢ các tham số khác trong config) ...
+             << "scoreNonDominated: " << config.scoreNonDominated << "\n"
+             << "scoreDominated: " << config.scoreDominated << "\n"
+             << "scoreIdentical: " << config.scoreIdentical << "\n"
+             << "minRemoval: " << config.minRemoval << "\n"
+             << "maxRemoval: " << config.maxRemoval << "\n"
+             << "localSearchIntensity: " << config.localSearchIntensity << "\n"
+             << "useLocalSearch: " << config.useLocalSearch << "\n"
+             << "startTemperature: " << config.startTemperature << "\n"
+             << "coolingRate: " << config.coolingRate << "\n"
+             << "minTemperature: " << config.minTemperature << "\n"
+             << "SAScale: " << config.SAScale << "\n"
+             << "maxTime: " << config.maxTime << "\n"
+             << "randomSeed: " << config.randomSeed << "\n"
+             << "hvImprovementThreshold: " << config.hvImprovementThreshold << "\n"
+             << "hvStagnationLimit: " << config.hvStagnationLimit << "\n"
+             << "useScatterSearch: " << config.useScatterSearch << "\n"
+             << "useChargingRepairLS: " << config.useChargingRepairLS << "\n"
+             << "reconstructionCacheMode: " << static_cast<int>(config.reconstructionCacheMode) << "\n"
+             << "useSelectiveEjectionUndo: " << config.useSelectiveEjectionUndo << "\n"
+             << "orOptCacheMode: " << static_cast<int>(config.orOptCacheMode) << "\n"
              << "enableLogging: " << (config.enableLogging ? "true" : "false")
              << "\n";
 }

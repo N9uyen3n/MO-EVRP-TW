@@ -1,7 +1,7 @@
-// Diagnostic probe for the review at 407a32b, not a production CTest target.
-// Confirms the current context-patching limitation and measures warmed KNN
-// allocations in one thread. After a context fix, replace the stale-list
-// expectation with a regression requiring equality to the full rebuild.
+// Diagnostic companion to SearchContextTests / KNNBufferTests.
+// At 0581344 this probe confirmed the pre-SMD context bug and KNN allocation.
+// Current expectations verify the fixes; use the archived revision for the
+// historical pre-change probe. Not a production CTest target.
 // Link to the matching Release library with ALNS_INSERTION_TIME_BOUNDS=1.
 #include "alns/LocalSearch.h"
 #include "ScheduleValidator.h"
@@ -26,11 +26,13 @@ void operator delete[](void* p) noexcept { ::operator delete(p); }
 void operator delete[](void* p,std::size_t) noexcept { ::operator delete(p); }
 
 struct LocalSearchTestAccess {
-  static bool knnReturnsReference() {
-    return std::is_reference<decltype(std::declval<LocalSearch>().findBestInsertionPositions_KNN(std::declval<const Route&>(),1,4))>::value;
+  static bool knnUsesCallerOutput() {
+    return std::is_void<decltype(std::declval<LocalSearch>().findBestInsertionPositions_KNN(
+      std::declval<const Route&>(),1,4,std::declval<std::vector<size_t>&>()))>::value;
   }
   static std::size_t consumePositions(LocalSearch& ls,const Route& route) {
-    const auto& positions=ls.findBestInsertionPositions_KNN(route,2,4);
+    static thread_local std::vector<size_t> positions;
+    ls.findBestInsertionPositions_KNN(route,2,4,positions);
     std::size_t result=positions.size();
     for(auto p:positions) result+=p;
     return result;
@@ -82,7 +84,7 @@ int main() {
     std::size_t checksum=0;
     for(int i=0;i<128;++i) checksum+=LocalSearchTestAccess::consumePositions(search,readOnly.getRoutes()[0]);
     countAllocations=false;
-    std::cout<<"knn_returns_reference="<<LocalSearchTestAccess::knnReturnsReference()
+    std::cout<<"knn_caller_owned_output="<<LocalSearchTestAccess::knnUsesCallerOutput()
       <<" warmed_calls=128 allocation_calls="<<allocationCalls<<" checksum="<<checksum<<'\n';
     const auto original=LocalSearchTestAccess::neighbors(search,0);
     print("neighbors_before",original);
@@ -96,9 +98,10 @@ int main() {
     const auto rebuilt=LocalSearchTestAccess::neighbors(search,0);
     print("neighbors_after_patch",patched);
     print("neighbors_full_rebuild",rebuilt);
-    audit::require(std::find(patched.begin(),patched.end(),9)==patched.end(),"expected stale list missing route 9");
+    audit::require(patched==rebuilt,"patch must match full rebuild");
     audit::require(std::find(rebuilt.begin(),rebuilt.end(),9)!=rebuilt.end(),"full rebuild should contain newly close route 9");
-    std::cout<<"CONFIRMED newly close dirty route omitted by patch; all routes remain feasible\n";
+    audit::require(allocationCalls==0,"warmed KNN must reuse output capacity");
+    std::cout<<"CONFIRMED newly close dirty route included; no warmed KNN output allocations; all routes feasible\n";
     return 0;
   } catch(const std::exception& e) {
     std::cerr<<e.what()<<'\n'; return 1;

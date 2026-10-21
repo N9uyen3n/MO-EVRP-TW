@@ -268,10 +268,12 @@ private:
                                                   int nodeId, int topK) const;
   std::vector<size_t> findBestInsertionPositions_TimeAware(const Route &route,
                                                             int nodeId, int topK) const;
+  void findBestInsertionPositions_TimeAware(const Route &route, int nodeId, int topK,
+                                           std::vector<size_t>& result) const;
   std::vector<size_t> findBestInsertionPositions_Distance(const Route &route,
                                                            int nodeId, int topK) const;
-  std::vector<size_t> findBestInsertionPositions_KNN(const Route &route,
-                                                      int nodeId, int topK) const;
+  void findBestInsertionPositions_KNN(const Route &route, int nodeId, int topK,
+                                      std::vector<size_t>& result) const;
   std::vector<size_t> getTopKInsertionPositions(const Route &route,
                                                  int nodeId, int topK) const;
 

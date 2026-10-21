@@ -50,12 +50,8 @@
 //          searchRelocate / searchOrOptReversed → measurable win in VND hot
 //          path.
 //
-// [OPT-11] findBestInsertionPositions_KNN — avoid per-call vector allocation.
-//          Previously returned std::vector<size_t> (new heap alloc every call).
-//          Now fills a thread_local tl_knn_result buffer and returns a const
-//          reference to it. All call-sites updated to use const auto &.
-//          *** Call-sites in searchOrOpt / searchRelocate / searchOrOptReversed
-//          must NOT store the reference past the next KNN call. ***
+// [SMD-S2] KNN writes to a caller-owned reusable output buffer, including its
+//          time-aware fallback. Each operator owns its candidate positions.
 //
 // [OPT-12] searchInterTwoOpt — remove spurious solution.evaluateRoutes().
 //          newR1/newR2 are already individually evaluate()d before commit.
@@ -565,7 +561,8 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
   Route r1_copy = routes[move.routeIdx1];
 
   bool twoRoutes = (move.routeIdx1 != move.routeIdx2 && move.routeIdx2 >= 0);
-  Route r2_copy = twoRoutes ? routes[move.routeIdx2] : r1_copy;
+  std::optional<Route> r2_copy;
+  if (twoRoutes) r2_copy.emplace(routes[move.routeIdx2]);
 
   try {
     switch (move.type) {
@@ -574,7 +571,7 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
       int nodeId = r1_copy.getNodeAt(move.nodeIdx1);
       r1_copy.removeNode(move.nodeIdx1);
       if (twoRoutes) {
-        r2_copy.addNode(nodeId, move.nodeIdx2);
+        r2_copy->addNode(nodeId, move.nodeIdx2);
       } else {
         int targetIdx = move.nodeIdx2;
         if (move.nodeIdx1 < move.nodeIdx2)
@@ -594,7 +591,7 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
       }
       if (twoRoutes) {
         for (int i = 0; i < move.segmentLength; ++i) {
-          r2_copy.addNode(segment[i], move.nodeIdx2 + i);
+          r2_copy->addNode(segment[i], move.nodeIdx2 + i);
         }
       } else {
         int targetIdx = move.nodeIdx2;
@@ -622,17 +619,17 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
       for (int i = 0; i < len1; ++i)
         seg1.push_back(r1_copy.getNodeAt(move.nodeIdx1 + i));
       for (int i = 0; i < len2; ++i)
-        seg2.push_back(r2_copy.getNodeAt(move.nodeIdx2 + i));
+        seg2.push_back(r2_copy->getNodeAt(move.nodeIdx2 + i));
 
       for (int i = len1 - 1; i >= 0; --i)
         r1_copy.removeNode(move.nodeIdx1 + i);
       for (int i = len2 - 1; i >= 0; --i)
-        r2_copy.removeNode(move.nodeIdx2 + i);
+        r2_copy->removeNode(move.nodeIdx2 + i);
 
       for (int i = 0; i < len2; ++i)
         r1_copy.addNode(seg2[i], move.nodeIdx1 + i);
       for (int i = 0; i < len1; ++i)
-        r2_copy.addNode(seg1[i], move.nodeIdx2 + i);
+        r2_copy->addNode(seg1[i], move.nodeIdx2 + i);
       break;
     }
     case MoveType::INTRA_SWAP: {
@@ -648,11 +645,11 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
       if (!twoRoutes)
         return;
       int nodeId1 = r1_copy.getNodeAt(move.nodeIdx1);
-      int nodeId2 = r2_copy.getNodeAt(move.nodeIdx2);
+      int nodeId2 = r2_copy->getNodeAt(move.nodeIdx2);
       r1_copy.removeNode(move.nodeIdx1);
-      r2_copy.removeNode(move.nodeIdx2);
+      r2_copy->removeNode(move.nodeIdx2);
       r1_copy.addNode(nodeId2, move.nodeIdx1);
-      r2_copy.addNode(nodeId1, move.nodeIdx2);
+      r2_copy->addNode(nodeId1, move.nodeIdx2);
       break;
     }
     case MoveType::STATION_REMOVE: {
@@ -667,14 +664,14 @@ void LocalSearch::evaluateMove(const Solution &solution, MoveDescriptor &move,
 
     r1_copy.evaluate();
     if (twoRoutes)
-      r2_copy.evaluate();
+      r2_copy->evaluate();
 
-    if (!r1_copy.isFeasible() || (twoRoutes && !r2_copy.isFeasible())) {
+    if (!r1_copy.isFeasible() || (twoRoutes && !r2_copy->isFeasible())) {
       return;
     }
 
     double newDist = r1_copy.getTotalDistance() +
-                     (twoRoutes ? r2_copy.getTotalDistance() : 0);
+                     (twoRoutes ? r2_copy->getTotalDistance() : 0);
     double oldDist =
         routes[move.routeIdx1].getTotalDistance() +
         (twoRoutes ? routes[move.routeIdx2].getTotalDistance() : 0);
@@ -995,6 +992,8 @@ bool LocalSearch::searchRelocate(Solution &solution,
                                  SearchContext &ctx) {
   alns::LocalSearchProfiler::Scope profileScope(profiler_, alns::LSMetric::Relocate);
   MoveDescriptor move; // [CHANGE-5] local — was member move
+  std::vector<size_t> candidatePositions;
+  candidatePositions.reserve(4);
   const auto &routes = solution.getRoutes();
   int numRoutes = routes.size();
 
@@ -1027,9 +1026,7 @@ bool LocalSearch::searchRelocate(Solution &solution,
                               instance->getDistance(prev_n, next_n);
 
       for (int r2 : neighborLists[r1]) {
-        // [OPT-11] const ref to thread_local buffer — no heap allocation.
-        const auto &candidatePositions =
-            findBestInsertionPositions_KNN(routes[r2], nodeId, 4);
+        findBestInsertionPositions_KNN(routes[r2], nodeId, 4, candidatePositions);
 
         for (size_t j : candidatePositions) {
           if (r1 == r2 && (j == i || j == i + 1))
@@ -1715,6 +1712,8 @@ bool LocalSearch::searchOrOpt(Solution &solution,
   static const int SEGMENT_LENGTHS[] = {1, 2, 3};
 
   const auto &routes = solution.getRoutes();
+  std::vector<size_t> candidatePositions;
+  candidatePositions.reserve(3);
   int numRoutes = routes.size();
 
   if (!searchContext_.isValid ||
@@ -1756,9 +1755,7 @@ bool LocalSearch::searchOrOpt(Solution &solution,
           const auto &nodes2 =
               routes[r2].getNodes(); // [OPT] Lấy tham chiếu trực tiếp
 
-          // [OPT-11] const ref to thread_local buffer — no heap allocation.
-          const auto &candidatePositions =
-              findBestInsertionPositions_KNN(routes[r2], firstNodeId, 3);
+          findBestInsertionPositions_KNN(routes[r2], firstNodeId, 3, candidatePositions);
 
               // Only try top-3 positions from KNN cache (O(1) instead of O(n))
             int maxCandidates = std::min(3, (int)candidatePositions.size());
@@ -4141,6 +4138,15 @@ std::vector<size_t> LocalSearch::findBestInsertionPositions(const Route &route,
 std::vector<size_t>
 LocalSearch::findBestInsertionPositions_TimeAware(const Route &route,
                                                   int nodeId, int topK) const {
+  std::vector<size_t> result;
+  findBestInsertionPositions_TimeAware(route,nodeId,topK,result);
+  return result;
+}
+
+void LocalSearch::findBestInsertionPositions_TimeAware(const Route &route,
+    int nodeId, int topK, std::vector<size_t>& result) const {
+  result.clear();
+  if (topK<=0) return;
   struct Candidate {
     size_t position;
     double cost;
@@ -4189,12 +4195,10 @@ LocalSearch::findBestInsertionPositions_TimeAware(const Route &route,
   std::partial_sort(candidates.begin(), candidates.begin() + k,
                     candidates.end());
 
-  std::vector<size_t> result;
   result.reserve(k);
   for (int i = 0; i < k; ++i)
     result.push_back(candidates[i].position);
 
-  return result;
 }
 
 void LocalSearch::preprocessKNN() {
@@ -4257,24 +4261,19 @@ void LocalSearch::preprocessStationReplacements() {
 //          destructions; bool reset is O(K) simple assignments.
 //          neighborSet.count() had hash overhead per lookup; now it is a single
 //          array read with no hashing at all.
-// [OPT-11] Return const ref to thread_local result buffer instead of
-//          constructing a new vector<size_t> on every call.
-//          Callers must use  const auto &  and must NOT keep the reference past
-//          the next call to this function (thread_local buffer is overwritten).
+// Output belongs to the caller and remains valid across other KNN calls.
+// Internal candidate scratch is reused, including in the fallback path.
 // ============================================================================
-std::vector<size_t>
-LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
-                                            int topK) const {
-  // [OPT-11] Shared thread_local output buffer — zero allocation per call.
-  static thread_local std::vector<size_t> tl_knn_result;
+void LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
+    int topK, std::vector<size_t>& result) const {
+  result.clear();
+  if (topK<=0) return;
 
   auto it = knnCache_.find(nodeId);
   if (it == knnCache_.end()) {
-    // Station or unknown node: fall back to time-aware scan.
-    // findBestInsertionPositions_TimeAware still returns a new vector; copy
-    // into tl_knn_result so callers always get a consistent type.
-    tl_knn_result = findBestInsertionPositions_TimeAware(route, nodeId, topK);
-    return tl_knn_result;
+    // Nodes without KNN entries use the same caller-owned output buffer.
+    findBestInsertionPositions_TimeAware(route, nodeId, topK, result);
+    return;
   }
 
   const auto &nearestNeighbors = it->second;
@@ -4354,25 +4353,21 @@ LocalSearch::findBestInsertionPositions_KNN(const Route &route, int nodeId,
   }
 
   if (!foundAny) {
-    tl_knn_result = findBestInsertionPositions_TimeAware(route, nodeId, topK);
-    return tl_knn_result;
+    findBestInsertionPositions_TimeAware(route, nodeId, topK, result);
+    return;
   }
 
   if (candidates.empty()) {
-    tl_knn_result.clear();
-    return tl_knn_result;
+    return;
   }
 
   int k = std::min(topK, (int)candidates.size());
   std::partial_sort(candidates.begin(), candidates.begin() + k,
                     candidates.end());
 
-  // [OPT-11] Fill thread_local result — no heap allocation.
-  tl_knn_result.resize(k);
+  result.resize(k);
   for (int i = 0; i < k; ++i)
-    tl_knn_result[i] = candidates[i].position;
-
-  return tl_knn_result;
+    result[i] = candidates[i].position;
 }
 
 MoveEvaluation LocalSearch::evaluateRelocateDelta(const Solution &solution,
@@ -5642,6 +5637,8 @@ bool LocalSearch::searchOrOptReversed(Solution &solution,
 
   static const int SEGMENT_LENGTHS[] = {2, 3};
   const double EPSILON = 1e-9;
+  std::vector<size_t> candidatePositions;
+  candidatePositions.reserve(3);
 
   for (int segLen : SEGMENT_LENGTHS) {
     for (int r1 = 0; r1 < numRoutes; ++r1) {
@@ -5675,12 +5672,7 @@ bool LocalSearch::searchOrOptReversed(Solution &solution,
           const std::vector<int> nodes2 = routes[r2].getNodes();
           int n2 = (int)nodes2.size();
 
-          // [OPT-11] const ref to thread_local buffer — no heap allocation.
-          // NOTE: nodes2 is already a copy (not a ref), so the KNN ref is safe
-          // as long as we do not call findBestInsertionPositions_KNN again
-          // before consuming candidatePositions.
-          const auto &candidatePositions =
-              findBestInsertionPositions_KNN(routes[r2], revHead, 3);
+          findBestInsertionPositions_KNN(routes[r2], revHead, 3, candidatePositions);
 
           for (size_t ins : candidatePositions) {
             int j = (int)ins;

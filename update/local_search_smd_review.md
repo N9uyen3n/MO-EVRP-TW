@@ -1,5 +1,7 @@
 # Review MoveDescriptor và SMD trong LocalSearch
 
+Ghi chú sau triển khai: đây là báo cáo baseline trước sửa. Source probe tại Git `0581344` tái lập số liệu cũ; probe ở HEAD được cập nhật cùng S1/S2 để kiểm tra các bản sửa. Xem `plan.md` và các báo cáo `alns_smd_*` cho trạng thái mới.
+
 Ngày 2026-10-21, Git nền `407a32b`, thuật toán/binary tương ứng P6 `edd709b`. Yêu cầu: kiểm tra còn nâng cấp được phần static move descriptor không. Đây là review và ví dụ kiểm chứng, **chưa sửa thuật toán hoặc thay mặc định sau P7**. Giữ chỉnh sửa người dùng trong TestALNS.cpp riêng.
 
 ## Hiện trạng thực tế

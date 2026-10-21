@@ -23,6 +23,8 @@ Release build: `build-audit-smd-s1`, GCC11.4, cùng flags tối ưu và P6 ON nh
 
 ## Việc còn lại
 
-Đóng băng B1 và audit 5 case × 2 seed × 200 vòng. S1 được phép thay kết quả; kiểm chứng mọi output. S2 so với B1 phải giữ objective/schedule byte-identical. Chất lượng B0/B1 ở 60s × 5 seed/case và tốc độ B1/final chạy tại S5 sau khi hoàn tất các bước có lợi. Không dùng kết quả S1 như phép đo lợi ích riêng của copy/cache.
+B1 đã lưu từ commit `fc531b7`, binary SHA256 `f9d5a54e2b503d7c51471e73f8386ef4e45deafeb5b82b9c00cf9f2b5d2daebf`. Audit phạm vi `artifacts/alns_smd/20261021/S1_scope` đã hoàn tất: **20 run / 10 cặp, 169 nghiệm / 1.858 tuyến hợp lệ**, đủ200 vòng mỗi run. S1 được phép thay kết quả; đây không phải audit tương đương hoặc phép đo tốc độ cùng công việc.
+
+S2 so với B1 phải giữ objective/schedule byte-identical. Chất lượng B0/B1 ở60s ×5seed/case và tốc độ B1/final chạy tại S5 sau khi hoàn tất các bước có lợi. Không dùng kết quả S1 như phép đo lợi ích riêng của copy/cache.
 
 Plan được lưu trước sửa trong commit `0c21596`. Giữ nguyên các chỉnh sửa của người dùng trong TestALNS.cpp; không đưa dữ liệu/log khác vào commit.

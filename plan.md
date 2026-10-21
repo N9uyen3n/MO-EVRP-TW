@@ -2,7 +2,7 @@
 
 Ngày lập: 2026-10-21. Git nền: `0581344`, nhánh `feat/alns-charging-repair-p3-p4`.
 
-**Trạng thái 2026-10-21: người dùng đã yêu cầu tiếp tục. S0 đã lưu baseline B0; S1 đã qua regression Release. Đang chuyển sang S2. Audit chất lượng và tốc độ tổng hợp ở S5 còn chờ.**
+**Trạng thái 2026-10-21: S1 đã qua regression và 20 run phạm vi. S2 đã qua 77 ca / 8 target Release, chuẩn bị audit tương đương B1/B2. Audit chất lượng và tốc độ tổng hợp ở S5 còn chờ.**
 
 ## 1. Mục tiêu và phạm vi
 
@@ -193,4 +193,4 @@ Thay đổi S1 có thể đổi lượng công việc tìm kiếm, nên thời g
 - [ ] S4: thử cache có generation hoặc ghi kết luận không tiếp tục sau S3.
 - [ ] S5: hoàn tất audit, chọn default và bàn giao.
 
-**Điểm tiếp tục: đóng băng B1, chạy audit phạm vi S1 rồi triển khai S2. Báo cáo S1: `update/alns_smd_s1_report.md`.**
+**Điểm tiếp tục: đóng băng B2, audit B1/B2; sau đó S3 observe khối Or-opt. Báo cáo: `update/alns_smd_s1_report.md`, `update/alns_smd_s2_report.md`.**

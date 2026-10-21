@@ -2,6 +2,7 @@
 #include "alns/ALNSSolver.h"
 #include "core/Customer.h"
 #include "core/Depot.h"
+#include "core/Station.h"
 #include <functional>
 #include <iostream>
 #include <random>
@@ -14,6 +15,7 @@ struct LocalSearchTestAccess {
     search.evaluateMove(solution,move,LocalSearchWeights{}); return move.eval;
   }
   static bool eject(LocalSearch& search,Solution& solution,int depth) { return search.ejectionChain(solution,depth); }
+  static void apply(LocalSearch& search,Solution& solution,const MoveDescriptor& move) { search.applyMove(solution,move); }
 };
 static std::shared_ptr<Instance> instance(int customers,double capacity=100,double battery=1000) {
   std::vector<std::shared_ptr<Node>> nodes{std::make_shared<Depot>(0,"D",0,0,0,1000)};
@@ -161,6 +163,46 @@ int main() {
     b.resetProfile();
     audit::require(b.getProfile().enabled,"reset preserves enabled flag");
     for(const auto& e:b.getProfile().entries) audit::require(e.calls==0 && e.inclusiveNs==0,"reset counters");
+  });
+  test("evaluated intra and inter moves agree with their actual canonical commit",[] {
+    std::mt19937 rng(513);
+    std::array<int,12> exercised{};
+    for(int sample=0;sample<32;++sample) {
+      std::vector<std::shared_ptr<Node>> nodes{std::make_shared<Depot>(0,"D",0,0,0,1000)};
+      for(int id=1;id<=8;++id) nodes.push_back(std::make_shared<Customer>(id,"C",rng()%40,rng()%40,1,0,1000,0));
+      nodes.push_back(std::make_shared<Station>(9,"S",20,20,0,1000,1));
+      auto inst=std::make_shared<Instance>(nodes,100,1000,1,1);
+      Solution original(inst); original.addRoute(makeRoute(inst,{1,2,9,3,4}));
+      original.addRoute(makeRoute(inst,{5,6,7,8})); original.evaluateRoutes();
+      std::vector<MoveDescriptor> moves;
+      auto add=[&](MoveType type,int first,int p,int second,int q,int length=1,int length2=1) {
+        MoveDescriptor move; move.type=type; move.routeIdx1=first; move.routeIdx2=second;
+        move.nodeIdx1=p; move.nodeIdx2=q; move.segmentLength=length; move.segmentLength2=length2;
+        moves.push_back(move);
+      };
+      add(MoveType::INTRA_RELOCATE,0,1,0,6); add(MoveType::INTRA_RELOCATE,0,5,0,1);
+      add(MoveType::INTRA_TWO_OPT,0,1,0,5); add(MoveType::INTRA_TWO_OPT,0,2,0,4);
+      add(MoveType::INTRA_SWAP,0,1,0,5); add(MoveType::INTER_RELOCATE,0,1,1,5);
+      add(MoveType::INTER_SWAP,0,2,1,4); add(MoveType::INTER_OR_OPT,0,1,0,6,2);
+      add(MoveType::INTER_OR_OPT,0,4,0,1,2); add(MoveType::INTER_OR_OPT,0,1,1,2,2);
+      add(MoveType::INTER_CROSS_EXCHANGE,0,1,1,2,2,3); add(MoveType::STATION_REMOVE,0,3,-1,-1);
+      LocalSearch search(inst);
+      for(auto move:moves) {
+        const auto hash=original.getHash(); const double before=original.getTotalDistance();
+        const auto evaluated=LocalSearchTestAccess::evaluate(search,original,move);
+        audit::require(hash==original.getHash(),"trial evaluation changed original sequence");
+        audit::near(original.getTotalDistance(),before,"trial evaluation changed original objective");
+        if(!evaluated.isFeasible) continue;
+        auto committed=original; LocalSearchTestAccess::apply(search,committed,move);
+        committed.evaluateRoutes(); audit::validateSolution(committed,*inst);
+        audit::near(committed.getTotalDistance()-before,evaluated.distanceDelta,"trial versus committed distance");
+        ++exercised[static_cast<std::size_t>(move.type)];
+      }
+    }
+    for(auto type:{MoveType::INTRA_RELOCATE,MoveType::INTRA_TWO_OPT,MoveType::INTRA_SWAP,
+                  MoveType::INTER_RELOCATE,MoveType::INTER_SWAP,MoveType::INTER_OR_OPT,
+                  MoveType::INTER_CROSS_EXCHANGE,MoveType::STATION_REMOVE})
+      audit::require(exercised[static_cast<std::size_t>(type)]>0,"supported move type must be exercised");
   });
   std::cout<<"RESULT passed="<<passed<<" failed="<<failed<<'\n';
   return failed?1:0;

@@ -83,6 +83,7 @@ struct ALNSConfig {
       scatterSearchConfig; // Dùng mặc định của ScatterSearch::Config
 
   bool enableLogging = false;  // Mặc định là tắt
+  bool logEveryIteration = false; // Full experiment logs; legacy sampling stays available.
   unsigned int randomSeed = 0; // 0 means use random_device (time-based)
 
 // 9. Penalty Relaxation for Constraint Violation

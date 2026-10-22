@@ -1,5 +1,9 @@
 # FP-PALNS-NoEQ — branch `first-noEq`
 
+Historical ablation/audit notes for commit `304e29c`. The current public commands
+are in the root `README.md`. The unified runner fixes the variant per branch;
+use `first` for FP-PALNS rather than overriding `ALNS_NO_EQUITY` on this branch.
+
 Base: `first` at `0bafe274d75520ac7802e1f20be10a43ef684e7f`.
 Delivery-only EVRPTW with partial recharging; feasibility, charging, distance
 matrix assumptions, local search and all previous correctness fixes are inherited.

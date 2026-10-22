@@ -356,6 +356,7 @@ std::vector<Solution> ALNSSolver::solve() {
     bool improved = false;
 
     if (!s_new.isFeasible()) {
+      result = "Infeasible after repair";
       destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
       repairPool.scores[repair_op_idx] += config.scoreIdentical;
       goto end_iteration;
@@ -382,8 +383,10 @@ std::vector<Solution> ALNSSolver::solve() {
         std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count();
 
     s_new.evaluateRoutes();
-    if (!s_new.isFeasible())
+    if (!s_new.isFeasible()) {
+      result = "Infeasible after local search";
       goto end_iteration;
+    }
 
     // ── Acceptance ──────────────────────────────────────────────────────────
     if (search::dominates(s_new, s_current)) {
@@ -479,12 +482,14 @@ std::vector<Solution> ALNSSolver::solve() {
     stats.acceptance_us +=
         std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count();
 
-    if (i % 50 == 0) {
+    if (!config.logEveryIteration && i % 50 == 0) {
       logger->logEvolutionStep(i, destroy_op->getName(), repair_op->getName(),
                                result, s_new);
     }
 
   end_iteration:
+    if (config.logEveryIteration)
+      logger->logEvolutionStep(i, destroy_op->getName(), repair_op->getName(), result, s_new);
     currentTemperature *= config.coolingRate;
     if (currentTemperature < config.minTemperature)
       currentTemperature = config.minTemperature;
@@ -831,6 +836,10 @@ std::vector<Solution> ALNSSolver::solve() {
             << "Perturbations fired: " << perturbationCount_ << "\n\n";
 
   // ── Scatter Search
+  if (runStatistics_.completedIterations % config.segmentIterations != 0) {
+    logger->logProgress(runStatistics_.completedIterations, total_ms, archive);
+    logger->logOperatorSegment(runStatistics_.completedIterations, destroyPool, repairPool);
+  }
   // ──────────────────────────────────────────────────────────
   if (config.useScatterSearch && archive.getSize() >= 2) {
     std::cout << "[SS] Starting Scatter Search intensification...\n";

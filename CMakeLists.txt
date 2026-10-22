@@ -4,8 +4,12 @@ cmake_minimum_required(VERSION 3.17)
 # Đặt tên dự án
 project(untitled LANGUAGES CXX)
 
+option(BUILD_TESTING "Build regression tests" OFF)
+option(ALNS_BUILD_LEGACY_TOOLS "Build historical debug, tuning and benchmark programs" OFF)
+if(ALNS_BUILD_LEGACY_TOOLS)
 add_executable(RunJD src/test/RunJD.cpp)
 target_link_libraries(RunJD PRIVATE alns_lib)
+endif()
 
 
 # Yêu cầu tiêu chuẩn C++17
@@ -48,6 +52,7 @@ file(GLOB_RECURSE COMMON_SRCS
 
 # Loại bỏ các file chứa hàm main() khỏi danh sách thư viện chung
 list(REMOVE_ITEM COMMON_SRCS
+        "${CMAKE_SOURCE_DIR}/src/app/ExperimentRunner.cpp"
         "${CMAKE_SOURCE_DIR}/src/main.cpp"
         "${CMAKE_SOURCE_DIR}/src/test/TestALNS.cpp"
 )
@@ -56,6 +61,8 @@ list(REMOVE_ITEM COMMON_SRCS
 # 2. Tạo thư viện tĩnh (Static Library) từ các file nguồn chung
 # -------------------------------------------------------------
 add_library(alns_lib STATIC ${COMMON_SRCS})
+add_executable(evrptw src/app/ExperimentRunner.cpp)
+target_link_libraries(evrptw PRIVATE alns_lib)
 
 # Thêm thư mục include cho thư viện và cho bất kỳ target nào liên kết với nó
 target_include_directories(alns_lib PUBLIC
@@ -63,7 +70,7 @@ target_include_directories(alns_lib PUBLIC
 )
 
 # first-noEq: inherit calibrated parameters, disable equity in search only.
-option(ALNS_NO_EQUITY "Build FP-PALNS-NoEQ (Gini remains reported)" ON)
+set(ALNS_NO_EQUITY ON CACHE BOOL "Branch policy: FP-PALNS-NoEQ (Gini remains reported)" FORCE)
 if(ALNS_NO_EQUITY)
     target_compile_definitions(alns_lib PUBLIC ALNS_NO_EQUITY=1)
 else()
@@ -79,6 +86,7 @@ endif()
 # -------------------------------------------------------------
 # 3. Tạo file thực thi chính (Executable)
 # -------------------------------------------------------------
+if(ALNS_BUILD_LEGACY_TOOLS)
 add_executable(untitled src/main.cpp)
 
 # Liên kết thư viện alns_lib vào chương trình chính
@@ -90,6 +98,7 @@ target_link_libraries(untitled PRIVATE alns_lib)
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/TestALNS.cpp")
     add_executable(TestALNS src/test/TestALNS.cpp)
     target_link_libraries(TestALNS PRIVATE alns_lib)
+endif()
 endif()
 
 include(CTest)
@@ -131,6 +140,7 @@ endif()
 # -------------------------------------------------------------
 # 5. Tạo file thực thi Tuning (Tuning Executable)
 # -------------------------------------------------------------
+if(ALNS_BUILD_LEGACY_TOOLS)
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/tuning/TuningApp.cpp")
     add_executable(TuningApp src/tuning/TuningApp.cpp)
     target_link_libraries(TuningApp PRIVATE alns_lib)
@@ -159,4 +169,5 @@ endif()
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/BenchmarkEVRPTWMF.cpp")
     add_executable(BenchmarkEVRPTWMF src/test/BenchmarkEVRPTWMF.cpp)
     target_link_libraries(BenchmarkEVRPTWMF PRIVATE alns_lib)
+endif()
 endif()

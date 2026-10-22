@@ -56,6 +56,7 @@ namespace logging {
         std::ofstream progressFile;
         std::ofstream operatorFile;
         std::ofstream evolutionLogFile;
+        std::ofstream iterationFile;
         std::ofstream frontObjFile;
         std::ofstream frontDetailFile;
         std::ofstream summaryFile;

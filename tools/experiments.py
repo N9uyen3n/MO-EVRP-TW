@@ -175,9 +175,13 @@ def main(argv=None):
             sub.add_argument("--instance", type=Path, required=True)
             sub.add_argument("--seed", type=int, default=1)
         else:
-            sub.add_argument("--instances-dir", type=Path, required=True)
+            inputs = sub.add_mutually_exclusive_group(required=True)
+            inputs.add_argument("--instances-dir", type=Path)
+            inputs.add_argument("--instance", type=Path)
             sub.add_argument("--pattern", default="*.txt")
             sub.add_argument("--workers", type=int, required=True)
+            sub.add_argument("--runs", type=int, default=10)
+            sub.add_argument("--seed-start", type=int, default=1)
     args = parser.parse_args(argv)
     stop, lock, active = threading.Event(), threading.Lock(), set()
     pool = None
@@ -188,11 +192,16 @@ def main(argv=None):
                 raise ValueError("Seed must be in [1, 4294967295]")
             sources, workers = [args.instance], 1
         else:
-            if not args.instances_dir.is_dir() or args.workers <= 0:
-                raise ValueError("Valid instances directory and positive workers required")
+            if args.workers <= 0 or args.runs <= 0:
+                raise ValueError("Positive workers and runs required")
+            if not 1 <= args.seed_start <= args.seed_start+args.runs-1 <= 2**32-1:
+                raise ValueError("All scheduled seeds must be in [1, 4294967295]")
+            if args.instances_dir is not None and not args.instances_dir.is_dir():
+                raise ValueError("Valid instances directory required")
             if "/" in args.pattern or "\\" in args.pattern:
                 raise ValueError("Pattern must select files directly within the given folder")
-            sources, workers = sorted(args.instances_dir.glob(args.pattern)), args.workers
+            sources = [args.instance] if args.instance is not None else sorted(args.instances_dir.glob(args.pattern))
+            workers = args.workers
         output = args.output.resolve()
         if output.exists():
             raise ValueError("Refusing to overwrite output: "+str(output))
@@ -200,9 +209,11 @@ def main(argv=None):
         if args.mode=="benchmark":
             output.mkdir(parents=True, exist_ok=False)
         jobs = [(source, data, seed, output/source.stem/f"seed_{seed}")
-                for source, data in files for seed in range(1,11)] if args.mode=="benchmark" else [(*files[0], args.seed, output)]
+                for source, data in files for seed in range(args.seed_start,args.seed_start+args.runs)] if args.mode=="benchmark" else [(*files[0], args.seed, output)]
         manifest = dict(provenance, mode=args.mode, workers=workers, jobs=len(jobs), completed=0, status="running")
         if args.mode=="benchmark":
+            manifest.update(runs_per_instance=args.runs, seed_start=args.seed_start,
+                            seed_end=args.seed_start+args.runs-1)
             write_json(output/"benchmark.json", manifest)
         pool = ThreadPoolExecutor(max_workers=workers)
         futures = [pool.submit(run_one, binary, source, data, config, seed, folder, provenance, stop, active, lock)

@@ -48,6 +48,7 @@ public:
   int run(ParetoArchive &archive, ALNSSolver &solver);
 
 private:
+  friend struct SearchPolicyTestAccess;
   // ── Path Relinking ──
 
   /// A single relocation move: move customerId to the route identified by
@@ -95,7 +96,7 @@ private:
   void rebuildRefSetFromArchive(ParetoArchive &archive);
 
   /**
-   * @brief Compute NSGA-II crowding distance over 3 objectives.
+   * @brief Compute NSGA-II crowding over active objectives (NoEQ skips Gini).
    * Returns per-solution crowding distance. Boundary solutions get infinity.
    */
   static std::vector<double>

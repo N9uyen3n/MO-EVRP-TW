@@ -1,3 +1,4 @@
+#include "alns/SearchObjectives.h"
 #include "../../include/alns/ParetoArchive.h"
 #include <algorithm>
 #include <cmath> // For std::abs
@@ -42,7 +43,7 @@ const std::vector<Solution> &ParetoArchive::getFront() const {
           break; // archiveByVehicles_ is std::map, so it's ordered by key
 
         for (const auto &betterSol : lowerKv.second) {
-          if (betterSol.dominates(sol)) {
+          if (alns::search::dominates(betterSol, sol)) {
             isDominatedGlobally = true;
             break;
           }
@@ -96,7 +97,7 @@ AddResult ParetoArchive::tryAdd(const Solution &newSolution) {
     // Check for duplicates
     bool sameDist = std::abs(existingSolution.getTotalDistance() -
                              newSolution.getTotalDistance()) < EPSILON;
-    bool sameWorkload = std::abs(existingSolution.getWorkloadGini() -
+    bool sameWorkload = !alns::search::equityEnabled || std::abs(existingSolution.getWorkloadGini() -
                                  newSolution.getWorkloadGini()) < EPSILON;
     bool sameMaxTime = std::abs(existingSolution.getMaxTime() -
                                 newSolution.getMaxTime()) < EPSILON;
@@ -105,16 +106,13 @@ AddResult ParetoArchive::tryAdd(const Solution &newSolution) {
       return AddResult::IDENTICAL;
     }
 
-    // Since they have the same number of vehicles, we just check Pareto
-    // dominance on the remaining objectives (Distance, Gini, MaxTime). Both
-    // solutions evaluate to 'false' on the totalVehicles difference in
-    // Solution::dominates.
-    if (existingSolution.dominates(newSolution)) {
+    // Equal fleet: use the active search objectives (NoEQ omits Gini).
+    if (alns::search::dominates(existingSolution, newSolution)) {
       isDominated = true;
       break;
     }
 
-    if (newSolution.dominates(existingSolution)) {
+    if (alns::search::dominates(newSolution, existingSolution)) {
       dominatedIndices.push_back(static_cast<int>(i));
     }
   }
@@ -209,6 +207,7 @@ void ParetoArchive::prune(int veh) {
   std::iota(indices.begin(), indices.end(), 0);
 
   for (int m = 0; m < numObjectives; ++m) {
+    if (!alns::search::equityEnabled && m == 1) continue;
     // Sort by the current objective
     auto sortFn = [&](int a, int b) {
       switch (m) {
@@ -531,4 +530,28 @@ void ParetoArchive::expandNadirIfNeeded(const Solution &sol) {
   if (d * 1.1 > refNadirDist_)    refNadirDist_    = d * 1.2;
   if (g * 1.1 > refNadirGini_)    refNadirGini_    = g * 1.2;
   if (t * 1.1 > refNadirMaxTime_) refNadirMaxTime_ = t * 1.2;
+}
+
+// Preserve legacy D x G convergence for FP-PALNS. NoEQ uses D x MaxTime;
+// computeHypervolume() continues to provide ex-post 3D reporting only.
+double ParetoArchive::computeSearchHypervolume() const {
+  if constexpr (alns::search::equityEnabled) return computeHypervolume2D();
+  constexpr double ref = 1.1;
+  std::vector<std::pair<double,double>> points;
+  for (const auto& sol : getFront()) {
+    double d = std::max(0.0, (sol.getTotalDistance()-refIdealDist_) /
+                             std::max(1e-6, refNadirDist_-refIdealDist_));
+    double t = std::max(0.0, (sol.getMaxTime()-refIdealMaxTime_) /
+                             std::max(1e-6, refNadirMaxTime_-refIdealMaxTime_));
+    if (d < ref && t < ref) points.emplace_back(d,t);
+  }
+  std::sort(points.begin(),points.end());
+  double hv = 0.0, bestTime = ref;
+  for (const auto& point : points) {
+    if (point.second < bestTime) {
+      hv += (ref-point.first)*(bestTime-point.second);
+      bestTime = point.second;
+    }
+  }
+  return hv;
 }

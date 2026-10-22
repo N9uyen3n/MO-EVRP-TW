@@ -1,3 +1,4 @@
+#include "alns/SearchObjectives.h"
 #include "../../include/alns/ALNSSolver.h"
 
 // --- Logger ---
@@ -271,18 +272,11 @@ std::vector<Solution> ALNSSolver::solve() {
 
   // ── MOEA/D weight vectors
   // ───────────────────────────────────────────────────
-  struct WeightVector {
-    double dist, gini, time;
-  };
-  static const std::vector<WeightVector> weightVectors = {
-      {1.00, 0.00, 0.00}, {0.00, 1.00, 0.00}, {0.00, 0.00, 1.00},
-      {0.50, 0.50, 0.00}, {0.30, 0.60, 0.10}, {0.00, 0.60, 0.40},
-      {0.60, 0.25, 0.15}, {0.10, 0.65, 0.25}, {0.20, 0.30, 0.50},
-      {0.33, 0.34, 0.33},
-  };
-
-  std::cout << "[HV] Using 3D Hypervolume (Distance, Gini, MaxTime), "
-               "ref z_r = (1.1, 1.1, 1.1)\n";
+  const auto& weightVectors = search::weights();
+  std::cout << "[SEARCH] " << search::variant
+            << " archive=(" << search::archiveObjectives << ")"
+            << " convergence_HV=" << (search::equityEnabled ? "Distance x Gini" : "Distance x MaxTime")
+            << " (reported Gini retained)\n";
   int per = 2;
   // ── Main loop
   // ───────────────────────────────────────────────────────────────
@@ -362,6 +356,7 @@ std::vector<Solution> ALNSSolver::solve() {
     bool improved = false;
 
     if (!s_new.isFeasible()) {
+      result = "Infeasible after repair";
       destroyPool.scores[destroy_op_idx] += config.scoreIdentical;
       repairPool.scores[repair_op_idx] += config.scoreIdentical;
       goto end_iteration;
@@ -388,11 +383,13 @@ std::vector<Solution> ALNSSolver::solve() {
         std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count();
 
     s_new.evaluateRoutes();
-    if (!s_new.isFeasible())
+    if (!s_new.isFeasible()) {
+      result = "Infeasible after local search";
       goto end_iteration;
+    }
 
     // ── Acceptance ──────────────────────────────────────────────────────────
-    if (s_new.dominates(s_current)) {
+    if (search::dominates(s_new, s_current)) {
       archive.tryAdd(s_new);
       s_current = s_new;
       destroyPool.scores[destroy_op_idx] += config.scoreDominating;
@@ -419,8 +416,8 @@ std::vector<Solution> ALNSSolver::solve() {
         for (const auto &sol : front) {
           minDist = std::min(minDist, sol.getTotalDistance());
           maxDist = std::max(maxDist, sol.getTotalDistance());
-          minGini = std::min(minGini, sol.getWorkloadGini());
-          maxGini = std::max(maxGini, sol.getWorkloadGini());
+          minGini = std::min(minGini, search::gini(sol));
+          maxGini = std::max(maxGini, search::gini(sol));
           minTime = std::min(minTime, sol.getMaxTime());
           maxTime = std::max(maxTime, sol.getMaxTime());
         }
@@ -430,9 +427,9 @@ std::vector<Solution> ALNSSolver::solve() {
         maxDist =
             std::max(s_current.getTotalDistance(), s_new.getTotalDistance());
         minGini =
-            std::min(s_current.getWorkloadGini(), s_new.getWorkloadGini());
+            std::min(search::gini(s_current), search::gini(s_new));
         maxGini =
-            std::max(s_current.getWorkloadGini(), s_new.getWorkloadGini());
+            std::max(search::gini(s_current), search::gini(s_new));
         minTime = std::min(s_current.getMaxTime(), s_new.getMaxTime());
         maxTime = std::max(s_current.getMaxTime(), s_new.getMaxTime());
       }
@@ -451,7 +448,7 @@ std::vector<Solution> ALNSSolver::solve() {
               (s_new.getTotalDistance() - s_current.getTotalDistance()) /
               distR +
           SA_SCALE * w.gini *
-              (s_new.getWorkloadGini() - s_current.getWorkloadGini()) / giniR +
+              (search::gini(s_new) - search::gini(s_current)) / giniR +
           SA_SCALE * w.time * (s_new.getMaxTime() - s_current.getMaxTime()) /
               timeR;
 
@@ -485,12 +482,14 @@ std::vector<Solution> ALNSSolver::solve() {
     stats.acceptance_us +=
         std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count();
 
-    if (i % 50 == 0) {
+    if (!config.logEveryIteration && i % 50 == 0) {
       logger->logEvolutionStep(i, destroy_op->getName(), repair_op->getName(),
                                result, s_new);
     }
 
   end_iteration:
+    if (config.logEveryIteration)
+      logger->logEvolutionStep(i, destroy_op->getName(), repair_op->getName(), result, s_new);
     currentTemperature *= config.coolingRate;
     if (currentTemperature < config.minTemperature)
       currentTemperature = config.minTemperature;
@@ -618,13 +617,13 @@ std::vector<Solution> ALNSSolver::solve() {
       auto &front = archive.getFront();
       if (front.size() > 1) {
         double minDist = front[0].getTotalDistance(), maxDist = minDist;
-        double minGini = front[0].getWorkloadGini(), maxGini = minGini;
+        double minGini = search::gini(front[0]), maxGini = minGini;
         double minTime = front[0].getMaxTime(), maxTime = minTime;
         for (const auto &sol : front) {
           minDist = std::min(minDist, sol.getTotalDistance());
           maxDist = std::max(maxDist, sol.getTotalDistance());
-          minGini = std::min(minGini, sol.getWorkloadGini());
-          maxGini = std::max(maxGini, sol.getWorkloadGini());
+          minGini = std::min(minGini, search::gini(sol));
+          maxGini = std::max(maxGini, search::gini(sol));
           minTime = std::min(minTime, sol.getMaxTime());
           maxTime = std::max(maxTime, sol.getMaxTime());
         }
@@ -637,7 +636,7 @@ std::vector<Solution> ALNSSolver::solve() {
         for (const auto &sol : front) {
           double scalar =
               nextW.dist * (sol.getTotalDistance() - minDist) / distR +
-              nextW.gini * (sol.getWorkloadGini() - minGini) / giniR +
+              nextW.gini * (search::gini(sol) - minGini) / giniR +
               nextW.time * (sol.getMaxTime() - minTime) / timeR;
           if (scalar < bestScalar) {
             bestScalar = scalar;
@@ -738,7 +737,7 @@ std::vector<Solution> ALNSSolver::solve() {
                 destroyPool.weights[idx], destroyPool.initialWeights[idx]);
         } else {
           // double currentHV    = archive.computeHypervolume();
-          double currentHV = archive.computeHypervolume2D();
+          double currentHV = archive.computeSearchHypervolume();
           double hvImprovement = 0.0;
 
           if (previousHV_ == 0.0 && currentHV > 1e-9) {
@@ -837,6 +836,10 @@ std::vector<Solution> ALNSSolver::solve() {
             << "Perturbations fired: " << perturbationCount_ << "\n\n";
 
   // ── Scatter Search
+  if (runStatistics_.completedIterations % config.segmentIterations != 0) {
+    logger->logProgress(runStatistics_.completedIterations, total_ms, archive);
+    logger->logOperatorSegment(runStatistics_.completedIterations, destroyPool, repairPool);
+  }
   // ──────────────────────────────────────────────────────────
   if (config.useScatterSearch && archive.getSize() >= 2) {
     std::cout << "[SS] Starting Scatter Search intensification...\n";
@@ -900,7 +903,8 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
         std::static_pointer_cast<IRepairOperator>(repairPool.operators[r_idx]);
     // Wire weight hint for AdaptiveInsertion in mini-loop too
     if (auto adaptive = std::dynamic_pointer_cast<AdaptiveInsertion>(r_op)) {
-      adaptive->setWeightHint(0.33, 0.33, 0.34); // Balanced in mini-loop
+      const auto hint = search::project({0.33, 0.33, 0.34});
+      adaptive->setWeightHint(hint.dist, hint.gini, hint.time); // Balanced in mini-loop
     }
     r_op->execute(s_new, unserved, randomEngine);
 
@@ -920,7 +924,7 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
     }
 
     // Acceptance (dominance or SA)
-    if (s_new.dominates(s_imp)) {
+    if (search::dominates(s_new, s_imp)) {
       s_imp = s_new;
     } else {
       double baseDist = std::max(1.0, s_imp.getTotalDistance());
@@ -932,7 +936,7 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
       // giniR: dùng giá trị tuyệt đối s_imp (không phải 0.1 cố định)
       // timeR: dùng 10% maxTime của s_imp
       double distR = std::max(1.0, baseDist * 0.1);
-      double giniR = std::max(0.001, s_imp.getWorkloadGini() * 0.5);
+      double giniR = std::max(0.001, search::gini(s_imp) * 0.5);
       double timeR = std::max(1.0, s_imp.getMaxTime() * 0.1);
 
       if (archive.getSize() > 0) {
@@ -942,8 +946,8 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
         for (const auto &sol : archive.getFront()) {
           minDist = std::min(minDist, sol.getTotalDistance());
           maxDist = std::max(maxDist, sol.getTotalDistance());
-          minGini = std::min(minGini, sol.getWorkloadGini());
-          maxGini = std::max(maxGini, sol.getWorkloadGini());
+          minGini = std::min(minGini, search::gini(sol));
+          maxGini = std::max(maxGini, search::gini(sol));
           minTime = std::min(minTime, sol.getMaxTime());
           maxTime = std::max(maxTime, sol.getMaxTime());
         }
@@ -956,7 +960,7 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
           veh_penalty * (s_new.getTotalVehicles() - s_imp.getTotalVehicles()) +
           SA_SCALE * 0.6 *
               (s_new.getTotalDistance() - s_imp.getTotalDistance()) / distR +
-          SA_SCALE * 0.2 * (s_new.getWorkloadGini() - s_imp.getWorkloadGini()) /
+          SA_SCALE * 0.2 * (search::gini(s_new) - search::gini(s_imp)) /
               giniR +
           SA_SCALE * 0.2 * (s_new.getMaxTime() - s_imp.getMaxTime()) / timeR;
       if (std::exp(-delta / temp) > dis(randomEngine)) {
@@ -969,7 +973,7 @@ void ALNSSolver::improveSolution(Solution &sol, int maxIters) {
   }
 
   // Return the best found: use s_imp if better, else keep original sol
-  if (s_imp.isFeasible() && s_imp.dominates(sol)) {
+  if (s_imp.isFeasible() && search::dominates(s_imp, sol)) {
     sol = s_imp;
   } else if (s_imp.isFeasible() &&
              s_imp.getTotalVehicles() == sol.getTotalVehicles() &&

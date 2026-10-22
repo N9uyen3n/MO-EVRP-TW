@@ -1,3 +1,4 @@
+#include "alns/SearchObjectives.h"
 #include "../../include/alns/ScatterSearch.h"
 #include "../../include/alns/ALNSSolver.h"
 #include "../../include/core/Instance.h"
@@ -55,6 +56,7 @@ ScatterSearch::computeCrowdingDistance(const std::vector<Solution> &front) {
   const int numObjectives = 3; // distance, gini, maxTime
 
   for (int obj = 0; obj < numObjectives; ++obj) {
+    if (!search::equityEnabled && obj == 1) continue;
     // Sort indices by this objective
     std::vector<int> idx(n);
     std::iota(idx.begin(), idx.end(), 0);

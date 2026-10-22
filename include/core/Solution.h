@@ -70,6 +70,7 @@ public:
   bool hasValidHint() const;
 
 private:
+    friend struct SearchObjectivesTestAccess;
     void detach(); // Private method for Copy-on-Write
     std::shared_ptr<Instance> instance;
     std::shared_ptr<std::vector<Route>> routes; // Changed to shared_ptr

@@ -1,3 +1,4 @@
+#include "alns/SearchObjectives.h"
 // src/logger/ComprehensiveLogger.cpp
 #include "../../include/logger/ComprehensiveLogger.h"
 #include "../../include/alns/ALNSSolver.h"
@@ -9,6 +10,7 @@
 #include <iostream>
 #include <limits>
 #include <numeric>
+#include <stdexcept>
 
 
 namespace logging {
@@ -33,16 +35,17 @@ ComprehensiveLogger::ComprehensiveLogger(const std::string &outputDirectory,
   progressFile.open(filePrefix + "_progress.csv");
   operatorFile.open(filePrefix + "_operators.csv");
   evolutionLogFile.open(filePrefix + "_evolution_log.txt");
+  iterationFile.open(filePrefix + "_iterations.csv");
+  iterationFile << "iteration,destroy,repair,result,vehicles,distance,gini,max_time,feasible\n" << std::setprecision(17);
   frontObjFile.open(filePrefix + "_front_objectives.csv");
   frontDetailFile.open(filePrefix + "_front_details.txt");
   summaryFile.open(filePrefix + "_summary.txt");
 
   if (!configFile.is_open() || !progressFile.is_open() ||
-      !operatorFile.is_open() || !evolutionLogFile.is_open() ||
+      !operatorFile.is_open() || !evolutionLogFile.is_open() || !iterationFile.is_open() ||
       !frontObjFile.is_open() || !frontDetailFile.is_open() ||
       !summaryFile.is_open()) {
-    std::cerr << "FATAL ERROR: Logger could not open all output files."
-              << std::endl;
+    throw std::runtime_error("Logger could not open all output files");
   }
 
   // Ghi headers
@@ -126,12 +129,36 @@ void ComprehensiveLogger::initSummaryFile() {
 void ComprehensiveLogger::logConfig(const alns::ALNSConfig &config) {
   if (!configFile.is_open())
     return;
+  configFile << "variant: " << alns::search::variant << "\n"
+             << "searchArchiveObjectives: " << alns::search::archiveObjectives << "\n"
+             << "reportedObjectives: Z1,Z2,Z3,Z4\n"
+             << "equitySearchEnabled: " << alns::search::equityEnabled << "\n"
+             << "independentRecalibration: false\n";
   configFile << "maxIterations: " << config.maxIterations << "\n"
              << "segmentIterations: " << config.segmentIterations << "\n"
              << "decayParameter: " << config.decayParameter << "\n"
              << "scoreDominating: " << config.scoreDominating
              << "\n"
-             // ... (Ghi TẤT CẢ các tham số khác trong config) ...
+             << "scoreNonDominated: " << config.scoreNonDominated << "\n"
+             << "scoreDominated: " << config.scoreDominated << "\n"
+             << "scoreIdentical: " << config.scoreIdentical << "\n"
+             << "minRemoval: " << config.minRemoval << "\n"
+             << "maxRemoval: " << config.maxRemoval << "\n"
+             << "localSearchIntensity: " << config.localSearchIntensity << "\n"
+             << "useLocalSearch: " << config.useLocalSearch << "\n"
+             << "startTemperature: " << config.startTemperature << "\n"
+             << "coolingRate: " << config.coolingRate << "\n"
+             << "minTemperature: " << config.minTemperature << "\n"
+             << "SAScale: " << config.SAScale << "\n"
+             << "maxTime: " << config.maxTime << "\n"
+             << "randomSeed: " << config.randomSeed << "\n"
+             << "hvImprovementThreshold: " << config.hvImprovementThreshold << "\n"
+             << "hvStagnationLimit: " << config.hvStagnationLimit << "\n"
+             << "useScatterSearch: " << config.useScatterSearch << "\n"
+             << "useChargingRepairLS: " << config.useChargingRepairLS << "\n"
+             << "reconstructionCacheMode: " << static_cast<int>(config.reconstructionCacheMode) << "\n"
+             << "useSelectiveEjectionUndo: " << config.useSelectiveEjectionUndo << "\n"
+             << "orOptCacheMode: " << static_cast<int>(config.orOptCacheMode) << "\n"
              << "enableLogging: " << (config.enableLogging ? "true" : "false")
              << "\n";
 }
@@ -186,6 +213,15 @@ void ComprehensiveLogger::logEvolutionStep(int iteration,
                                            const Solution &newSolution) {
   if (!evolutionLogFile.is_open())
     return;
+  auto quoted=[](const std::string& value) {
+    std::string result="\"";
+    for(char ch:value) { if(ch=='\"') result+='\"'; result+=ch; }
+    return result+'\"';
+  };
+  iterationFile << iteration << ',' << quoted(destroyOp) << ',' << quoted(repairOp) << ',' << quoted(result)
+                << ',' << newSolution.getTotalVehicles() << ',' << newSolution.getTotalDistance()
+                << ',' << newSolution.getWorkloadGini() << ',' << newSolution.getMaxTime()
+                << ',' << newSolution.isFeasible() << '\n';
   evolutionLogFile << "----------------------------------------\n"
                    << "[Iteration: " << iteration << " | Result: " << result
                    << "]\n"

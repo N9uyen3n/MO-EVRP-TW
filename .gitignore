@@ -6,3 +6,12 @@
 /artifacts/alns_p6/
 /artifacts/alns_p7/
 /artifacts/alns_smd/
+
+# Local builds, IDE state and experiment results are not source code.
+/build*/
+/cmake-build*/
+/.idea/
+/results/
+/logs*/
+__pycache__/
+*.pyc

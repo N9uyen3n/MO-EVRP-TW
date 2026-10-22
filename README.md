@@ -1,5 +1,11 @@
 # EVRPTW-PR experiments
 
+## Tài liệu tiếng Việt
+
+- [Hướng dẫn đầy đủ: build, single, benchmark một file/cả thư mục, số lần chạy, seed, workers và kiểm định](docs/HUONG_DAN_CHAY.md)
+- [Toàn bộ tham số: mặc định, đơn vị, miền giá trị và cách override JSON](docs/THAM_SO.md)
+- [Chi tiết mã nguồn: luồng xử lý, mô hình bài toán, ALNS, toán tử, local search và Full/NoEQ](docs/SOURCE_CODE.md)
+
 Delivery-only EVRPTW with partial recharging. Both branches use the same commands:
 `first` builds FP-PALNS; `first-noEq` builds FP-PALNS-NoEQ. NoEQ excludes Gini
 from search decisions and retains its true value in the results. JD input is
@@ -45,7 +51,10 @@ python run.py benchmark --instances-dir data/solomon --config configs/default.js
 This selects `*.txt` directly inside the given directory. Override `--pattern`
 if needed. `--workers n` runs at most `n` independent solver processes, each with
 its own random generator, seed and output files. It does not share one ALNS
-search across threads. Every selected instance always runs seeds **1–10**.
+search across threads. Every selected instance defaults to seeds **1–10**.
+Use `--runs N --seed-start S` to run N consecutive seeds starting at S.
+To benchmark one file repeatedly, replace `--instances-dir data/solomon` with
+`--instance data/solomon/r101_21.txt`.
 
 ```text
 results/benchmark/
@@ -74,7 +83,7 @@ output directories are refused; choose a new output directory for each batch.
 Edit or copy `configs/default.json`. A custom JSON file may contain only the
 values you want to override; all other values inherit the checked-in defaults.
 Unknown/duplicate keys and invalid types/ranges are errors, never silently
-ignored. Seed belongs to the command (single) or to the fixed benchmark schedule.
+ignored. Seed belongs to the command (single) or benchmark seed schedule.
 
 `maxTime` is **milliseconds of ALNS search time**, not a hard process timeout.
 Initialization occurs before it, a running neighborhood can overrun it, and
@@ -121,7 +130,7 @@ feasibility flags. A feasible result is not a certificate of optimality.
 
 ## Quick verification of this setup
 
-Both variants were built in WSL Release and passed 11 functional tests each:
+Both variants were built in WSL Release and passed the functional checks:
 single-run artifacts, two small instances × seeds 1–10 with three parallel
 processes, sequential/parallel consistency, overwrite protection, configuration
 validation, initialization failure, and rejection of tampered battery/objectives,

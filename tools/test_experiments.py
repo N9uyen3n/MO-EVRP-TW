@@ -143,6 +143,22 @@ class ExperimentTests(unittest.TestCase):
         for name in ("results.csv","schedules.csv"):
             self.assertEqual((single/name).read_bytes(),(output/"first/seed_1"/name).read_bytes(),name)
 
+    def test_one_file_benchmark_with_custom_repeat_count_and_seed_range(self):
+        output = self.root/"one file batch"
+        self.launch("benchmark","--instance",self.source,"--workers",2,
+                    "--runs",3,"--seed-start",3,"--output",output)
+        manifest = json.loads((output/"benchmark.json").read_text())
+        self.assertEqual((manifest["jobs"],manifest["runs_per_instance"],manifest["seed_end"]),(3,3,5))
+        with (output/"summary.csv").open() as handle:
+            rows = list(csv.DictReader(handle))
+        self.assertEqual([int(row["seed"]) for row in rows],[3,4,5])
+        self.assertTrue(all(row["status"]=="ok" for row in rows))
+        for extra in (("--runs",0),("--seed-start",0),("--seed-start",4294967295,"--runs",2)):
+            invalid = self.root/"invalid batch"
+            self.launch("benchmark","--instance",self.source,"--workers",2,
+                        "--output",invalid,*extra,expected=1)
+            self.assertFalse(invalid.exists())
+
     def test_initialization_failure_is_reported_as_invalid(self):
         self.source.write_text(FIXTURE.replace("1 10 1000 1", "1 0 0 1"))
         output = self.root/"infeasible"

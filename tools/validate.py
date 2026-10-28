@@ -86,6 +86,7 @@ def validate(instance, output):
             require(all(0 <= i < len(nodes) for i in sequence), context+": unknown node")
             if not all(0 <= i < len(nodes) for i in sequence):
                 continue
+            require(any(nodes[i]["kind"] == "c" for i in sequence), context+": used route has no customer")
             require(0 not in sequence[1:-1], context+": internal depot")
             clock, battery, load = nodes[0]["ready"], params["Q"], params["C"]
             wait_sum = 0.0

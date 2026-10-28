@@ -29,6 +29,7 @@ public:
  DestroyOperatorType getDestroyType() const override { return DestroyOperatorType::SPATIAL; }
 
 private:
+    friend struct DestroyOperatorRegressionAccess;
     std::shared_ptr<Instance> instance;
     
     /**

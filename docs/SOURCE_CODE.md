@@ -1,8 +1,8 @@
 # Bản đồ mã nguồn và luồng xử lý
 
 Tài liệu mô tả giao diện thí nghiệm đang dùng trên `first` và `first-noEq`.
-Các chương trình thử nghiệm lịch sử trong `src/test` không phải entry point
-mặc định. Hướng dẫn lệnh ở [HUONG_DAN_CHAY.md](HUONG_DAN_CHAY.md), tham số ở
+Các driver thử nghiệm lịch sử đã được bỏ; `src/test` giữ checker C++ và các
+regression test liên quan. Hướng dẫn lệnh ở [HUONG_DAN_CHAY.md](HUONG_DAN_CHAY.md), tham số ở
 [THAM_SO.md](THAM_SO.md).
 
 ## 1. Luồng từ lệnh chạy đến kết quả
@@ -68,6 +68,10 @@ charge_time = g * charge_amount
 không cho phép dùng lượng sạc sau khi đến để bù pin âm trên cung trước.
 Lịch trình xuất phải tự thỏa thời gian sạc và giờ đóng cửa.
 
+`Solution::evaluateRoutes()` loại mọi tuyến không phục vụ khách, kể cả tuyến
+chỉ có depot và trạm, trước khi tính số xe và các mục tiêu. Kiểm tra khả thi
+cấp lời giải và hai checker cũng từ chối tuyến sử dụng không có khách.
+
 Mục tiêu được báo cáo:
 
 - Z1: số xe/tuyến phục vụ khách, ưu tiên fleet size.
@@ -107,7 +111,9 @@ Không phải mọi file operator trong repository đều đang chạy. Construc
 
 Các đăng ký đang comment, ví dụ VehiclePackingRepair hay UnifiedCostDestroy,
 không thuộc pool chính chỉ vì file source tồn tại. Khởi tạo/tìm kiếm phụ có thể
-có đường gọi riêng; bảng trên mô tả pool roulette của constructor.
+có đường gọi riêng; bảng trên mô tả pool roulette của constructor. Những module
+còn được tham chiếu từ solver hoặc đường tìm kiếm phụ vẫn được giữ. Các operator
+không có phụ thuộc trong giao diện hiện tại đã được bỏ khỏi nhánh.
 
 ## 5. Local search và move descriptor
 
@@ -167,6 +173,7 @@ cập nhật tài liệu và kiểm tra chức năng. Để đổi thuật toán
 giữ baseline, chạy test trước/sau; thay đổi tính khả thi cần kiểm tra replay
 trên dữ liệu thật ngoài fixture nhỏ.
 
-Mặc định CMake chỉ build entry point thí nghiệm và library. Test C++ lịch sử
-có thể bật `-DBUILD_TESTING=ON`; công cụ debug/tuning cũ bật bằng
-`-DALNS_BUILD_LEGACY_TOOLS=ON`. Không cần bật chúng để sử dụng giao diện trên.
+Mặc định CMake chỉ build entry point thí nghiệm và library bằng danh sách source
+cụ thể, không glob toàn bộ cây thư mục. Các regression test C++ liên quan
+có thể bật `-DBUILD_TESTING=ON`, build rồi chạy `ctest --test-dir build-tests`.
+Không còn tùy chọn build các driver debug/tuning cũ.

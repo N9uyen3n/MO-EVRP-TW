@@ -24,6 +24,7 @@ public:
     std::vector<int> execute(Solution& solution, int nodesToRemove, std::mt19937& rng) override;
 
 private:
+    friend struct DestroyOperatorRegressionAccess;
     std::shared_ptr<Instance> instance;
     double threshold_;
 

@@ -46,6 +46,12 @@ Bài toán chỉ giao hàng, không nhận hàng; được sạc một phần t�
 Chưa hỗ trợ JD hay file Solomon VRPTW thiếu tham số xe điện trong giao diện này.
 Đường dẫn chứa khoảng trắng phải đặt trong dấu nháy.
 
+Bộ dữ liệu duy nhất được lưu trên nhánh là `data/solomon/`, gồm các instance
+100 khách `*_21.txt` và các bộ nhỏ `*C5.txt`, `*C10.txt`, `*C15.txt`.
+Các thư mục test-100/test-15/test1/test2 cũ được bỏ để tránh trùng dữ liệu.
+Muốn chỉ chạy bộ 100 khách, thêm `--pattern '*_21.txt'` vào lệnh benchmark
+thư mục. Muốn chạy tập con khác, tạo thư mục input riêng hoặc dùng pattern.
+
 ## 3. Chạy một instance, một seed
 
 ```sh
@@ -201,3 +207,15 @@ Chạy từ đúng checkout của variant. Bộ kiểm tra dùng instance nhỏ,
 single, benchmark nhiều seed, tính độc lập tiến trình, file log và checker phát
 hiện lịch trình bị sửa. Đây là kiểm tra chức năng nhanh, không phải benchmark
 chất lượng. Xem [bản đồ mã nguồn](SOURCE_CODE.md) trước khi sửa thuật toán.
+
+Các regression test C++ liên quan vẫn được giữ và có thể chạy thêm:
+
+```sh
+cmake -S . -B build-tests -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+cmake --build build-tests -j4
+ctest --test-dir build-tests --output-on-failure
+```
+
+Các driver, log, PDF, kế hoạch và script audit lịch sử đã được bỏ khỏi bản
+hiện tại của nhánh; có thể tra lại bằng Git history. Các file cũ còn riêng trên
+máy không thuộc giao diện mới và không được CMake tự động đưa vào build.

@@ -143,18 +143,14 @@ bool Solution::isFeasible() const {
 }
 
 void Solution::evaluateRoutes() {
-  detach(); // We are about to modify the routes vector itself (erase)
+  // Only customer-serving routes count as used vehicles or contribute objectives.
+  // This also removes depot -> station(s) -> depot routes after customer moves.
+  removeEmptyRoutes();
 
   for (auto &route : *this->routes) {
     // Chỉ evaluate nếu route bị đánh dấu dirty (xử lý nội bộ trong Route)
     route.evaluate();
   }
-
-  routes->erase(std::remove_if(routes->begin(), routes->end(),
-                               [](const Route &route) {
-                                 return route.getNodes().size() <= 2;
-                               }),
-                routes->end());
 
   this->totalVehicles = routes->size(); // Use pointer
   this->totalDistance = 0.0;
@@ -245,6 +241,9 @@ bool Solution::checkGlobalFeasibility() const {
   customers_served.reserve(customerIdSet_.size());
 
   for (const Route &route : *this->routes) {
+    if (route.getCustomers().empty()) {
+      return false;
+    }
     if (!route.isFeasible()) {
       return false;
     }

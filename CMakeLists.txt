@@ -1,173 +1,83 @@
-# Yêu cầu phiên bản CMake
 cmake_minimum_required(VERSION 3.17)
+project(evrptw_pr LANGUAGES CXX)
 
-# Đặt tên dự án
-project(untitled LANGUAGES CXX)
-
-option(BUILD_TESTING "Build regression tests" OFF)
-option(ALNS_BUILD_LEGACY_TOOLS "Build historical debug, tuning and benchmark programs" OFF)
-if(ALNS_BUILD_LEGACY_TOOLS)
-add_executable(RunJD src/test/RunJD.cpp)
-target_link_libraries(RunJD PRIVATE alns_lib)
-endif()
-
-
-# Yêu cầu tiêu chuẩn C++17
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-
-# Cấu hình cờ biên dịch (Release mode tối ưu hóa)
-# Default build type
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
-
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ot /GL /arch:AVX2")
-
 else()
-
-    set(CMAKE_CXX_FLAGS_RELEASE
-            "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -mtune=native -funroll-loops -flto=auto -DNDEBUG -fomit-frame-pointer")
-
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -mtune=native -funroll-loops -flto=auto -DNDEBUG -fomit-frame-pointer")
 endif()
 
-# -------------------------------------------------------------
-# 1. Tự động tìm tất cả các file nguồn (.cpp) trong thư mục src
-#    (Trừ main.cpp và các file test để tránh xung đột hàm main)
-# -------------------------------------------------------------
-file(GLOB_RECURSE COMMON_SRCS
-        "src/core/*.cpp"
-        "src/alns/*.cpp"
-        "src/alns/operators/*.cpp"
-        "src/alns/operators/destroy/*.cpp"
-        "src/alns/operators/repair/*.cpp"
-        "src/alns/operators/local_search/*.cpp"
-        "src/io/*.cpp"
-        "src/utils/*.cpp"
-        "src/logger/*.cpp"
-        "src/app/*.cpp"
+# Explicit dependencies: local legacy files cannot enter the build accidentally.
+add_library(alns_lib STATIC
+    src/alns/ALNSSolver.cpp
+    src/alns/ChargingRepair.cpp
+    src/alns/LocalSearch.cpp
+    src/alns/ParetoArchive.cpp
+    src/alns/ScatterSearch.cpp
+    src/alns/SolutionPool.cpp
+    src/alns/operators/destroy/EnergyCriticalRemoval.cpp
+    src/alns/operators/destroy/RandomRemoval.cpp
+    src/alns/operators/destroy/RouteMergingDestroy.cpp
+    src/alns/operators/destroy/TimeSlackDestroy.cpp
+    src/alns/operators/destroy/UnifiedCostDestroy.cpp
+    src/alns/operators/destroy/VehicleReductionAwareDestroy.cpp
+    src/alns/operators/repair/AdaptiveInsertion.cpp
+    src/alns/operators/repair/ChargingAwareRouteBuilder.cpp
+    src/alns/operators/repair/GreedyEnergyInsertion.cpp
+    src/alns/operators/repair/RegretKRepair.cpp
+    src/alns/operators/repair/SmartStationRepair.cpp
+    src/alns/operators/repair/VehiclePackingRepair.cpp
+    src/core/Customer.cpp
+    src/core/Depot.cpp
+    src/core/Instance.cpp
+    src/core/Node.cpp
+    src/core/Route.cpp
+    src/core/Solution.cpp
+    src/core/Solver.cpp
+    src/core/Station.cpp
+    src/core/Vehicle.cpp
+    src/io/Parser.cpp
+    src/logger/ComprehensiveLogger.cpp
 )
-
-# Loại bỏ các file chứa hàm main() khỏi danh sách thư viện chung
-list(REMOVE_ITEM COMMON_SRCS
-        "${CMAKE_SOURCE_DIR}/src/app/ExperimentRunner.cpp"
-        "${CMAKE_SOURCE_DIR}/src/main.cpp"
-        "${CMAKE_SOURCE_DIR}/src/test/TestALNS.cpp"
-)
-
-# -------------------------------------------------------------
-# 2. Tạo thư viện tĩnh (Static Library) từ các file nguồn chung
-# -------------------------------------------------------------
-add_library(alns_lib STATIC ${COMMON_SRCS})
+target_include_directories(alns_lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_executable(evrptw src/app/ExperimentRunner.cpp)
 target_link_libraries(evrptw PRIVATE alns_lib)
 
-# Thêm thư mục include cho thư viện và cho bất kỳ target nào liên kết với nó
-target_include_directories(alns_lib PUBLIC
-        "${CMAKE_SOURCE_DIR}/include"
-)
-
-# first-noEq: inherit calibrated parameters, disable equity in search only.
+# Branch policy; configure again after switching branches.
 set(ALNS_NO_EQUITY ON CACHE BOOL "Branch policy: FP-PALNS-NoEQ (Gini remains reported)" FORCE)
 if(ALNS_NO_EQUITY)
     target_compile_definitions(alns_lib PUBLIC ALNS_NO_EQUITY=1)
 else()
     target_compile_definitions(alns_lib PUBLIC ALNS_NO_EQUITY=0)
 endif()
-
-# P6: conservative O(1) insertion time-window rejection; OFF keeps the reference path.
 option(ALNS_INSERTION_TIME_BOUNDS "Use cached relaxed prefix/suffix time bounds" ON)
 if(ALNS_INSERTION_TIME_BOUNDS)
     target_compile_definitions(alns_lib PUBLIC ALNS_INSERTION_TIME_BOUNDS=1)
 endif()
 
-# -------------------------------------------------------------
-# 3. Tạo file thực thi chính (Executable)
-# -------------------------------------------------------------
-if(ALNS_BUILD_LEGACY_TOOLS)
-add_executable(untitled src/main.cpp)
-
-# Liên kết thư viện alns_lib vào chương trình chính
-target_link_libraries(untitled PRIVATE alns_lib)
-
-# -------------------------------------------------------------
-# 4. Tạo file thực thi kiểm thử (Test Executable) - Tùy chọn
-# -------------------------------------------------------------
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/TestALNS.cpp")
-    add_executable(TestALNS src/test/TestALNS.cpp)
-    target_link_libraries(TestALNS PRIVATE alns_lib)
-endif()
-endif()
-
+option(BUILD_TESTING "Build solver regression tests" OFF)
 include(CTest)
 if(BUILD_TESTING)
-    add_executable(SearchObjectivesTests src/test/SearchObjectivesTests.cpp)
-    target_link_libraries(SearchObjectivesTests PRIVATE alns_lib)
-    add_test(NAME SearchObjectivesTests COMMAND SearchObjectivesTests)
-    add_executable(RouteRegressionTests src/test/RouteRegressionTests.cpp)
-    target_link_libraries(RouteRegressionTests PRIVATE alns_lib)
-    add_test(NAME RouteRegressionTests COMMAND RouteRegressionTests)
-    add_executable(LocalSearchRegressionTests src/test/LocalSearchRegressionTests.cpp)
-    target_link_libraries(LocalSearchRegressionTests PRIVATE alns_lib)
-    add_test(NAME LocalSearchRegressionTests COMMAND LocalSearchRegressionTests)
-    add_executable(ChargingRepairTests src/test/ChargingRepairTests.cpp)
-    target_link_libraries(ChargingRepairTests PRIVATE alns_lib)
-    add_test(NAME ChargingRepairTests COMMAND ChargingRepairTests)
-    add_executable(ReconstructionCacheTests src/test/ReconstructionCacheTests.cpp)
-    target_link_libraries(ReconstructionCacheTests PRIVATE alns_lib)
-    add_test(NAME ReconstructionCacheTests COMMAND ReconstructionCacheTests)
-    add_executable(EjectionUndoTests src/test/EjectionUndoTests.cpp)
-    target_link_libraries(EjectionUndoTests PRIVATE alns_lib)
-    add_test(NAME EjectionUndoTests COMMAND EjectionUndoTests)
-    add_executable(InsertionTimeBoundsTests src/test/InsertionTimeBoundsTests.cpp)
-    target_link_libraries(InsertionTimeBoundsTests PRIVATE alns_lib)
-    add_test(NAME InsertionTimeBoundsTests COMMAND InsertionTimeBoundsTests)
-    add_executable(SearchContextTests src/test/SearchContextTests.cpp)
-    target_link_libraries(SearchContextTests PRIVATE alns_lib)
-    add_test(NAME SearchContextTests COMMAND SearchContextTests)
-    add_executable(KNNBufferTests src/test/KNNBufferTests.cpp)
-    target_link_libraries(KNNBufferTests PRIVATE alns_lib)
-    add_test(NAME KNNBufferTests COMMAND KNNBufferTests)
-    add_executable(OrOptCacheTests src/test/OrOptCacheTests.cpp)
-    target_link_libraries(OrOptCacheTests PRIVATE alns_lib)
-    add_test(NAME OrOptCacheTests COMMAND OrOptCacheTests)
-    add_executable(ALNSAuditRunner src/test/ALNSAuditRunner.cpp)
-    target_link_libraries(ALNSAuditRunner PRIVATE alns_lib)
-endif()
-
-# -------------------------------------------------------------
-# 5. Tạo file thực thi Tuning (Tuning Executable)
-# -------------------------------------------------------------
-if(ALNS_BUILD_LEGACY_TOOLS)
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/tuning/TuningApp.cpp")
-    add_executable(TuningApp src/tuning/TuningApp.cpp)
-    target_link_libraries(TuningApp PRIVATE alns_lib)
-endif()
-
-# -------------------------------------------------------------
-# 6. Tạo file thực thi Benchmark Test2 (Benchmark Executable)
-# -------------------------------------------------------------
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/BenchmarkTest2.cpp")
-    add_executable(BenchmarkTest2 src/test/BenchmarkTest2.cpp)
-    target_link_libraries(BenchmarkTest2 PRIVATE alns_lib)
-endif()
-
-# -------------------------------------------------------------
-# 7. Tạo file thực thi Pareto Demo (Demo Executable)
-# -------------------------------------------------------------
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/ParetoDemo.cpp")
-    add_executable(ParetoDemo src/test/ParetoDemo.cpp)
-    target_link_libraries(ParetoDemo PRIVATE alns_lib)
-endif()
-
-# -------------------------------------------------------------
-# 8. Tạo file thực thi Benchmark EVRPTWMF
-#    Chạy bộ dữ liệu data/instances_EVRPTWMF
-# -------------------------------------------------------------
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/test/BenchmarkEVRPTWMF.cpp")
-    add_executable(BenchmarkEVRPTWMF src/test/BenchmarkEVRPTWMF.cpp)
-    target_link_libraries(BenchmarkEVRPTWMF PRIVATE alns_lib)
-endif()
+    foreach(test_name IN ITEMS
+        ChargingRepairTests
+        DestroyOperatorRegressionTests
+        EjectionUndoTests
+        InsertionTimeBoundsTests
+        KNNBufferTests
+        LocalSearchRegressionTests
+        OrOptCacheTests
+        ReconstructionCacheTests
+        RouteRegressionTests
+        SearchContextTests
+        SearchObjectivesTests
+    )
+        add_executable(${test_name} src/test/${test_name}.cpp)
+        target_link_libraries(${test_name} PRIVATE alns_lib)
+        add_test(NAME ${test_name} COMMAND ${test_name})
+    endforeach()
 endif()

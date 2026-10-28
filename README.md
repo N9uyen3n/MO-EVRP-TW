@@ -26,10 +26,15 @@ cmake --build build-release --target evrptw -j4
 Use a separate build directory for each checkout/branch. The default build
 uses the branch's fixed variant; rebuilding after a branch switch also updates
 an old CMake cache. The launcher refuses an executable from the other variant.
-The default build
-creates only the experiment executable and its library. Old debug/tuning tools
-are optional (`-DALNS_BUILD_LEGACY_TOOLS=ON`); regression tests are optional
-(`-DBUILD_TESTING=ON`). No generated executables or experiment logs are tracked.
+The default build creates only the experiment executable and its library.
+Regression tests are optional (`-DBUILD_TESTING=ON`). Historical drivers,
+tuning programs, audit artifacts and duplicate datasets have been removed from
+these branches. No generated executables or experiment logs are tracked.
+
+The supported dataset lives in `data/solomon/`; it contains both full instances
+(`*_21.txt`) and small instances (`*C5.txt`, `*C10.txt`, `*C15.txt`). To benchmark
+only full instances, add `--pattern '*_21.txt'`. Current source dependencies are
+listed explicitly in CMake. Previous versions remain available in Git history.
 
 ## 1. One instance
 

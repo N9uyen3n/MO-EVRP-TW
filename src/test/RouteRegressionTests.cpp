@@ -27,6 +27,33 @@ int main() {
     try { body(); ++passed; std::cout<<"PASS "<<name<<'\n'; }
     catch(const std::exception& error) { ++failures; std::cout<<"FAIL "<<name<<": "<<error.what()<<'\n'; }
   };
+  test("solution evaluation removes every route without customers",[] {
+    auto inst=std::make_shared<Instance>(Nodes{depot(),station(1,1),customer(2,3)},100,100,1,1);
+    Solution sol(inst);
+    sol.addRoute(route(inst,{2}));
+    sol.evaluateRoutes();
+    const double distance=sol.getTotalDistance(),gini=sol.getWorkloadGini(),maxTime=sol.getMaxTime();
+    Solution original=sol;
+    sol.addRoute(route(inst,{}));
+    sol.addRoute(route(inst,{1}));
+    require(!sol.isFeasible(),"unprocessed customer-free routes must not be feasible");
+    bool rejected=false;
+    try { audit::validateSolution(sol,*inst); }
+    catch(const std::exception&) { rejected=true; }
+    require(rejected,"solution checker must reject customer-free routes");
+    sol.evaluateRoutes();
+    require(sol.getNumRoutes()==1 && sol.getTotalVehicles()==1,"only customer-serving route remains");
+    near(sol.getTotalDistance(),distance,"station-only distance excluded");
+    near(sol.getWorkloadGini(),gini,"station-only workload excluded");
+    near(sol.getMaxTime(),maxTime,"station-only duration excluded");
+    require(sol.isFeasible(),"customer-serving solution remains feasible");
+    audit::validateSolution(sol,*inst);
+    require(original.getNumRoutes()==1,"copy-on-write preserves original");
+    Solution unused(inst);
+    unused.addRoute(route(inst,{1})); unused.evaluateRoutes();
+    require(unused.getNumRoutes()==0 && unused.getTotalVehicles()==0,"unused fleet is removed");
+    require(!unused.isFeasible(),"removing unused routes must not conceal missing customers");
+  });
   test("customer time data agrees through Node API",[] {
     auto c=customer(1,5,10,80,1,7); const Node* node=c.get();
     near(node->getReadyTime(),10,"base ready time");

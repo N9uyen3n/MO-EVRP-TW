@@ -58,22 +58,11 @@ bool RouteMergingDestroy::canPotentiallyMerge(const Route &r1,
     if (totalDemand > instance->getVehicleCapacity() * 1.8)
         return false;
 
-    // Check 2: Pairwise TW compatibility (thay thế union/span check cũ)
-    //
-    // Vấn đề của span check cũ: dùng union [min_ready, max_due] của cả route →
-    // false positive cao. Ví dụ route A có [10,20] và [100,110], route B có
-    // [50,120] → span overlap nhưng [10,20] và [50,120] conflict hoàn toàn.
-    //
-    // Fix: đếm tỷ lệ cặp customer (ci ∈ r1, cj ∈ r2) có TW tương thích.
-    // Hai customers tương thích nếu có thể phục vụ tuần tự trong cùng shift:
-    //   max(ready_i, ready_j) < min(due_i, due_j)   (TW giao nhau)
-    //   HOẶC một trong hai có thể đến sau khi hoàn thành cái kia trong horizon.
-    // Đơn giản hóa: chỉ cần TW của ci và cj không hoàn toàn tách rời.
-    // "Tách rời" = due_i < ready_j VÀ due_j < ready_i (không ai chờ được ai).
-    //
-    // Nếu > 50% cặp conflict → routes này không hợp → skip.
-    // Với routes nhỏ (≤ 5 customers mỗi route) thì check toàn bộ O(25) cặp.
-    // Với routes lớn hơn, sample tối đa 5×5 = 25 cặp để tránh O(N²).
+    // Check 2: relaxed pairwise service-start feasibility in either order.
+    // Disjoint windows can be compatible; overlapping windows can conflict
+    // because of service/travel time. This is a route-selection heuristic,
+    // not a certificate that the reconstructed route will be feasible.
+    // Inspect at most 5 x 5 customer pairs, retaining the existing 60% cutoff.
     const auto &custs1 = r1.getCustomers();
     const auto &custs2 = r2.getCustomers();
 
@@ -96,10 +85,16 @@ bool RouteMergingDestroy::canPotentiallyMerge(const Route &r1,
             double readyB = nodeB->getReadyTime();
             double dueB   = nodeB->getDueDate();
 
-            // Conflict: A hoàn toàn trước B VÀ B hoàn toàn trước A
-            // → không thể đi cùng route theo bất kỳ thứ tự nào trong TW
-            // (bỏ qua travel time để check nhanh — conservative nhưng đủ)
-            bool conflict = (dueA < readyB) && (dueB < readyA);
+            constexpr double timeTolerance = 1e-6;
+            const double startB = std::max(readyB, readyA + nodeA->getServiceTime()
+                + instance->getTime(custs1[i], custs2[j]));
+            const double startA = std::max(readyA, readyB + nodeB->getServiceTime()
+                + instance->getTime(custs2[j], custs1[i]));
+            const bool aThenB = readyA <= dueA + timeTolerance
+                && startB <= dueB + timeTolerance;
+            const bool bThenA = readyB <= dueB + timeTolerance
+                && startA <= dueA + timeTolerance;
+            const bool conflict = !aThenB && !bThenA;
             if (conflict) conflictPairs++;
             totalPairs++;
         }

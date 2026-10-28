@@ -61,6 +61,15 @@ class ExperimentTests(unittest.TestCase):
         report = check_run(self.saved_fixture())
         self.assertTrue(report["valid"],report)
 
+    def test_verifier_rejects_station_only_route_even_when_metrics_match(self):
+        output=self.saved_fixture()
+        (output/"results.csv").write_text("solution,vehicles,distance,gini,max_time,valid\n0,2,8,0.2777777777777778,14,1\n")
+        with (output/"schedules.csv").open("a") as handle:
+            handle.write("0,1,0,0,0,0,0,10,4,0\n0,1,1,1,1,1,0,9,4,0\n0,1,2,0,2,2,0,8,4,0\n")
+        report=check_run(output)
+        self.assertFalse(report["valid"],report)
+        self.assertTrue(any("no customer" in error for item in report["reports"] for error in item["errors"]),report)
+
     def test_verifier_rejects_bad_battery_without_repair(self):
         output = self.saved_fixture()
         path = output/"schedules.csv"

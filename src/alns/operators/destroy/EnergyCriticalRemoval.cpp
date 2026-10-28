@@ -26,20 +26,24 @@ double EnergyCriticalRemoval::calculateEnergyRiskScore(int customerId, const Rou
  auto it = std::find(customers.begin(), customers.end(), customerId);
  if (it == customers.end()) return 0.0;
 
- size_t pos = std::distance(customers.begin(), it);
+ const size_t customerPos = std::distance(customers.begin(), it);
+ const auto& nodes = route.getNodes();
+ const auto nodeIt = std::find(nodes.begin(), nodes.end(), customerId);
+ if (nodeIt == nodes.end()) return 0.0;
+ const size_t nodePos = std::distance(nodes.begin(), nodeIt);
 
  const auto& states = route.getStates();
- if (states.size() <= pos + 1) return 0.0;
+ if (nodePos >= states.size()) return 0.0;
 
- double currentBattery = states[pos].remainingBattery;
+ double currentBattery = states[nodePos].remainingBattery;
 
  // Depot is always node 0
  double distToDepot = instance->getDistance(customerId, 0);
  double energyToDepot = distToDepot * instance->getVehicleEnergyRate();
 
  double energyToNext = 0.0;
- if (pos + 1 < customers.size()) {
-  int nextId = customers[pos + 1];
+ if (customerPos + 1 < customers.size()) {
+  int nextId = customers[customerPos + 1];
   energyToNext = instance->getDistance(customerId, nextId) * instance->getVehicleEnergyRate();
  } else {
   energyToNext = energyToDepot;

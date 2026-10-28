@@ -91,6 +91,7 @@ inline void validateSolution(const Solution& solution, const Instance& inst) {
   std::vector<double> active;
   double distance=0,maxTime=0;
   for(const auto& route:solution.getRoutes()) {
+    require(!route.getCustomers().empty(),"used route has no customer");
     const auto metrics=validateRoute(route,inst);
     active.push_back(metrics.active);
     distance+=metrics.distance;
